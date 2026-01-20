@@ -117,13 +117,13 @@
 
         scene.add(deskGroup);
 
-        // Position Camera
-        camera.position.set(2.5, 0.6, -0.8);
-        camera.lookAt(-4, 0, -0.3);
+        // Position Camera (Back Right Corner, Looking Front)
+        camera.position.set(2.0, 0.8, -1.8);
+        camera.lookAt(1.8, -0.5, 2);
 
         // Mouse interaction
         let mouseX = 0;
-        let targetCameraZ = -0.8;
+        let targetCameraX = 2.0;
         const windowHalfX = window.innerWidth / 2;
 
         document.addEventListener('mousemove', (event) => {
@@ -134,14 +134,15 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // Move camera based on mouse position (Strafing along Z)
-            const baseZ = -0.8;
-            targetCameraZ = baseZ - mouseX * 0.5; // Mouse Right (Positive) -> Camera Right (Negative Z)
-            camera.position.z += (targetCameraZ - camera.position.z) * 0.05; // Smooth transition
+            // Move camera based on mouse position (Strafing along X)
+            // Mouse Right (+1) -> Move Camera Right (+X)
+            const baseX = 2.0;
+            targetCameraX = baseX + mouseX * 0.5;
+            camera.position.x += (targetCameraX - camera.position.x) * 0.05;
 
-            // Look down the table (-X), slightly angled towards center
-            // Camera is at Right (-Z), so Look slightly Left (+Z relative) to see center
-            camera.lookAt(-4, 0, camera.position.z + 0.5);
+            // Look towards the front (+Z), slightly down and inward
+            // Maintain relative look direction
+            camera.lookAt(camera.position.x - 0.2, -0.5, 5);
 
             renderer.render(scene, camera);
         }
