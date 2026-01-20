@@ -118,15 +118,26 @@
         scene.add(deskGroup);
 
         // Position Camera
-        camera.position.set(0, 2, 5);
+        camera.position.set(0, 1.2, 2.5);
         camera.lookAt(0, 0, 0);
+
+        // Mouse interaction
+        let mouseX = 0;
+        let targetCameraX = 0;
+        const windowHalfX = window.innerWidth / 2;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX - windowHalfX) / windowHalfX; // Normalized -1 to 1
+        });
 
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
 
-            // Slowly rotate the desk
-            deskGroup.rotation.y += 0.005;
+            // Pan camera based on mouse position
+            targetCameraX = mouseX * 1.5; // Scale the movement
+            camera.position.x += (targetCameraX - camera.position.x) * 0.05; // Smooth transition
+            camera.lookAt(0, 0, 0);
 
             renderer.render(scene, camera);
         }
