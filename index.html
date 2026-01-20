@@ -6,58 +6,139 @@
     <title>spare-desk.space</title>
     <style>
         body {
-            background-color: #fdfdfd; /* A soft, paper-white background */
-            color: #333;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
             text-align: center;
+            pointer-events: none; /* Let clicks pass through to canvas if needed */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
-
         h1 {
-            font-weight: normal;
-            margin-bottom: 20px;
+            font-size: 3rem;
+            margin: 0;
         }
-
-        pre {
-            font-size: 14px;
-            line-height: 1.2;
-            color: #666;
-            user-select: none; /* Prevents accidental highlighting of the art */
-        }
-
-        .container {
-            border: 1px solid #eee;
-            padding: 40px;
-            background: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        p {
+            font-size: 1.2rem;
         }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>hello!</h1>
-        
-        <pre>
-     ________________________________________________
-    /                                               /|
-   /_______________________________________________/ |
-   |                                               | |
-   |                [ spare-desk ]                 | |
-   |                                               | |
-   |_______________________________________________|/
-           | |                           | |
-           | |                           | |
-           |_|                           |_|
-        </pre>
-
+    <div id="overlay">
+        <h1>spare-desk.space</h1>
         <p>something is being built here.</p>
     </div>
+    <div id="canvas-container"></div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        // Add some fog for depth
+        scene.fog = new THREE.Fog(0xf0f0f0, 10, 50);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        // Floor
+        const floorGeometry = new THREE.PlaneGeometry(100, 100);
+        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xe0e0e0 });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Desk Group
+        const deskGroup = new THREE.Group();
+
+        // Materials
+        const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // SaddleBrown
+        const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+
+        // Tabletop
+        const topWidth = 4;
+        const topDepth = 2;
+        const topThickness = 0.1;
+        const tabletopGeo = new THREE.BoxGeometry(topWidth, topThickness, topDepth);
+        const tabletop = new THREE.Mesh(tabletopGeo, woodMaterial);
+        tabletop.castShadow = true;
+        tabletop.receiveShadow = true;
+        deskGroup.add(tabletop);
+
+        // Legs
+        const legHeight = 2;
+        const legWidth = 0.1;
+        const legDepth = 0.1;
+        const legGeo = new THREE.BoxGeometry(legWidth, legHeight, legDepth);
+
+        const positions = [
+            { x: -topWidth/2 + 0.2, z: -topDepth/2 + 0.2 },
+            { x: topWidth/2 - 0.2, z: -topDepth/2 + 0.2 },
+            { x: -topWidth/2 + 0.2, z: topDepth/2 - 0.2 },
+            { x: topWidth/2 - 0.2, z: topDepth/2 - 0.2 }
+        ];
+
+        positions.forEach(pos => {
+            const leg = new THREE.Mesh(legGeo, metalMaterial);
+            leg.position.set(pos.x, -legHeight/2 - topThickness/2, pos.z);
+            leg.castShadow = true;
+            leg.receiveShadow = true;
+            deskGroup.add(leg);
+        });
+
+        scene.add(deskGroup);
+
+        // Position Camera
+        camera.position.set(0, 2, 5);
+        camera.lookAt(0, 0, 0);
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Slowly rotate the desk
+            deskGroup.rotation.y += 0.005;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
 </body>
 </html>
