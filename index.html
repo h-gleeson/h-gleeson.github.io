@@ -85,7 +85,7 @@
         const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
 
         // Tabletop
-        const topWidth = 4;
+        const topWidth = 12;
         const topDepth = 2;
         const topThickness = 0.1;
         const tabletopGeo = new THREE.BoxGeometry(topWidth, topThickness, topDepth);
@@ -116,7 +116,7 @@
         });
 
         deskGroup.rotation.y = Math.PI;
-        deskGroup.position.x = 4.0;
+        deskGroup.position.x = -3.0;
         scene.add(deskGroup);
 
         // Position Camera (Back Right Corner, Looking Front)
@@ -139,7 +139,7 @@
             // Move camera based on mouse position (Strafing along X)
             // Mouse Right (+1) -> Move Camera Right (+X)
             const baseX = 2.0;
-            targetCameraX = baseX + mouseX * 0.5;
+            targetCameraX = baseX - mouseX * 0.5;
             camera.position.x += (targetCameraX - camera.position.x) * 0.05;
 
             // Look towards the front (+Z), slightly down and inward
