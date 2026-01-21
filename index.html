@@ -43,6 +43,7 @@
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -115,39 +116,55 @@
             deskGroup.add(leg);
         });
 
-        // Placeholder Objects (Decorations)
-        const objectCount = 10;
-        for (let i = 0; i < objectCount; i++) {
-            const type = Math.floor(Math.random() * 3);
-            let geometry;
-            if (type === 0) geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-            else if (type === 1) geometry = new THREE.ConeGeometry(0.2, 0.4, 32);
-            else geometry = new THREE.CylinderGeometry(0.15, 0.15, 0.3, 32);
+        // Custom Model Loading Infrastructure
+        const loader = new THREE.GLTFLoader();
 
-            const material = new THREE.MeshStandardMaterial({
-                color: Math.random() * 0xffffff,
-                roughness: 0.7,
-                metalness: 0.1
-            });
-            const obj = new THREE.Mesh(geometry, material);
+        // -------------------------------------------------------------------------
+        // INSTRUCTIONS FOR USER:
+        // 1. Upload your .glb or .gltf files to the "assets/models/" folder.
+        // 2. Add the filenames to the 'myModels' array below.
+        // -------------------------------------------------------------------------
 
-            // Random position on tabletop
-            // X: [-topWidth/2 + margin, topWidth/2 - margin]
-            // Z: [-topDepth/2 + margin, topDepth/2 - margin]
-            const margin = 0.5;
-            const x = (Math.random() * (topWidth - 2 * margin)) - (topWidth / 2 - margin);
-            const z = (Math.random() * (topDepth - 2 * margin)) - (topDepth / 2 - margin);
+        const myModels = [
+            // 'project1.glb',  <-- Example: Uncomment and rename to match your file
+            // 'project2.glb',
+        ];
 
-            // Y: sits on topThickness/2 + height/2
-            let height = 0.3; // Approx
-            if (type === 1) height = 0.4;
-            // Center of geometry
-            obj.position.set(x, topThickness/2 + height/2, z);
+        myModels.forEach((filename) => {
+            const filePath = 'assets/models/' + filename;
 
-            obj.castShadow = true;
-            obj.receiveShadow = true;
-            deskGroup.add(obj);
-        }
+            loader.load(
+                filePath,
+                (gltf) => {
+                    const model = gltf.scene;
+
+                    // Random position on tabletop
+                    const margin = 0.5;
+                    const x = (Math.random() * (topWidth - 2 * margin)) - (topWidth / 2 - margin);
+                    const z = (Math.random() * (topDepth - 2 * margin)) - (topDepth / 2 - margin);
+
+                    // Adjust Scale (You might need to tweak this based on your model size)
+                    model.scale.set(0.5, 0.5, 0.5);
+
+                    // Position on top of the desk
+                    model.position.set(x, topThickness/2, z);
+
+                    // Enable shadows
+                    model.traverse((node) => {
+                        if (node.isMesh) {
+                            node.castShadow = true;
+                            node.receiveShadow = true;
+                        }
+                    });
+
+                    deskGroup.add(model);
+                },
+                undefined, // onProgress
+                (error) => {
+                    console.error('An error happened loading ' + filePath, error);
+                }
+            );
+        });
 
         deskGroup.rotation.y = Math.PI;
         deskGroup.position.x = 8.5;
