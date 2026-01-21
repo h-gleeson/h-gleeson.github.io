@@ -115,6 +115,40 @@
             deskGroup.add(leg);
         });
 
+        // Placeholder Objects (Decorations)
+        const objectCount = 10;
+        for (let i = 0; i < objectCount; i++) {
+            const type = Math.floor(Math.random() * 3);
+            let geometry;
+            if (type === 0) geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            else if (type === 1) geometry = new THREE.ConeGeometry(0.2, 0.4, 32);
+            else geometry = new THREE.CylinderGeometry(0.15, 0.15, 0.3, 32);
+
+            const material = new THREE.MeshStandardMaterial({
+                color: Math.random() * 0xffffff,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const obj = new THREE.Mesh(geometry, material);
+
+            // Random position on tabletop
+            // X: [-topWidth/2 + margin, topWidth/2 - margin]
+            // Z: [-topDepth/2 + margin, topDepth/2 - margin]
+            const margin = 0.5;
+            const x = (Math.random() * (topWidth - 2 * margin)) - (topWidth / 2 - margin);
+            const z = (Math.random() * (topDepth - 2 * margin)) - (topDepth / 2 - margin);
+
+            // Y: sits on topThickness/2 + height/2
+            let height = 0.3; // Approx
+            if (type === 1) height = 0.4;
+            // Center of geometry
+            obj.position.set(x, topThickness/2 + height/2, z);
+
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+            deskGroup.add(obj);
+        }
+
         deskGroup.rotation.y = Math.PI;
         deskGroup.position.x = 8.5;
         scene.add(deskGroup);
