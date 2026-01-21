@@ -85,7 +85,7 @@
         const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
 
         // Tabletop
-        const topWidth = 12;
+        const topWidth = 15;
         const topDepth = 2;
         const topThickness = 0.1;
         const tabletopGeo = new THREE.BoxGeometry(topWidth, topThickness, topDepth);
@@ -116,7 +116,7 @@
         });
 
         deskGroup.rotation.y = Math.PI;
-        deskGroup.position.x = -3.0;
+        deskGroup.position.x = -5.5;
         scene.add(deskGroup);
 
         // Position Camera (Back Right Corner, Looking Front)
