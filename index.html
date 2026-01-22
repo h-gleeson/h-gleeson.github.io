@@ -147,17 +147,20 @@
         }
 
         // Add labels along axes
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 0.25; i <= 5; i += 0.25) {
+            // Format number to remove trailing zeros if integer
+            const val = parseFloat(i.toFixed(2));
+
             // X Axis (Red)
-            debugHelpers.add(createLabel('X=' + i, i, 0.2, 0, '#ff5555'));
-            debugHelpers.add(createLabel('X=' + (-i), -i, 0.2, 0, '#ff5555'));
+            debugHelpers.add(createLabel('X=' + val, i, 0.2, 0, '#ff5555'));
+            debugHelpers.add(createLabel('X=' + (-val), -i, 0.2, 0, '#ff5555'));
 
             // Y Axis (Green)
-            debugHelpers.add(createLabel('Y=' + i, 0, i, 0, '#55ff55'));
+            debugHelpers.add(createLabel('Y=' + val, 0, i, 0, '#55ff55'));
 
             // Z Axis (Blue)
-            debugHelpers.add(createLabel('Z=' + i, 0, 0.2, i, '#5555ff'));
-            debugHelpers.add(createLabel('Z=' + (-i), 0, 0.2, -i, '#5555ff'));
+            debugHelpers.add(createLabel('Z=' + val, 0, 0.2, i, '#5555ff'));
+            debugHelpers.add(createLabel('Z=' + (-val), 0, 0.2, -i, '#5555ff'));
         }
 
         // Toggle Button Logic
@@ -237,7 +240,7 @@
             requestAnimationFrame(animate);
 
             // Move camera based on mouse position (Strafing along X)
-            // Mouse Right (+1) -> Move Camera Right (+X)
+            // Mouse Right (+1) -> Move Camera Right (World -X because camera looks towards +Z)
             targetCameraX = baseX - mouseX * 0.5;
             camera.position.x += (targetCameraX - camera.position.x) * 0.05;
 
