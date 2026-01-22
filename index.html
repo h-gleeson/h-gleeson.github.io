@@ -229,13 +229,15 @@
             mouseX = (event.clientX - windowHalfX) / windowHalfX; // Normalized -1 to 1
         });
 
+        // Store the initial X position as the base for movement
+        const baseX = camera.position.x;
+
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
 
             // Move camera based on mouse position (Strafing along X)
             // Mouse Right (+1) -> Move Camera Right (+X)
-            const baseX = 0;
             targetCameraX = baseX - mouseX * 0.5;
             camera.position.x += (targetCameraX - camera.position.x) * 0.05;
 
