@@ -26,6 +26,18 @@
             pointer-events: none; /* Let clicks pass through to canvas if needed */
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
+        #debug-log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: red;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            font-size: 14px;
+            display: none; /* Hidden by default, shown if errors occur */
+            max-width: 80%;
+            pointer-events: none;
+        }
         h1 {
             font-size: 3rem;
             margin: 0;
@@ -40,6 +52,7 @@
         <h1>spare-desk.space</h1>
         <p>something is being built here.</p>
     </div>
+    <div id="debug-log"></div>
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -89,6 +102,14 @@
         // Custom Model Loading Infrastructure
         const loader = new THREE.GLTFLoader();
 
+        // Helper to show errors on screen
+        function showError(message) {
+            const debugLog = document.getElementById('debug-log');
+            debugLog.style.display = 'block';
+            debugLog.innerHTML += message + '<br>';
+            console.error(message);
+        }
+
         // Load Desk Parts (Replacing primitives)
         const deskParts = ['DeskLegs.glb', 'DeskTopSurface.glb'];
         deskParts.forEach(part => {
@@ -96,9 +117,13 @@
                 const model = gltf.scene;
                 // Ensure shadows
                 model.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+
+                // Optional: Adjust scale if models are too big/small
+                // model.scale.set(1, 1, 1);
+
                 deskGroup.add(model);
             }, undefined, (error) => {
-                console.error('Error loading ' + part, error);
+                showError('Error loading ' + part + ': ' + error.message);
             });
         });
 
