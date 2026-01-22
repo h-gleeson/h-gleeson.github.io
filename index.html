@@ -220,16 +220,8 @@
         scene.add(deskGroup);
 
         // Position Camera (Center, Closer)
-        camera.position.set(0, 0.6, -1.2);
-
-        // Initial LookAt Configuration
-        // Edit this to change where the camera looks on load.
-        // The animation loop will now respect this initial orientation.
-        const lookAtTarget = new THREE.Vector3(0, -0.2, 0.5);
-        camera.lookAt(lookAtTarget);
-
-        // Capture the initial rotation to use as a baseline for head movement
-        const initialRotation = new THREE.Euler().copy(camera.rotation);
+        camera.position.set(-1.2, 1, -0.4);
+        camera.lookAt(-5, 0.5, 3);
 
         // Mouse interaction
         let mouseX = 0;
