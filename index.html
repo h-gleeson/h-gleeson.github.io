@@ -144,60 +144,13 @@
             });
         });
 
-        // -------------------------------------------------------------------------
-        // INSTRUCTIONS FOR USER:
-        // 1. Upload your .glb or .gltf files to the "assets/models/" folder.
-        // 2. Add the filenames to the 'myModels' array below.
-        // -------------------------------------------------------------------------
-
-        const myModels = [
-            // 'project1.glb',  <-- Example: Uncomment and rename to match your file
-            // 'project2.glb',
-        ];
-
-        myModels.forEach((filename) => {
-            const filePath = 'assets/models/' + filename;
-
-            loader.load(
-                filePath,
-                (gltf) => {
-                    const model = gltf.scene;
-
-                    // Random position on tabletop
-                    const margin = 0.5;
-                    const x = (Math.random() * (topWidth - 2 * margin)) - (topWidth / 2 - margin);
-                    const z = (Math.random() * (topDepth - 2 * margin)) - (topDepth / 2 - margin);
-
-                    // Adjust Scale (You might need to tweak this based on your model size)
-                    model.scale.set(0.5, 0.5, 0.5);
-
-                    // Position on top of the desk
-                    model.position.set(x, topThickness/2, z);
-
-                    // Enable shadows
-                    model.traverse((node) => {
-                        if (node.isMesh) {
-                            node.castShadow = true;
-                            node.receiveShadow = true;
-                        }
-                    });
-
-                    deskGroup.add(model);
-                },
-                undefined, // onProgress
-                (error) => {
-                    console.error('An error happened loading ' + filePath, error);
-                }
-            );
-        });
-
         deskGroup.rotation.y = Math.PI;
         deskGroup.position.x = 0;
         scene.add(deskGroup);
 
-        // Position Camera (Back Right Corner, Looking Front)
-        camera.position.set(0, 0.8, -1.8);
-        camera.lookAt(0, -0.5, 2);
+        // Position Camera (Center, Closer)
+        camera.position.set(0, 0.6, -1.2);
+        camera.lookAt(0, -0.2, 0.5);
 
         // Mouse interaction
         let mouseX = 0;
