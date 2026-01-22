@@ -221,32 +221,45 @@
 
         // Position Camera (Center, Closer)
         camera.position.set(0, 0.6, -1.2);
-        camera.lookAt(0, -0.2, 0.5);
+
+        // Initial LookAt Configuration
+        // Edit this to change where the camera looks on load.
+        // The animation loop will now respect this initial orientation.
+        const lookAtTarget = new THREE.Vector3(0, -0.2, 0.5);
+        camera.lookAt(lookAtTarget);
+
+        // Capture the initial rotation to use as a baseline for head movement
+        const initialRotation = new THREE.Euler().copy(camera.rotation);
 
         // Mouse interaction
         let mouseX = 0;
-        let targetCameraX = 0;
+        let mouseY = 0;
         const windowHalfX = window.innerWidth / 2;
+        const windowHalfY = window.innerHeight / 2;
 
         document.addEventListener('mousemove', (event) => {
             mouseX = (event.clientX - windowHalfX) / windowHalfX; // Normalized -1 to 1
+            mouseY = (event.clientY - windowHalfY) / windowHalfY; // Normalized -1 to 1
         });
-
-        // Store the initial X position as the base for movement
-        const baseX = camera.position.x;
 
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
 
-            // Move camera based on mouse position (Strafing along X)
-            // Mouse Right (+1) -> Move Camera Right (World -X because camera looks towards +Z)
-            targetCameraX = baseX - mouseX * 0.5;
-            camera.position.x += (targetCameraX - camera.position.x) * 0.05;
+            // Head Movement (Rotation)
+            // Instead of panning, we rotate the camera based on mouse position.
+            const sensitivityX = 0.3; // Yaw (Left/Right)
+            const sensitivityY = 0.2; // Pitch (Up/Down)
 
-            // Look towards the front (+Z), slightly down and inward
-            // Maintain relative look direction
-            camera.lookAt(camera.position.x - 0.2, -0.5, 5);
+            // Calculate target rotations relative to the initial orientation
+            // Mouse X -> Rotation Y (Yaw)
+            const targetRotY = initialRotation.y - mouseX * sensitivityX;
+            // Mouse Y -> Rotation X (Pitch)
+            const targetRotX = initialRotation.x - mouseY * sensitivityY;
+
+            // Smoothly interpolate current rotation towards target
+            camera.rotation.y += (targetRotY - camera.rotation.y) * 0.05;
+            camera.rotation.x += (targetRotX - camera.rotation.x) * 0.05;
 
             renderer.render(scene, camera);
         }
