@@ -115,11 +115,28 @@
         deskParts.forEach(part => {
             loader.load('assets/models/' + part, (gltf) => {
                 const model = gltf.scene;
-                // Ensure shadows
-                model.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
 
-                // Optional: Adjust scale if models are too big/small
-                // model.scale.set(1, 1, 1);
+                // Force model to origin to ensure alignment
+                model.position.set(0, 0, 0);
+                model.rotation.set(0, 0, 0);
+                model.scale.set(1, 1, 1);
+
+                // Ensure shadows and apply materials
+                model.traverse(n => {
+                    if (n.isMesh) {
+                        n.castShadow = true;
+                        n.receiveShadow = true;
+
+                        // Color the Desk Top Surface Brown
+                        if (part === 'DeskTopSurface.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0x8B4513, // SaddleBrown
+                                roughness: 0.6,
+                                metalness: 0.1
+                            });
+                        }
+                    }
+                });
 
                 deskGroup.add(model);
             }, undefined, (error) => {
