@@ -81,43 +81,26 @@
         // Desk Group
         const deskGroup = new THREE.Group();
 
-        // Materials
-        const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // SaddleBrown
-        const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
-
-        // Tabletop
+        // Desk Dimensions (Used for positioning decorations)
         const topWidth = 15;
         const topDepth = 2;
         const topThickness = 0.1;
-        const tabletopGeo = new THREE.BoxGeometry(topWidth, topThickness, topDepth);
-        const tabletop = new THREE.Mesh(tabletopGeo, woodMaterial);
-        tabletop.castShadow = true;
-        tabletop.receiveShadow = true;
-        deskGroup.add(tabletop);
-
-        // Legs
-        const legHeight = 2;
-        const legWidth = 0.1;
-        const legDepth = 0.1;
-        const legGeo = new THREE.BoxGeometry(legWidth, legHeight, legDepth);
-
-        const positions = [
-            { x: -topWidth/2 + 0.2, z: -topDepth/2 + 0.2 },
-            { x: topWidth/2 - 0.2, z: -topDepth/2 + 0.2 },
-            { x: -topWidth/2 + 0.2, z: topDepth/2 - 0.2 },
-            { x: topWidth/2 - 0.2, z: topDepth/2 - 0.2 }
-        ];
-
-        positions.forEach(pos => {
-            const leg = new THREE.Mesh(legGeo, metalMaterial);
-            leg.position.set(pos.x, -legHeight/2 - topThickness/2, pos.z);
-            leg.castShadow = true;
-            leg.receiveShadow = true;
-            deskGroup.add(leg);
-        });
 
         // Custom Model Loading Infrastructure
         const loader = new THREE.GLTFLoader();
+
+        // Load Desk Parts (Replacing primitives)
+        const deskParts = ['DeskLegs.glb', 'DeskTopSurface.glb'];
+        deskParts.forEach(part => {
+            loader.load('assets/models/' + part, (gltf) => {
+                const model = gltf.scene;
+                // Ensure shadows
+                model.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+                deskGroup.add(model);
+            }, undefined, (error) => {
+                console.error('Error loading ' + part, error);
+            });
+        });
 
         // -------------------------------------------------------------------------
         // INSTRUCTIONS FOR USER:
