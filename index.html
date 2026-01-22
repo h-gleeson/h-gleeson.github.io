@@ -192,16 +192,16 @@
         });
 
         deskGroup.rotation.y = Math.PI;
-        deskGroup.position.x = 8.5;
+        deskGroup.position.x = 0;
         scene.add(deskGroup);
 
         // Position Camera (Back Right Corner, Looking Front)
-        camera.position.set(2.0, 0.8, -1.8);
-        camera.lookAt(1.8, -0.5, 2);
+        camera.position.set(0, 0.8, -1.8);
+        camera.lookAt(0, -0.5, 2);
 
         // Mouse interaction
         let mouseX = 0;
-        let targetCameraX = 2.0;
+        let targetCameraX = 0;
         const windowHalfX = window.innerWidth / 2;
 
         document.addEventListener('mousemove', (event) => {
@@ -214,7 +214,7 @@
 
             // Move camera based on mouse position (Strafing along X)
             // Mouse Right (+1) -> Move Camera Right (+X)
-            const baseX = 2.0;
+            const baseX = 0;
             targetCameraX = baseX - mouseX * 0.5;
             camera.position.x += (targetCameraX - camera.position.x) * 0.05;
 
