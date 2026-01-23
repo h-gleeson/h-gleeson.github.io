@@ -174,50 +174,6 @@
             toggleBtn.textContent = debugHelpers.visible ? "Hide Grid" : "Show Grid";
         });
 
-        // --- Desk Generation Strategy ---
-        // 1. Create a procedural desk as a placeholder/fallback.
-        // 2. Try to load GLTF models.
-        // 3. If models load, remove procedural desk and show models.
-
-        // Procedural Desk Container
-        const proceduralDesk = new THREE.Group();
-        deskGroup.add(proceduralDesk);
-
-        // Materials
-        const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6, metalness: 0.1 });
-        const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
-
-        // Tabletop
-        const topWidth = 4;
-        const topDepth = 2;
-        const topThickness = 0.1;
-        const tabletopGeo = new THREE.BoxGeometry(topWidth, topThickness, topDepth);
-        const tabletop = new THREE.Mesh(tabletopGeo, woodMaterial);
-        tabletop.castShadow = true;
-        tabletop.receiveShadow = true;
-        proceduralDesk.add(tabletop);
-
-        // Legs
-        const legHeight = 2;
-        const legWidth = 0.1;
-        const legDepth = 0.1;
-        const legGeo = new THREE.BoxGeometry(legWidth, legHeight, legDepth);
-
-        const positions = [
-            { x: -topWidth/2 + 0.2, z: -topDepth/2 + 0.2 },
-            { x: topWidth/2 - 0.2, z: -topDepth/2 + 0.2 },
-            { x: -topWidth/2 + 0.2, z: topDepth/2 - 0.2 },
-            { x: topWidth/2 - 0.2, z: topDepth/2 - 0.2 }
-        ];
-
-        positions.forEach(pos => {
-            const leg = new THREE.Mesh(legGeo, metalMaterial);
-            leg.position.set(pos.x, -legHeight/2 - topThickness/2, pos.z);
-            leg.castShadow = true;
-            leg.receiveShadow = true;
-            proceduralDesk.add(leg);
-        });
-
         // GLTF Model Loading
         const loader = new THREE.GLTFLoader();
 
@@ -246,25 +202,17 @@
                     }
                 });
 
-                // Remove procedural desk if it's still there
-                if (proceduralDesk.parent) {
-                    deskGroup.remove(proceduralDesk);
-                    // Dispose geometries/materials if needed, but not strictly required for this simple scene
-                }
-
                 deskGroup.add(model);
                 console.log('Loaded ' + filename);
 
             }, undefined, (error) => {
-                console.warn('Error loading ' + filename + '. Using procedural fallback.', error);
-                // On error, we just keep the procedural desk.
+                console.warn('Error loading ' + filename, error);
             });
         }
 
         // Attempt to load parts
         loadModel('DeskLegs.glb');
         loadModel('DeskTopSurface.glb');
-
 
         // Position Camera (Center, Closer)
         camera.position.set(0, 0.6, -1.2);
