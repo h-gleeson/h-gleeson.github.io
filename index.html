@@ -246,20 +246,30 @@
             const inLeftZone = xRatio < 0.15;
             const inRightZone = xRatio > 0.85;
 
-            // Only apply movement if in an active zone
-            if (inTopZone || inBottomZone || inLeftZone || inRightZone) {
-                targetRotationY -= event.movementX * sensitivityY;
+            // Directional Logic:
+            // Top Zone: Pitch Up Only (movementY < 0)
+            if (inTopZone && event.movementY < 0) {
                 targetRotationX -= event.movementY * sensitivityX;
-
-                // Clamp Pitch (X)
-                if (targetRotationX < -1.5) targetRotationX = -1.5;
-                if (targetRotationX > 1.5) targetRotationX = 1.5;
-
-                // Clamp Yaw (Y) to restrict left/right movement
-                const yawLimit = 0.1;
-                if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
-                if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
             }
+
+            // Bottom Zone: Pitch Down Only (movementY > 0)
+            if (inBottomZone && event.movementY > 0) {
+                targetRotationX -= event.movementY * sensitivityX;
+            }
+
+            // Left/Right Zones: Yaw Control
+            if (inLeftZone || inRightZone) {
+                targetRotationY -= event.movementX * sensitivityY;
+            }
+
+            // Clamp Pitch (X)
+            if (targetRotationX < -1.5) targetRotationX = -1.5;
+            if (targetRotationX > 1.5) targetRotationX = 1.5;
+
+            // Clamp Yaw (Y) to restrict left/right movement
+            const yawLimit = 0.1;
+            if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
+            if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
         });
 
         // Animation Loop
