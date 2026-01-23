@@ -263,7 +263,7 @@
                 dy = mouseY + threshold;
             }
 
-            const targetRotY = initialRotation.y + dx * sensitivityX;
+            const targetRotY = initialRotation.y - dx * sensitivityX;
             const targetRotX = initialRotation.x - dy * sensitivityY;
 
             camera.rotation.y += (targetRotY - camera.rotation.y) * 0.05;
