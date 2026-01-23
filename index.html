@@ -215,7 +215,8 @@
         loadModel('DeskTopSurface.glb');
 
         // Position Camera (Center, Closer)
-        camera.position.set(-1.1, 1.1, -0.5);
+        const initialCameraY = 1.1;
+        camera.position.set(-1.1, initialCameraY, -0.5);
 
         // Set rotation order to prevent gimbal lock/roll
         camera.rotation.order = 'YXZ';
@@ -268,6 +269,11 @@
 
             camera.rotation.y += (targetRotY - camera.rotation.y) * 0.05;
             camera.rotation.x += (targetRotX - camera.rotation.x) * 0.05;
+
+            // Dynamic height adjustment (crouch/lean down when looking down)
+            // When dy > 0 (looking down), lower the camera.
+            const targetCameraY = initialCameraY - (dy * 0.5);
+            camera.position.y += (targetCameraY - camera.position.y) * 0.05;
 
             renderer.render(scene, camera);
         }
