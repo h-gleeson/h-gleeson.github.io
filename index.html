@@ -240,11 +240,28 @@
             requestAnimationFrame(animate);
 
             // Head Movement (Rotation)
-            const sensitivityX = 0.3; // Yaw (Left/Right)
-            const sensitivityY = 0.2; // Pitch (Up/Down)
+            const sensitivityX = 0.1; // Yaw (Left/Right)
+            const sensitivityY = 0.1; // Pitch (Up/Down)
+            const threshold = 0.5;
 
-            const targetRotY = initialRotation.y - mouseX * sensitivityX;
-            const targetRotX = initialRotation.x - mouseY * sensitivityY;
+            // Apply deadzone and calculate delta
+            let dx = 0;
+            let dy = 0;
+
+            if (mouseX > threshold) {
+                dx = mouseX - threshold;
+            } else if (mouseX < -threshold) {
+                dx = mouseX + threshold;
+            }
+
+            if (mouseY > threshold) {
+                dy = mouseY - threshold;
+            } else if (mouseY < -threshold) {
+                dy = mouseY + threshold;
+            }
+
+            const targetRotY = initialRotation.y + dx * sensitivityX;
+            const targetRotX = initialRotation.x + dy * sensitivityY;
 
             camera.rotation.y += (targetRotY - camera.rotation.y) * 0.05;
             camera.rotation.x += (targetRotX - camera.rotation.x) * 0.05;
