@@ -73,7 +73,6 @@
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -170,58 +169,57 @@
             toggleBtn.textContent = debugHelpers.visible ? "Hide Grid" : "Show Grid";
         });
 
-        // Custom Model Loading Infrastructure
-        const loader = new THREE.GLTFLoader();
+        // Materials
+        const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6, metalness: 0.1 });
+        const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
 
-        // Helper to show errors on screen
-        function showError(message) {
-            const debugLog = document.getElementById('debug-log');
-            debugLog.style.display = 'block';
-            debugLog.innerHTML += message + '<br>';
-            console.error(message);
-        }
+        // Tabletop
+        const topWidth = 4;
+        const topDepth = 2;
+        const topThickness = 0.1;
+        const tabletopGeo = new THREE.BoxGeometry(topWidth, topThickness, topDepth);
+        const tabletop = new THREE.Mesh(tabletopGeo, woodMaterial);
+        tabletop.castShadow = true;
+        tabletop.receiveShadow = true;
+        deskGroup.add(tabletop);
 
-        // Load Desk Parts (Replacing primitives)
-        const deskParts = ['DeskLegs.glb', 'DeskTopSurface.glb'];
-        deskParts.forEach(part => {
-            loader.load('assets/models/' + part, (gltf) => {
-                const model = gltf.scene;
+        // Legs
+        const legHeight = 2;
+        const legWidth = 0.1;
+        const legDepth = 0.1;
+        const legGeo = new THREE.BoxGeometry(legWidth, legHeight, legDepth);
 
-                // Force model to origin to ensure alignment
-                model.position.set(0, 0, 0);
-                model.rotation.set(0, 0, 0);
-                model.scale.set(1, 1, 1);
+        const positions = [
+            { x: -topWidth/2 + 0.2, z: -topDepth/2 + 0.2 },
+            { x: topWidth/2 - 0.2, z: -topDepth/2 + 0.2 },
+            { x: -topWidth/2 + 0.2, z: topDepth/2 - 0.2 },
+            { x: topWidth/2 - 0.2, z: topDepth/2 - 0.2 }
+        ];
 
-                // Ensure shadows and apply materials
-                model.traverse(n => {
-                    if (n.isMesh) {
-                        n.castShadow = true;
-                        n.receiveShadow = true;
-
-                        // Color the Desk Top Surface Brown
-                        if (part === 'DeskTopSurface.glb') {
-                            n.material = new THREE.MeshStandardMaterial({
-                                color: 0x8B4513, // SaddleBrown
-                                roughness: 0.6,
-                                metalness: 0.1
-                            });
-                        }
-                    }
-                });
-
-                deskGroup.add(model);
-            }, undefined, (error) => {
-                showError('Error loading ' + part + ': ' + error.message);
-            });
+        positions.forEach(pos => {
+            const leg = new THREE.Mesh(legGeo, metalMaterial);
+            leg.position.set(pos.x, -legHeight/2 - topThickness/2, pos.z);
+            leg.castShadow = true;
+            leg.receiveShadow = true;
+            deskGroup.add(leg);
         });
 
+        // Rotate desk 180 degrees (desktop towards left of frame when viewed from front)
         deskGroup.rotation.y = Math.PI;
         deskGroup.position.x = 0;
         scene.add(deskGroup);
 
         // Position Camera (Center, Closer)
-        camera.position.set(-1.2, 1, -0.4);
-        camera.lookAt(-5, 0.5, 3);
+        camera.position.set(0, 0.6, -1.2);
+
+        // Initial LookAt Configuration
+        // Edit this to change where the camera looks on load.
+        // The animation loop will now respect this initial orientation.
+        const lookAtTarget = new THREE.Vector3(0, -0.2, 0.5);
+        camera.lookAt(lookAtTarget);
+
+        // Capture the initial rotation to use as a baseline for head movement
+        const initialRotation = new THREE.Euler().copy(camera.rotation);
 
         // Mouse interaction
         let mouseX = 0;
