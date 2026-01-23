@@ -283,7 +283,11 @@
             // Dynamic height adjustment (Leaning)
             // Based on pitch change relative to initial
             const currentPitchChange = camera.rotation.x - initialRotation.x;
-            const targetCameraY = initialCameraY + currentPitchChange * 2.5;
+            let targetCameraY = initialCameraY + currentPitchChange * 2.5;
+
+            // Clamp height
+            if (targetCameraY < 0.4) targetCameraY = 0.4;
+            if (targetCameraY > 4.0) targetCameraY = 4.0;
 
             camera.position.y += (targetCameraY - camera.position.y) * 0.05;
 
@@ -298,6 +302,7 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
     </script>
 </body>
 </html>
