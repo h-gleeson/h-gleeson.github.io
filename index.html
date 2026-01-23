@@ -228,51 +228,35 @@
         // Capture the initial rotation to use as a baseline for head movement
         const initialRotation = new THREE.Euler().copy(camera.rotation);
 
-        // Mouse interaction
-        let mouseX = 0;
-        let mouseY = 0;
-        const windowHalfX = window.innerWidth / 2;
-        const windowHalfY = window.innerHeight / 2;
+        // Target rotation (initialized to current)
+        let targetRotationX = initialRotation.x;
+        let targetRotationY = initialRotation.y;
+
+        // Mouse interaction (Relative Movement)
+        const sensitivity = 0.002;
 
         document.addEventListener('mousemove', (event) => {
-            mouseX = (event.clientX - windowHalfX) / windowHalfX; // Normalized -1 to 1
-            mouseY = (event.clientY - windowHalfY) / windowHalfY; // Normalized -1 to 1
+            targetRotationY -= event.movementX * sensitivity;
+            targetRotationX -= event.movementY * sensitivity;
+
+            // Clamp Pitch (X)
+            if (targetRotationX < -1.5) targetRotationX = -1.5;
+            if (targetRotationX > 1.5) targetRotationX = 1.5;
         });
 
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
 
-            // Head Movement (Rotation)
-            const sensitivityX = 0.15; // Yaw (Left/Right)
-            const sensitivityY = 0.20; // Pitch (Up/Down)
-            const threshold = 0.5;
+            // Smoothly interpolate current rotation to target
+            camera.rotation.y += (targetRotationY - camera.rotation.y) * 0.1;
+            camera.rotation.x += (targetRotationX - camera.rotation.x) * 0.1;
 
-            // Apply deadzone and calculate delta
-            let dx = 0;
-            let dy = 0;
+            // Dynamic height adjustment (Leaning)
+            // Based on pitch change relative to initial
+            const currentPitchChange = camera.rotation.x - initialRotation.x;
+            const targetCameraY = initialCameraY + currentPitchChange * 2.5;
 
-            if (mouseX > threshold) {
-                dx = mouseX - threshold;
-            } else if (mouseX < -threshold) {
-                dx = mouseX + threshold;
-            }
-
-            if (mouseY > threshold) {
-                dy = mouseY - threshold;
-            } else if (mouseY < -threshold) {
-                dy = mouseY + threshold;
-            }
-
-            const targetRotY = initialRotation.y - dx * sensitivityX;
-            const targetRotX = initialRotation.x - dy * sensitivityY;
-
-            camera.rotation.y += (targetRotY - camera.rotation.y) * 0.05;
-            camera.rotation.x += (targetRotX - camera.rotation.x) * 0.05;
-
-            // Dynamic height adjustment (crouch/lean down when looking down)
-            // When dy > 0 (looking down), lower the camera.
-            const targetCameraY = initialCameraY - (dy * 0.5);
             camera.position.y += (targetCameraY - camera.position.y) * 0.05;
 
             renderer.render(scene, camera);
