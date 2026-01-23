@@ -237,18 +237,29 @@
         const sensitivityY = 0.0002; // Yaw (Left/Right) - Greatly reduced
 
         document.addEventListener('mousemove', (event) => {
-            targetRotationY -= event.movementX * sensitivityY;
-            targetRotationX -= event.movementY * sensitivityX;
+            const yRatio = event.clientY / window.innerHeight;
+            const xRatio = event.clientX / window.innerWidth;
 
-            // Clamp Pitch (X)
-            if (targetRotationX < -1.5) targetRotationX = -1.5;
-            if (targetRotationX > 1.5) targetRotationX = 1.5;
+            // Define Deadzone (15% margins)
+            const inTopZone = yRatio < 0.15;
+            const inBottomZone = yRatio > 0.85;
+            const inLeftZone = xRatio < 0.15;
+            const inRightZone = xRatio > 0.85;
 
-            // Clamp Yaw (Y) to restrict left/right movement
-            // Allow only small deviation from initial facing
-            const yawLimit = 0.1; // +/- ~5.7 degrees
-            if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
-            if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
+            // Only apply movement if in an active zone
+            if (inTopZone || inBottomZone || inLeftZone || inRightZone) {
+                targetRotationY -= event.movementX * sensitivityY;
+                targetRotationX -= event.movementY * sensitivityX;
+
+                // Clamp Pitch (X)
+                if (targetRotationX < -1.5) targetRotationX = -1.5;
+                if (targetRotationX > 1.5) targetRotationX = 1.5;
+
+                // Clamp Yaw (Y) to restrict left/right movement
+                const yawLimit = 0.1;
+                if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
+                if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
+            }
         });
 
         // Animation Loop
