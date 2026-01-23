@@ -217,6 +217,9 @@
         // Position Camera (Center, Closer)
         camera.position.set(-1.1, 1.1, -0.5);
 
+        // Set rotation order to prevent gimbal lock/roll
+        camera.rotation.order = 'YXZ';
+
         // Initial LookAt Configuration
         const lookAtTarget = new THREE.Vector3(-4, 0.5, 1);
         camera.lookAt(lookAtTarget);
@@ -240,8 +243,8 @@
             requestAnimationFrame(animate);
 
             // Head Movement (Rotation)
-            const sensitivityX = 0.1; // Yaw (Left/Right)
-            const sensitivityY = 0.1; // Pitch (Up/Down)
+            const sensitivityX = 0.12; // Yaw (Left/Right)
+            const sensitivityY = 0.12; // Pitch (Up/Down)
             const threshold = 0.5;
 
             // Apply deadzone and calculate delta
@@ -261,7 +264,7 @@
             }
 
             const targetRotY = initialRotation.y + dx * sensitivityX;
-            const targetRotX = initialRotation.x + dy * sensitivityY;
+            const targetRotX = initialRotation.x - dy * sensitivityY;
 
             camera.rotation.y += (targetRotY - camera.rotation.y) * 0.05;
             camera.rotation.x += (targetRotX - camera.rotation.x) * 0.05;
