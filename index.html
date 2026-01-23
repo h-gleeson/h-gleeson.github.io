@@ -73,6 +73,7 @@
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
         // Scene setup
         const scene = new THREE.Scene();
@@ -109,6 +110,10 @@
 
         // Desk Group
         const deskGroup = new THREE.Group();
+        // Rotate desk 180 degrees (desktop towards left of frame when viewed from front)
+        deskGroup.rotation.y = Math.PI;
+        deskGroup.position.x = 0;
+        scene.add(deskGroup);
 
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
@@ -169,6 +174,15 @@
             toggleBtn.textContent = debugHelpers.visible ? "Hide Grid" : "Show Grid";
         });
 
+        // --- Desk Generation Strategy ---
+        // 1. Create a procedural desk as a placeholder/fallback.
+        // 2. Try to load GLTF models.
+        // 3. If models load, remove procedural desk and show models.
+
+        // Procedural Desk Container
+        const proceduralDesk = new THREE.Group();
+        deskGroup.add(proceduralDesk);
+
         // Materials
         const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6, metalness: 0.1 });
         const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
@@ -181,7 +195,7 @@
         const tabletop = new THREE.Mesh(tabletopGeo, woodMaterial);
         tabletop.castShadow = true;
         tabletop.receiveShadow = true;
-        deskGroup.add(tabletop);
+        proceduralDesk.add(tabletop);
 
         // Legs
         const legHeight = 2;
@@ -201,20 +215,61 @@
             leg.position.set(pos.x, -legHeight/2 - topThickness/2, pos.z);
             leg.castShadow = true;
             leg.receiveShadow = true;
-            deskGroup.add(leg);
+            proceduralDesk.add(leg);
         });
 
-        // Rotate desk 180 degrees (desktop towards left of frame when viewed from front)
-        deskGroup.rotation.y = Math.PI;
-        deskGroup.position.x = 0;
-        scene.add(deskGroup);
+        // GLTF Model Loading
+        const loader = new THREE.GLTFLoader();
+
+        function loadModel(filename) {
+            loader.load('assets/models/' + filename, (gltf) => {
+                const model = gltf.scene;
+
+                // Force model to origin
+                model.position.set(0, 0, 0);
+                model.rotation.set(0, 0, 0);
+                model.scale.set(1, 1, 1);
+
+                model.traverse(n => {
+                    if (n.isMesh) {
+                        n.castShadow = true;
+                        n.receiveShadow = true;
+
+                        // Apply material to surface
+                        if (filename === 'DeskTopSurface.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0x8B4513,
+                                roughness: 0.6,
+                                metalness: 0.1
+                            });
+                        }
+                    }
+                });
+
+                // Remove procedural desk if it's still there
+                if (proceduralDesk.parent) {
+                    deskGroup.remove(proceduralDesk);
+                    // Dispose geometries/materials if needed, but not strictly required for this simple scene
+                }
+
+                deskGroup.add(model);
+                console.log('Loaded ' + filename);
+
+            }, undefined, (error) => {
+                console.warn('Error loading ' + filename + '. Using procedural fallback.', error);
+                // On error, we just keep the procedural desk.
+            });
+        }
+
+        // Attempt to load parts
+        loadModel('DeskLegs.glb');
+        loadModel('DeskTopSurface.glb');
+
 
         // Position Camera (Center, Closer)
         camera.position.set(0, 0.6, -1.2);
 
         // Initial LookAt Configuration
-        // Edit this to change where the camera looks on load.
-        // The animation loop will now respect this initial orientation.
         const lookAtTarget = new THREE.Vector3(0, -0.2, 0.5);
         camera.lookAt(lookAtTarget);
 
@@ -237,17 +292,12 @@
             requestAnimationFrame(animate);
 
             // Head Movement (Rotation)
-            // Instead of panning, we rotate the camera based on mouse position.
             const sensitivityX = 0.3; // Yaw (Left/Right)
             const sensitivityY = 0.2; // Pitch (Up/Down)
 
-            // Calculate target rotations relative to the initial orientation
-            // Mouse X -> Rotation Y (Yaw)
             const targetRotY = initialRotation.y - mouseX * sensitivityX;
-            // Mouse Y -> Rotation X (Pitch)
             const targetRotX = initialRotation.x - mouseY * sensitivityY;
 
-            // Smoothly interpolate current rotation towards target
             camera.rotation.y += (targetRotY - camera.rotation.y) * 0.05;
             camera.rotation.x += (targetRotX - camera.rotation.x) * 0.05;
 
