@@ -233,15 +233,22 @@
         let targetRotationY = initialRotation.y;
 
         // Mouse interaction (Relative Movement)
-        const sensitivity = 0.002;
+        const sensitivityX = 0.001; // Pitch (Up/Down) - Slightly reduced
+        const sensitivityY = 0.0002; // Yaw (Left/Right) - Greatly reduced
 
         document.addEventListener('mousemove', (event) => {
-            targetRotationY -= event.movementX * sensitivity;
-            targetRotationX -= event.movementY * sensitivity;
+            targetRotationY -= event.movementX * sensitivityY;
+            targetRotationX -= event.movementY * sensitivityX;
 
             // Clamp Pitch (X)
             if (targetRotationX < -1.5) targetRotationX = -1.5;
             if (targetRotationX > 1.5) targetRotationX = 1.5;
+
+            // Clamp Yaw (Y) to restrict left/right movement
+            // Allow only small deviation from initial facing
+            const yawLimit = 0.1; // +/- ~5.7 degrees
+            if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
+            if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
         });
 
         // Animation Loop
