@@ -232,8 +232,11 @@
         let targetRotationX = initialRotation.x;
         let targetRotationY = initialRotation.y;
 
+        // Mouse Zone State
+        let inTopZone = false;
+        let inBottomZone = false;
+
         // Mouse interaction (Relative Movement)
-        const sensitivityX = 0.001; // Pitch (Up/Down) - Slightly reduced
         const sensitivityY = 0.0002; // Yaw (Left/Right) - Greatly reduced
 
         document.addEventListener('mousemove', (event) => {
@@ -241,30 +244,15 @@
             const xRatio = event.clientX / window.innerWidth;
 
             // Define Deadzone (15% margins)
-            const inTopZone = yRatio < 0.15;
-            const inBottomZone = yRatio > 0.85;
+            inTopZone = yRatio < 0.15;
+            inBottomZone = yRatio > 0.85;
             const inLeftZone = xRatio < 0.15;
             const inRightZone = xRatio > 0.85;
-
-            // Directional Logic:
-            // Top Zone: Pitch Up Only (movementY < 0)
-            if (inTopZone && event.movementY < 0) {
-                targetRotationX -= event.movementY * sensitivityX;
-            }
-
-            // Bottom Zone: Pitch Down Only (movementY > 0)
-            if (inBottomZone && event.movementY > 0) {
-                targetRotationX -= event.movementY * sensitivityX;
-            }
 
             // Left/Right Zones: Yaw Control
             if (inLeftZone || inRightZone) {
                 targetRotationY -= event.movementX * sensitivityY;
             }
-
-            // Clamp Pitch (X)
-            if (targetRotationX < -1.5) targetRotationX = -1.5;
-            if (targetRotationX > 1.5) targetRotationX = 1.5;
 
             // Clamp Yaw (Y) to restrict left/right movement
             const yawLimit = 0.1;
@@ -275,6 +263,36 @@
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
+
+            // Constant movement in top/bottom zones
+            const speed = 0.005;
+
+            // Calculate rotation limits based on height limits
+            // Height = initialCameraY + (rotX - initialRotation.x) * 2.5
+            // Limit Height to [0.4, 4.0]
+            // rotX = (Height - initialCameraY) / 2.5 + initialRotation.x
+
+            const minHeight = 0.4;
+            const maxHeight = 4.0;
+
+            // Calculate rotation bounds corresponding to height bounds
+            const minRotX = (minHeight - initialCameraY) / 2.5 + initialRotation.x;
+            const maxRotX = (maxHeight - initialCameraY) / 2.5 + initialRotation.x;
+
+            if (inTopZone) {
+                targetRotationX += speed;
+            }
+            if (inBottomZone) {
+                targetRotationX -= speed;
+            }
+
+            // Clamp Pitch (X) based on Height Limits
+            if (targetRotationX < minRotX) targetRotationX = minRotX;
+            if (targetRotationX > maxRotX) targetRotationX = maxRotX;
+
+            // Also respect hard clamp for safety/flipping prevention
+            if (targetRotationX < -1.5) targetRotationX = -1.5;
+            if (targetRotationX > 1.5) targetRotationX = 1.5;
 
             // Smoothly interpolate current rotation to target
             camera.rotation.y += (targetRotationY - camera.rotation.y) * 0.1;
