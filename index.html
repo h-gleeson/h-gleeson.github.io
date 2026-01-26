@@ -272,8 +272,8 @@
             // Limit Height to [0.4, 4.0]
             // rotX = (Height - initialCameraY) / 2.5 + initialRotation.x
 
-            const minHeight = 0.4;
-            const maxHeight = 4.0;
+            const minHeight = 0.7;
+            const maxHeight = 2.8;
 
             // Calculate rotation bounds corresponding to height bounds
             const minRotX = (minHeight - initialCameraY) / 2.5 + initialRotation.x;
@@ -304,8 +304,8 @@
             let targetCameraY = initialCameraY + currentPitchChange * 2.5;
 
             // Clamp height
-            if (targetCameraY < 0.4) targetCameraY = 0.4;
-            if (targetCameraY > 4.0) targetCameraY = 4.0;
+            if (targetCameraY < 0.7) targetCameraY = 0.7;
+            if (targetCameraY > 2.8) targetCameraY = 2.8;
 
             camera.position.y += (targetCameraY - camera.position.y) * 0.05;
 
