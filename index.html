@@ -177,6 +177,115 @@
         // GLTF Model Loading
         const loader = new THREE.GLTFLoader();
 
+        // Procedural Wood Texture Generator
+        function createWoodTextures() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Generate Base Noise/Grain pattern
+            ctx.fillStyle = '#A05A2C'; // Base wood color (lighter)
+            ctx.fillRect(0, 0, size, size);
+
+            // Add simple noise/grain
+            for (let i = 0; i < 600; i++) {
+                const x = Math.random() * size;
+                const thickness = 1 + Math.random() * 2;
+                const alpha = 0.05 + Math.random() * 0.1;
+
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                let cx = x;
+                for (let y = 0; y < size; y+=5) {
+                    cx += Math.sin(y * 0.05) + (Math.random() - 0.5) * 2;
+                    ctx.lineTo(cx, y);
+                }
+                ctx.strokeStyle = `rgba(50, 20, 5, ${alpha})`;
+                ctx.lineWidth = thickness;
+                ctx.stroke();
+            }
+
+            const albedoMap = new THREE.CanvasTexture(canvas);
+
+            // 2. Generate Normal Map from the Canvas Data
+            const imgData = ctx.getImageData(0, 0, size, size);
+            const data = imgData.data;
+
+            const normalCanvas = document.createElement('canvas');
+            normalCanvas.width = size;
+            normalCanvas.height = size;
+            const ctxNormal = normalCanvas.getContext('2d');
+            const normalImgData = ctxNormal.createImageData(size, size);
+            const normalData = normalImgData.data;
+
+            // Simple Sobel-like filter
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const i = (y * size + x) * 4;
+
+                    // Helper to get brightness
+                    const getVal = (ox, oy) => {
+                        let nx = x + ox;
+                        let ny = y + oy;
+                        if (nx < 0) nx = size - 1;
+                        if (nx >= size) nx = 0;
+                        if (ny < 0) ny = size - 1;
+                        if (ny >= size) ny = 0;
+                        const ni = (ny * size + nx) * 4;
+                        return (data[ni] + data[ni+1] + data[ni+2]) / 3;
+                    };
+
+                    const valL = getVal(-1, 0);
+                    const valR = getVal(1, 0);
+                    const valU = getVal(0, -1);
+                    const valD = getVal(0, 1);
+
+                    const dx = (valL - valR) * 2.0; // Strength
+                    const dy = (valU - valD) * 2.0;
+                    const dz = 255.0 / 2.0; // Flatness
+
+                    // Normalize
+                    const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                    normalData[i] = (dx/len) * 128 + 128;
+                    normalData[i+1] = (dy/len) * 128 + 128;
+                    normalData[i+2] = (dz/len) * 255;
+                    normalData[i+3] = 255;
+                }
+            }
+            ctxNormal.putImageData(normalImgData, 0, 0);
+            const normalMap = new THREE.CanvasTexture(normalCanvas);
+
+            // 3. Roughness Map (Invert brightness somewhat)
+            const roughCanvas = document.createElement('canvas');
+            roughCanvas.width = size;
+            roughCanvas.height = size;
+            const ctxRough = roughCanvas.getContext('2d');
+            const roughImgData = ctxRough.createImageData(size, size);
+            const roughData = roughImgData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+                // Invert brightness: Darker grain = rougher (1.0), Lighter = smoother (0.0)
+                const val = 255 - brightness;
+                // Map to range [0.4, 0.9]
+                const r = 0.4 + (val / 255) * 0.5;
+
+                roughData[i] = r * 255;
+                roughData[i+1] = r * 255;
+                roughData[i+2] = r * 255;
+                roughData[i+3] = 255;
+            }
+            ctxRough.putImageData(roughImgData, 0, 0);
+            const roughnessMap = new THREE.CanvasTexture(roughCanvas);
+
+            return { map: albedoMap, normalMap: normalMap, roughnessMap: roughnessMap };
+        }
+
+        const woodTextures = createWoodTextures();
+
         function loadModel(filename) {
             loader.load('assets/models/' + filename, (gltf) => {
                 const model = gltf.scene;
@@ -194,8 +303,11 @@
                         // Apply material to surface
                         if (filename === 'DeskTopSurface.glb') {
                             n.material = new THREE.MeshStandardMaterial({
-                                color: 0x8B4513,
-                                roughness: 0.6,
+                                map: woodTextures.map,
+                                normalMap: woodTextures.normalMap,
+                                roughnessMap: woodTextures.roughnessMap,
+                                color: 0xffffff, // White tint to respect texture colors
+                                roughness: 1.0,  // Controlled by map
                                 metalness: 0.1
                             });
                         }
