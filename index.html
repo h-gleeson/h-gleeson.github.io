@@ -54,6 +54,17 @@
         #grid-toggle:hover {
             background: rgba(50, 50, 50, 0.9);
         }
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+        }
         h1 {
             font-size: 3rem;
             margin: 0;
@@ -65,6 +76,7 @@
 </head>
 <body>
     <button id="grid-toggle">Show Grid</button>
+    <div id="tooltip"></div>
     <div id="overlay">
         <h1>spare-desk.space</h1>
         <p>something is being built here.</p>
@@ -389,10 +401,21 @@
         let inTopZone = false;
         let inBottomZone = false;
 
-        // Mouse interaction (Relative Movement)
+        // Raycaster for Interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const tooltip = document.getElementById('tooltip');
+        let hoveredObject = null;
+
+        // Mouse interaction (Relative Movement + Raycasting)
         const sensitivityY = 0.0002; // Yaw (Left/Right) - Greatly reduced
 
         document.addEventListener('mousemove', (event) => {
+            // 1. Calculate Mouse Position for Raycasting (-1 to +1)
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // 2. Head Movement Logic
             const yRatio = event.clientY / window.innerHeight;
             const xRatio = event.clientX / window.innerWidth;
 
@@ -411,6 +434,26 @@
             const yawLimit = 0.1;
             if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
             if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
+
+            // 3. Update Tooltip Position
+            tooltip.style.left = event.clientX + 10 + 'px';
+            tooltip.style.top = event.clientY + 10 + 'px';
+        });
+
+        // Click Handler
+        document.addEventListener('click', () => {
+            if (hoveredObject) {
+                // Check if it is part of the Palace Group
+                // We traverse up to find the group logic or check names
+                let parent = hoveredObject.parent;
+                while (parent) {
+                    if (parent === palaceGroup) {
+                        window.location.href = 'projects/palace/index.html';
+                        return;
+                    }
+                    parent = parent.parent;
+                }
+            }
         });
 
         // Animation Loop
@@ -461,6 +504,46 @@
             if (targetCameraY > 1.5) targetCameraY = 1.5;
 
             camera.position.y += (targetCameraY - camera.position.y) * 0.05;
+
+            // Raycasting
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            let foundInteractable = false;
+
+            if (intersects.length > 0) {
+                // Find the first object that is part of our interactable groups
+                // Currently only palaceGroup is interactable
+                for (let i = 0; i < intersects.length; i++) {
+                    const object = intersects[i].object;
+
+                    // Check ownership
+                    let isPalace = false;
+                    let p = object.parent;
+                    while(p) {
+                        if (p === palaceGroup) {
+                            isPalace = true;
+                            break;
+                        }
+                        p = p.parent;
+                    }
+
+                    if (isPalace) {
+                        hoveredObject = object;
+                        tooltip.style.display = 'block';
+                        tooltip.textContent = "The Palace";
+                        document.body.style.cursor = 'pointer';
+                        foundInteractable = true;
+                        break; // Stop at first valid hit
+                    }
+                }
+            }
+
+            if (!foundInteractable) {
+                hoveredObject = null;
+                tooltip.style.display = 'none';
+                document.body.style.cursor = 'default';
+            }
 
             renderer.render(scene, camera);
         }
