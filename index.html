@@ -310,6 +310,16 @@
                                 roughness: 1.0,  // Controlled by map
                                 metalness: 0.1
                             });
+                        } else if (filename === 'RoomFloor.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0xd3d3d3, // Light Grey
+                                roughness: 0.8
+                            });
+                        } else if (filename === 'RoomWalls.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0xF0EAD6, // Eggshell
+                                roughness: 0.5
+                            });
                         }
                     }
                 });
@@ -325,6 +335,8 @@
         // Attempt to load parts
         loadModel('DeskLegs.glb');
         loadModel('DeskTopSurface.glb');
+        loadModel('RoomFloor.glb');
+        loadModel('RoomWalls.glb');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
