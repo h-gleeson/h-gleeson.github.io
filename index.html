@@ -124,6 +124,10 @@
         deskGroup.position.x = 0;
         scene.add(deskGroup);
 
+        // Palace Group (Child of Desk Group)
+        const palaceGroup = new THREE.Group();
+        deskGroup.add(palaceGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -329,11 +333,25 @@
                                 color: 0xF0EAD6, // Eggshell
                                 roughness: 0.5
                             });
+                        } else if (filename === 'PalaceTop.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0xffffff, // White
+                                roughness: 0.2
+                            });
+                        } else if (filename === 'PalaceBottom.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0x222222, // Dark Grey
+                                roughness: 0.8
+                            });
                         }
                     }
                 });
 
-                deskGroup.add(model);
+                if (filename === 'PalaceTop.glb' || filename === 'PalaceBottom.glb') {
+                    palaceGroup.add(model);
+                } else {
+                    deskGroup.add(model);
+                }
                 console.log('Loaded ' + filename);
 
             }, undefined, (error) => {
@@ -346,6 +364,8 @@
         loadModel('DeskTopSurface.glb');
         loadModel('RoomFloor.glb');
         loadModel('RoomWalls.glb');
+        loadModel('PalaceTop.glb');
+        loadModel('PalaceBottom.glb');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
