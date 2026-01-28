@@ -99,6 +99,15 @@
         dirLight.shadow.mapSize.height = 1024;
         scene.add(dirLight);
 
+        // Overhead Light (Desk Lamp / Room Light)
+        const pointLight = new THREE.PointLight(0xfffaed, 0.8);
+        pointLight.position.set(0, 3, 0);
+        pointLight.castShadow = true;
+        pointLight.shadow.bias = -0.0001;
+        pointLight.shadow.mapSize.width = 2048;
+        pointLight.shadow.mapSize.height = 2048;
+        scene.add(pointLight);
+
         // Floor
         const floorGeometry = new THREE.PlaneGeometry(100, 100);
         const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xe0e0e0 });
