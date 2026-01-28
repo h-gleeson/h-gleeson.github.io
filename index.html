@@ -299,8 +299,8 @@
 
         const woodTextures = createWoodTextures();
 
-        function loadModel(filename) {
-            loader.load('assets/models/' + filename, (gltf) => {
+        function loadModel(filename, path = 'assets/models/') {
+            loader.load(path + filename, (gltf) => {
                 const model = gltf.scene;
 
                 // Force model to origin
@@ -364,8 +364,8 @@
         loadModel('DeskTopSurface.glb');
         loadModel('RoomFloor.glb');
         loadModel('RoomWalls.glb');
-        loadModel('PalaceTop.glb');
-        loadModel('PalaceBottom.glb');
+        loadModel('PalaceTop.glb', 'Projects/Palace/Models/');
+        loadModel('PalaceBottom.glb', 'Projects/Palace/Models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
