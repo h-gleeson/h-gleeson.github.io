@@ -355,9 +355,9 @@
             const yRatio = event.clientY / window.innerHeight;
             const xRatio = event.clientX / window.innerWidth;
 
-            // Define Deadzone (15% margins)
-            inTopZone = yRatio < 0.15;
-            inBottomZone = yRatio > 0.85;
+            // Define Deadzone (10% margins)
+            inTopZone = yRatio < 0.10;
+            inBottomZone = yRatio > 0.90;
             const inLeftZone = xRatio < 0.15;
             const inRightZone = xRatio > 0.85;
 
@@ -377,7 +377,7 @@
             requestAnimationFrame(animate);
 
             // Constant movement in top/bottom zones
-            const speed = 0.005;
+            const speed = 0.003;
 
             // Calculate rotation limits based on height limits
             // Height = initialCameraY + (rotX - initialRotation.x) * 2.5
