@@ -381,26 +381,14 @@
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
-        const defaultStartPos = new THREE.Vector3(-1.1, initialCameraY, -0.5);
-
-        // Check for Return Transition
-        const urlParams = new URLSearchParams(window.location.search);
-        let transitionType = urlParams.get('transition'); // Changed to let
-
-        if (transitionType === 'from-palace') {
-            // Start ZOOMED IN
-            camera.position.set(-0.5, 0.8, 0.5);
-        } else {
-            // Default Start
-            camera.position.copy(defaultStartPos);
-        }
+        camera.position.set(-1.1, initialCameraY, -0.5);
 
         // Set rotation order to prevent gimbal lock/roll
         camera.rotation.order = 'YXZ';
 
         // Initial LookAt Configuration
         const lookAtTarget = new THREE.Vector3(-4, 0.5, 1);
-        camera.lookAt(lookAtTarget); // This sets rotation based on current position
+        camera.lookAt(lookAtTarget);
 
         // Capture the initial rotation to use as a baseline for head movement
         const initialRotation = new THREE.Euler().copy(camera.rotation);
@@ -452,29 +440,15 @@
             tooltip.style.top = event.clientY + 10 + 'px';
         });
 
-        // Transition State
-        let isTransitioning = false;
-        let transitionTarget = new THREE.Vector3();
-        let transitionCallback = null;
-
         // Click Handler
         document.addEventListener('click', () => {
-            if (hoveredObject && !isTransitioning) {
+            if (hoveredObject) {
                 // Check if it is part of the Palace Group
+                // We traverse up to find the group logic or check names
                 let parent = hoveredObject.parent;
                 while (parent) {
                     if (parent === palaceGroup) {
-                        // Start Zoom In Transition
-                        isTransitioning = true;
-
-                        // Calculate target position (close to the object)
-                        // The palace is likely at (0,0,0) in deskGroup, and deskGroup is at (0,0,0) world but rotated.
-                        // We want to zoom towards the desk center.
-                        transitionTarget.set(-0.5, 0.8, 0.5); // Approximate "close up" view of where the palace would be
-
-                        transitionCallback = () => {
-                            window.location.href = 'projects/palace/index.html';
-                        };
+                        window.location.href = 'projects/palace/index.html';
                         return;
                     }
                     parent = parent.parent;
@@ -485,49 +459,6 @@
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
-
-            // Handle Zoom Out Return
-            if (transitionType === 'from-palace') {
-               // Interpolate back to default start
-               camera.position.lerp(defaultStartPos, 0.05);
-
-               // Once close enough, clear the transition flag to enable controls
-               if (camera.position.distanceTo(defaultStartPos) < 0.05) {
-                   // Remove param from URL cleanly without reload
-                   const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                   window.history.pushState({path:newUrl},'',newUrl);
-
-                   // Stop transition
-                   transitionType = null;
-
-                   // Reset rotation targets to avoid snapping
-                   targetRotationX = camera.rotation.x;
-                   targetRotationY = camera.rotation.y;
-               } else {
-                   // Force LookAt during transition
-                   camera.lookAt(lookAtTarget);
-                   renderer.render(scene, camera);
-                   return;
-               }
-            }
-
-            // Handle Transitioning (Zoom In)
-            if (isTransitioning) {
-                // Interpolate Camera Position towards Target
-                camera.position.lerp(transitionTarget, 0.05);
-
-                // Force LookAt during transition to keep focus
-                const lookTarget = new THREE.Vector3(0, 0, 0); // Center of desk
-                camera.lookAt(lookTarget);
-
-                // Check distance to complete transition
-                if (camera.position.distanceTo(transitionTarget) < 0.1) {
-                    if (transitionCallback) transitionCallback();
-                }
-
-                renderer.render(scene, camera);
-                return; // Skip normal controls
-            }
 
             // Constant movement in top/bottom zones
             const speed = 0.003;
