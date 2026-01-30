@@ -364,19 +364,13 @@
                                 color: 0xF0EAD6, // Eggshell
                                 roughness: 0.5
                             });
-                        } else if (filename === 'HybridSubframe.glb') {
-                            n.material = new THREE.MeshStandardMaterial({
-                                color: 0xFFD700, // Yellow/Gold
-                                metalness: 0.5,
-                                roughness: 0.3
-                            });
                         }
                     }
                 });
 
                 if (filename === 'PalaceTop.glb' || filename === 'PalaceBottom.glb') {
                     palaceGroup.add(model);
-                } else if (filename === 'Hybrid.glb' || filename === 'HybridSubframe.glb' || filename === 'HybridFrame.glb') {
+                } else if (filename === 'Hybrid.glb' || filename === 'HybridFrame.glb') {
                     hybridGroup.add(model);
                 } else {
                     deskGroup.add(model);
@@ -396,7 +390,6 @@
         loadModel('PalaceTop.glb', 'projects/palace/models/');
         loadModel('PalaceBottom.glb', 'projects/palace/models/');
         loadModel('Hybrid.glb', 'projects/hybrid/models/');
-        loadModel('HybridSubframe.glb', 'projects/hybrid/models/');
         loadModel('HybridFrame.glb', 'projects/hybrid/models/');
 
         // Position Camera (Center, Closer)
