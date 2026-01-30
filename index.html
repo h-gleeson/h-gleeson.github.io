@@ -140,6 +140,10 @@
         const palaceGroup = new THREE.Group();
         deskGroup.add(palaceGroup);
 
+        // Hybrid Group (Child of Desk Group)
+        const hybridGroup = new THREE.Group();
+        deskGroup.add(hybridGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -326,7 +330,7 @@
                         n.receiveShadow = true;
 
                         // Apply material to surface
-                        if (filename === 'DeskTopSurface.glb') {
+                        if (filename === 'DeskTopSurface.glb' || filename === 'HybridFrame.glb') {
                             n.material = new THREE.MeshStandardMaterial({
                                 map: woodTextures.map,
                                 normalMap: woodTextures.normalMap,
@@ -355,12 +359,25 @@
                                 color: 0x222222, // Dark Grey
                                 roughness: 0.8
                             });
+                        } else if (filename === 'Hybrid.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0xF0EAD6, // Eggshell
+                                roughness: 0.5
+                            });
+                        } else if (filename === 'HybridSubframe.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0xFFD700, // Yellow/Gold
+                                metalness: 0.5,
+                                roughness: 0.3
+                            });
                         }
                     }
                 });
 
                 if (filename === 'PalaceTop.glb' || filename === 'PalaceBottom.glb') {
                     palaceGroup.add(model);
+                } else if (filename === 'Hybrid.glb' || filename === 'HybridSubframe.glb' || filename === 'HybridFrame.glb') {
+                    hybridGroup.add(model);
                 } else {
                     deskGroup.add(model);
                 }
@@ -378,6 +395,9 @@
         loadModel('RoomWalls.glb');
         loadModel('PalaceTop.glb', 'projects/palace/models/');
         loadModel('PalaceBottom.glb', 'projects/palace/models/');
+        loadModel('Hybrid.glb', 'projects/hybrid/models/');
+        loadModel('HybridSubframe.glb', 'projects/hybrid/models/');
+        loadModel('HybridFrame.glb', 'projects/hybrid/models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
@@ -450,6 +470,9 @@
                     if (parent === palaceGroup) {
                         window.location.href = 'projects/palace/index.html';
                         return;
+                    } else if (parent === hybridGroup) {
+                        window.location.href = 'projects/hybrid/index.html';
+                        return;
                     }
                     parent = parent.parent;
                 }
@@ -513,25 +536,27 @@
 
             if (intersects.length > 0) {
                 // Find the first object that is part of our interactable groups
-                // Currently only palaceGroup is interactable
                 for (let i = 0; i < intersects.length; i++) {
                     const object = intersects[i].object;
 
                     // Check ownership
-                    let isPalace = false;
+                    let groupName = null;
                     let p = object.parent;
                     while(p) {
                         if (p === palaceGroup) {
-                            isPalace = true;
+                            groupName = "The Palace";
+                            break;
+                        } else if (p === hybridGroup) {
+                            groupName = "The Hybrid";
                             break;
                         }
                         p = p.parent;
                     }
 
-                    if (isPalace) {
+                    if (groupName) {
                         hoveredObject = object;
                         tooltip.style.display = 'block';
-                        tooltip.textContent = "The Palace";
+                        tooltip.textContent = groupName;
                         document.body.style.cursor = 'pointer';
                         foundInteractable = true;
                         break; // Stop at first valid hit
