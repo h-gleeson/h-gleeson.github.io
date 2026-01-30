@@ -148,6 +148,10 @@
         const stonehengeGroup = new THREE.Group();
         deskGroup.add(stonehengeGroup);
 
+        // Vertical Village Group (Child of Desk Group)
+        const verticalVillageGroup = new THREE.Group();
+        deskGroup.add(verticalVillageGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -355,6 +359,42 @@
 
         const stoneTextures = createStoneTexture();
 
+        // Procedural Textured Red Generator
+        function createRedTexture() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Base Red Color
+            ctx.fillStyle = '#ff3333';
+            ctx.fillRect(0, 0, size, size);
+
+            // 2. Add Noise/Texture
+            for (let i = 0; i < 3000; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const w = Math.random() * 5;
+                const h = Math.random() * 5;
+                const alpha = 0.05 + Math.random() * 0.1;
+
+                // Darker red speckles
+                ctx.fillStyle = `rgba(100, 0, 0, ${alpha})`;
+                ctx.fillRect(x, y, w, h);
+            }
+
+            const albedoMap = new THREE.CanvasTexture(canvas);
+
+            // Generate normal map from red texture (simple bumpiness)
+            // Reusing canvas for roughness logic (inverted brightness essentially)
+            const roughnessMap = new THREE.CanvasTexture(canvas);
+
+            return { map: albedoMap, roughnessMap: roughnessMap };
+        }
+
+        const redTextures = createRedTexture();
+
         function loadModel(filename, path = 'assets/models/') {
             loader.load(path + filename, (gltf) => {
                 const model = gltf.scene;
@@ -412,6 +452,14 @@
                                 roughness: 0.9,
                                 metalness: 0.1
                             });
+                        } else if (filename === 'MonopolyHouse.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                map: redTextures.map,
+                                roughnessMap: redTextures.roughnessMap,
+                                color: 0xffaaaa, // Tint to ensure map colors show through
+                                roughness: 0.6,
+                                metalness: 0.0
+                            });
                         }
                     }
                 });
@@ -422,6 +470,8 @@
                     hybridGroup.add(model);
                 } else if (filename === 'StoneHenge.glb') {
                     stonehengeGroup.add(model);
+                } else if (filename === 'MonopolyHouse.glb') {
+                    verticalVillageGroup.add(model);
                 } else {
                     deskGroup.add(model);
                 }
@@ -442,6 +492,7 @@
         loadModel('Hybrid.glb', 'projects/hybrid/models/');
         loadModel('HybridFrame.glb', 'projects/hybrid/models/');
         loadModel('StoneHenge.glb', 'projects/stonehenge/models/');
+        loadModel('MonopolyHouse.glb', 'projects/vertical_village/models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
@@ -519,6 +570,9 @@
                         return;
                     } else if (parent === stonehengeGroup) {
                         window.location.href = 'projects/stonehenge/index.html';
+                        return;
+                    } else if (parent === verticalVillageGroup) {
+                        window.location.href = 'projects/vertical_village/index.html';
                         return;
                     }
                     parent = parent.parent;
@@ -598,6 +652,9 @@
                             break;
                         } else if (p === stonehengeGroup) {
                             groupName = "StoneHenge";
+                            break;
+                        } else if (p === verticalVillageGroup) {
+                            groupName = "Vertical Village";
                             break;
                         }
                         p = p.parent;
