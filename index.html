@@ -325,7 +325,7 @@
 
         // Procedural Stone Texture Generator
         function createStoneTexture() {
-            const size = 512;
+            const size = 64; // Low res for pixelated look
             const canvas = document.createElement('canvas');
             canvas.width = size;
             canvas.height = size;
@@ -335,24 +335,26 @@
             ctx.fillStyle = '#808080';
             ctx.fillRect(0, 0, size, size);
 
-            // 2. Add Noise/Speckles
-            for (let i = 0; i < 5000; i++) {
-                const x = Math.random() * size;
-                const y = Math.random() * size;
-                const radius = Math.random() * 2;
-                const shade = Math.random() > 0.5 ? 0 : 255;
-                const alpha = Math.random() * 0.1;
+            // 2. Add Noise/Speckles with more variance
+            for (let i = 0; i < 400; i++) {
+                const x = Math.floor(Math.random() * size);
+                const y = Math.floor(Math.random() * size);
+                // Random grey shade
+                const grey = 50 + Math.random() * 150;
+                const alpha = 0.3 + Math.random() * 0.2;
 
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, ${alpha})`;
-                ctx.fill();
+                ctx.fillStyle = `rgba(${grey}, ${grey}, ${grey}, ${alpha})`;
+                ctx.fillRect(x, y, 1, 1); // Single pixel blocks
             }
 
             const albedoMap = new THREE.CanvasTexture(canvas);
+            albedoMap.magFilter = THREE.NearestFilter; // Pixelated
+            albedoMap.minFilter = THREE.NearestFilter;
 
             // Simple roughness - stone is generally rough
             const roughnessMap = new THREE.CanvasTexture(canvas); // Reuse noise as roughness base
+            roughnessMap.magFilter = THREE.NearestFilter;
+            roughnessMap.minFilter = THREE.NearestFilter;
 
             return { map: albedoMap, roughnessMap: roughnessMap };
         }
@@ -361,7 +363,7 @@
 
         // Procedural Textured Red Generator
         function createRedTexture() {
-            const size = 512;
+            const size = 64; // Low res for pixelated look
             const canvas = document.createElement('canvas');
             canvas.width = size;
             canvas.height = size;
@@ -372,23 +374,28 @@
             ctx.fillRect(0, 0, size, size);
 
             // 2. Add Noise/Texture
-            for (let i = 0; i < 3000; i++) {
-                const x = Math.random() * size;
-                const y = Math.random() * size;
-                const w = Math.random() * 5;
-                const h = Math.random() * 5;
-                const alpha = 0.05 + Math.random() * 0.1;
+            for (let i = 0; i < 300; i++) {
+                const x = Math.floor(Math.random() * size);
+                const y = Math.floor(Math.random() * size);
+                const w = 1 + Math.random() * 2;
+                const h = 1 + Math.random() * 2;
+                const alpha = 0.1 + Math.random() * 0.3;
 
-                // Darker red speckles
-                ctx.fillStyle = `rgba(100, 0, 0, ${alpha})`;
+                // Varied red shades
+                const r = 150 + Math.random() * 105;
+                ctx.fillStyle = `rgba(${r}, 0, 0, ${alpha})`;
                 ctx.fillRect(x, y, w, h);
             }
 
             const albedoMap = new THREE.CanvasTexture(canvas);
+            albedoMap.magFilter = THREE.NearestFilter; // Pixelated
+            albedoMap.minFilter = THREE.NearestFilter;
 
             // Generate normal map from red texture (simple bumpiness)
             // Reusing canvas for roughness logic (inverted brightness essentially)
             const roughnessMap = new THREE.CanvasTexture(canvas);
+            roughnessMap.magFilter = THREE.NearestFilter;
+            roughnessMap.minFilter = THREE.NearestFilter;
 
             return { map: albedoMap, roughnessMap: roughnessMap };
         }
