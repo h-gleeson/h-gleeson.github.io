@@ -144,6 +144,10 @@
         const hybridGroup = new THREE.Group();
         deskGroup.add(hybridGroup);
 
+        // Stonehenge Group (Child of Desk Group)
+        const stonehengeGroup = new THREE.Group();
+        deskGroup.add(stonehengeGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -315,6 +319,42 @@
 
         const woodTextures = createWoodTextures();
 
+        // Procedural Stone Texture Generator
+        function createStoneTexture() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Base Grey Color
+            ctx.fillStyle = '#808080';
+            ctx.fillRect(0, 0, size, size);
+
+            // 2. Add Noise/Speckles
+            for (let i = 0; i < 5000; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = Math.random() * 2;
+                const shade = Math.random() > 0.5 ? 0 : 255;
+                const alpha = Math.random() * 0.1;
+
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, ${alpha})`;
+                ctx.fill();
+            }
+
+            const albedoMap = new THREE.CanvasTexture(canvas);
+
+            // Simple roughness - stone is generally rough
+            const roughnessMap = new THREE.CanvasTexture(canvas); // Reuse noise as roughness base
+
+            return { map: albedoMap, roughnessMap: roughnessMap };
+        }
+
+        const stoneTextures = createStoneTexture();
+
         function loadModel(filename, path = 'assets/models/') {
             loader.load(path + filename, (gltf) => {
                 const model = gltf.scene;
@@ -364,6 +404,14 @@
                                 color: 0xF0EAD6, // Eggshell
                                 roughness: 0.5
                             });
+                        } else if (filename === 'StoneHenge.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                map: stoneTextures.map,
+                                roughnessMap: stoneTextures.roughnessMap,
+                                color: 0x808080, // Grey base
+                                roughness: 0.9,
+                                metalness: 0.1
+                            });
                         }
                     }
                 });
@@ -372,6 +420,8 @@
                     palaceGroup.add(model);
                 } else if (filename === 'Hybrid.glb' || filename === 'HybridFrame.glb') {
                     hybridGroup.add(model);
+                } else if (filename === 'StoneHenge.glb') {
+                    stonehengeGroup.add(model);
                 } else {
                     deskGroup.add(model);
                 }
@@ -391,6 +441,7 @@
         loadModel('PalaceBottom.glb', 'projects/palace/models/');
         loadModel('Hybrid.glb', 'projects/hybrid/models/');
         loadModel('HybridFrame.glb', 'projects/hybrid/models/');
+        loadModel('StoneHenge.glb', 'projects/stonehenge/models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
@@ -465,6 +516,9 @@
                         return;
                     } else if (parent === hybridGroup) {
                         window.location.href = 'projects/hybrid/index.html';
+                        return;
+                    } else if (parent === stonehengeGroup) {
+                        window.location.href = 'projects/stonehenge/index.html';
                         return;
                     }
                     parent = parent.parent;
@@ -541,6 +595,9 @@
                             break;
                         } else if (p === hybridGroup) {
                             groupName = "The Hybrid";
+                            break;
+                        } else if (p === stonehengeGroup) {
+                            groupName = "StoneHenge";
                             break;
                         }
                         p = p.parent;
