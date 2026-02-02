@@ -404,6 +404,47 @@
 
         const redTextures = createRedTexture();
 
+        // Procedural Palace Texture Generator
+        function createPalaceTexture(baseColor) {
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Base Color
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, size, size);
+
+            // 2. Add Noise/Texture
+            for (let i = 0; i < 300; i++) {
+                const x = Math.floor(Math.random() * size);
+                const y = Math.floor(Math.random() * size);
+                const w = 1 + Math.random() * 2;
+                const h = 1 + Math.random() * 2;
+
+                // Random grey/white/black shade with low alpha
+                const shade = Math.floor(Math.random() * 255);
+                const alpha = 0.05 + Math.random() * 0.1;
+
+                ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, ${alpha})`;
+                ctx.fillRect(x, y, w, h);
+            }
+
+            const albedoMap = new THREE.CanvasTexture(canvas);
+            albedoMap.magFilter = THREE.NearestFilter; // Pixelated
+            albedoMap.minFilter = THREE.NearestFilter;
+
+            const roughnessMap = new THREE.CanvasTexture(canvas);
+            roughnessMap.magFilter = THREE.NearestFilter;
+            roughnessMap.minFilter = THREE.NearestFilter;
+
+            return { map: albedoMap, roughnessMap: roughnessMap };
+        }
+
+        const palaceTopTextures = createPalaceTexture('#ffffff');
+        const palaceBottomTextures = createPalaceTexture('#222222');
+
         function loadModel(filename, path = 'assets/models/') {
             loader.load(path + filename, (gltf) => {
                 const model = gltf.scene;
@@ -440,12 +481,16 @@
                             });
                         } else if (filename === 'PalaceTop.glb') {
                             n.material = new THREE.MeshStandardMaterial({
+                                map: palaceTopTextures.map,
+                                roughnessMap: palaceTopTextures.roughnessMap,
                                 color: 0xffffff, // White
                                 roughness: 0.2
                             });
                         } else if (filename === 'PalaceBottom.glb') {
                             n.material = new THREE.MeshStandardMaterial({
-                                color: 0x222222, // Dark Grey
+                                map: palaceBottomTextures.map,
+                                roughnessMap: palaceBottomTextures.roughnessMap,
+                                color: 0xffffff, // White to show texture colors
                                 roughness: 0.8
                             });
                         } else if (filename === 'Hybrid.glb') {
