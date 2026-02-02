@@ -336,15 +336,17 @@
             ctx.fillRect(0, 0, size, size);
 
             // 2. Add Noise/Speckles with more variance
-            for (let i = 0; i < 400; i++) {
+            for (let i = 0; i < 300; i++) {
                 const x = Math.floor(Math.random() * size);
                 const y = Math.floor(Math.random() * size);
+                const w = 1 + Math.random() * 2;
+                const h = 1 + Math.random() * 2;
                 // Random grey shade
                 const grey = 50 + Math.random() * 150;
                 const alpha = 0.3 + Math.random() * 0.2;
 
                 ctx.fillStyle = `rgba(${grey}, ${grey}, ${grey}, ${alpha})`;
-                ctx.fillRect(x, y, 1, 1); // Single pixel blocks
+                ctx.fillRect(x, y, w, h);
             }
 
             const albedoMap = new THREE.CanvasTexture(canvas);
