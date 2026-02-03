@@ -498,7 +498,7 @@
             const ctx = canvas.getContext('2d');
 
             // Base Terracotta
-            ctx.fillStyle = '#E2725B';
+            ctx.fillStyle = '#8a4b38'; // Darker Terracotta
             ctx.fillRect(0, 0, size, size);
 
             // Noise
@@ -598,9 +598,8 @@
                         } else if (filename === 'DirtPoliticsTop.glb') {
                              n.material = new THREE.MeshStandardMaterial({
                                 map: greenTextures.map,
-                                roughnessMap: greenTextures.roughnessMap,
                                 color: 0xffffff,
-                                roughness: 0.8
+                                roughness: 1.0
                             });
                         } else if (filename === 'DirtPoliticsBottom.glb') {
                              n.material = new THREE.MeshStandardMaterial({
