@@ -152,6 +152,10 @@
         const verticalVillageGroup = new THREE.Group();
         deskGroup.add(verticalVillageGroup);
 
+        // Dirt Politics Group (Child of Desk Group)
+        const dirtPoliticsGroup = new THREE.Group();
+        deskGroup.add(dirtPoliticsGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -445,6 +449,83 @@
         const palaceTopTextures = createPalaceTexture('#ffffff');
         const palaceBottomTextures = createPalaceTexture('#222222');
 
+        // Procedural Green Texture (Leafy/Varied)
+        function createGreenTexture() {
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Base Green
+            ctx.fillStyle = '#228B22'; // Forest Green
+            ctx.fillRect(0, 0, size, size);
+
+            // Varied Green Noise
+            for (let i = 0; i < 400; i++) {
+                const x = Math.floor(Math.random() * size);
+                const y = Math.floor(Math.random() * size);
+                const w = 1 + Math.random() * 2;
+                const h = 1 + Math.random() * 2;
+
+                // Varied shades of green
+                const g = 100 + Math.random() * 155;
+                const alpha = 0.2 + Math.random() * 0.3;
+
+                ctx.fillStyle = `rgba(0, ${g}, 0, ${alpha})`;
+                ctx.fillRect(x, y, w, h);
+            }
+
+            const albedoMap = new THREE.CanvasTexture(canvas);
+            albedoMap.magFilter = THREE.NearestFilter;
+            albedoMap.minFilter = THREE.NearestFilter;
+
+            const roughnessMap = new THREE.CanvasTexture(canvas);
+            roughnessMap.magFilter = THREE.NearestFilter;
+            roughnessMap.minFilter = THREE.NearestFilter;
+
+            return { map: albedoMap, roughnessMap: roughnessMap };
+        }
+
+        const greenTextures = createGreenTexture();
+
+        // Procedural Terracotta Texture
+        function createTerracottaTexture() {
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Base Terracotta
+            ctx.fillStyle = '#E2725B';
+            ctx.fillRect(0, 0, size, size);
+
+            // Noise
+            for (let i = 0; i < 300; i++) {
+                const x = Math.floor(Math.random() * size);
+                const y = Math.floor(Math.random() * size);
+                const w = 1 + Math.random() * 2;
+                const h = 1 + Math.random() * 2;
+
+                const alpha = 0.05 + Math.random() * 0.1;
+                ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+                ctx.fillRect(x, y, w, h);
+            }
+
+            const albedoMap = new THREE.CanvasTexture(canvas);
+            albedoMap.magFilter = THREE.NearestFilter;
+            albedoMap.minFilter = THREE.NearestFilter;
+
+            const roughnessMap = new THREE.CanvasTexture(canvas);
+            roughnessMap.magFilter = THREE.NearestFilter;
+            roughnessMap.minFilter = THREE.NearestFilter;
+
+            return { map: albedoMap, roughnessMap: roughnessMap };
+        }
+
+        const terracottaTextures = createTerracottaTexture();
+
         function loadModel(filename, path = 'assets/models/') {
             loader.load(path + filename, (gltf) => {
                 const model = gltf.scene;
@@ -514,6 +595,20 @@
                                 roughness: 0.6,
                                 metalness: 0.0
                             });
+                        } else if (filename === 'DirtPoliticsTop.glb') {
+                             n.material = new THREE.MeshStandardMaterial({
+                                map: greenTextures.map,
+                                roughnessMap: greenTextures.roughnessMap,
+                                color: 0xffffff,
+                                roughness: 0.8
+                            });
+                        } else if (filename === 'DirtPoliticsBottom.glb') {
+                             n.material = new THREE.MeshStandardMaterial({
+                                map: terracottaTextures.map,
+                                roughnessMap: terracottaTextures.roughnessMap,
+                                color: 0xffffff,
+                                roughness: 0.9
+                            });
                         }
                     }
                 });
@@ -526,6 +621,8 @@
                     stonehengeGroup.add(model);
                 } else if (filename === 'MonopolyHouse.glb') {
                     verticalVillageGroup.add(model);
+                } else if (filename === 'DirtPoliticsTop.glb' || filename === 'DirtPoliticsBottom.glb') {
+                    dirtPoliticsGroup.add(model);
                 } else {
                     deskGroup.add(model);
                 }
@@ -547,6 +644,8 @@
         loadModel('HybridFrame.glb', 'projects/hybrid/models/');
         loadModel('StoneHenge.glb', 'projects/stonehenge/models/');
         loadModel('MonopolyHouse.glb', 'projects/vertical_village/models/');
+        loadModel('DirtPoliticsTop.glb', 'projects/dirtpolitics/models/');
+        loadModel('DirtPoliticsBottom.glb', 'projects/dirtpolitics/models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
@@ -627,6 +726,9 @@
                         return;
                     } else if (parent === verticalVillageGroup) {
                         window.location.href = 'projects/vertical_village/index.html';
+                        return;
+                    } else if (parent === dirtPoliticsGroup) {
+                        window.location.href = 'projects/dirtpolitics/index.html';
                         return;
                     }
                     parent = parent.parent;
@@ -709,6 +811,9 @@
                             break;
                         } else if (p === verticalVillageGroup) {
                             groupName = "Vertical Village";
+                            break;
+                        } else if (p === dirtPoliticsGroup) {
+                            groupName = "Dirt Politics";
                             break;
                         }
                         p = p.parent;
