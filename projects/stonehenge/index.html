@@ -151,7 +151,7 @@
 <body>
 
     <header>
-        <div class="project-title">Project Name</div>
+        <div class="project-title">Stonehenge</div>
         <!-- Link back to desk -->
         <a href="../../index.html" class="close-btn">&times;</a>
     </header>
@@ -188,13 +188,15 @@
 
         <!-- Right Content: Image Gallery -->
         <section class="gallery-content">
-            <!-- Place images here -->
-            <!-- <img src="images/01.jpg" class="project-image" alt="Image Description"> -->
-
-            <div class="placeholder-img">Image 01</div>
-            <div class="placeholder-img">Image 02</div>
+            <!-- Images will be loaded dynamically by gallery-loader.js -->
         </section>
     </main>
 
+    <script src="../../assets/js/gallery-loader.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGallery('StoneHenge', '.gallery-content');
+        });
+    </script>
 </body>
 </html>

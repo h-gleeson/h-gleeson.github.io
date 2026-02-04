@@ -195,15 +195,15 @@
 
         <!-- Right Content: Image Gallery -->
         <section class="gallery-content">
-            <!-- These are placeholders. Users can replace these divs with <img> tags -->
-            <!-- Example: <img src="images/view1.jpg" class="project-image" alt="Exterior View"> -->
-
-            <div class="placeholder-img">Image 01: Main Exterior</div>
-            <div class="placeholder-img">Image 02: Interior Hall</div>
-            <div class="placeholder-img">Image 03: Section Detail</div>
-            <div class="placeholder-img">Image 04: Site Plan</div>
+            <!-- Images will be loaded dynamically by gallery-loader.js -->
         </section>
     </main>
 
+    <script src="../../assets/js/gallery-loader.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGallery('Palace', '.gallery-content');
+        });
+    </script>
 </body>
 </html>
