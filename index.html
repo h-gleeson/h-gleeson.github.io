@@ -55,15 +55,62 @@
             background: rgba(50, 50, 50, 0.9);
         }
         #tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 14px;
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            background: #ffffff;
+            color: #000000;
+            padding: 20px;
+            border: 3px solid #000;
+            border-radius: 15px; /* More rounded for speech bubble effect */
             pointer-events: none;
             display: none;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', 'Courier New', sans-serif;
+            font-size: 16px;
             z-index: 1000;
+            width: 300px;
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.2); /* Comic book depth */
+        }
+
+        /* Speech bubble tail border (outer) */
+        #tooltip::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -24px; /* Position outside the bubble */
+            margin-top: -12px;
+            border-width: 12px;
+            border-style: solid;
+            border-color: transparent transparent transparent #000;
+        }
+
+        /* Speech bubble tail fill (inner) */
+        #tooltip::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -16px; /* Overlap the border to create the opening */
+            margin-top: -8px;
+            border-width: 8px;
+            border-style: solid;
+            border-color: transparent transparent transparent #fff;
+        }
+
+        #tooltip h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+        }
+
+        #tooltip p {
+            margin: 0;
+            line-height: 1.4;
         }
         h1 {
             font-size: 3rem;
@@ -217,6 +264,30 @@
 
         // GLTF Model Loading
         const loader = new THREE.GLTFLoader();
+
+        // Project Data for Tooltips
+        const projectData = {
+            palace: {
+                title: "The Palace",
+                description: "A conceptual exploration of form and void, challenging traditional architectural boundaries through procedural generation."
+            },
+            hybrid: {
+                title: "The Hybrid",
+                description: "Blending disparate elements into a cohesive structure, this project investigates the intersection of organic and synthetic forms."
+            },
+            stonehenge: {
+                title: "StoneHenge",
+                description: "A modern reinterpretation of ancient monolithic structures, utilizing digital noise to simulate weathering and time."
+            },
+            verticalVillage: {
+                title: "Vertical Village",
+                description: "High-density living reimagined for community interaction, stacking residential units to maximize shared vertical space."
+            },
+            dirtPolitics: {
+                title: "Dirt Politics",
+                description: "Examining the intersection of ecology and governance, visualizing the complex layers of environmental policy."
+            }
+        };
 
         // Procedural Wood Texture Generator
         function createWoodTextures() {
@@ -702,9 +773,7 @@
             if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
             if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
 
-            // 3. Update Tooltip Position
-            tooltip.style.left = event.clientX + 10 + 'px';
-            tooltip.style.top = event.clientY + 10 + 'px';
+            // 3. Update Tooltip Position - REMOVED (Fixed Position used now)
         });
 
         // Click Handler
@@ -800,28 +869,28 @@
                     let p = object.parent;
                     while(p) {
                         if (p === palaceGroup) {
-                            groupName = "The Palace";
+                            groupName = "palace";
                             break;
                         } else if (p === hybridGroup) {
-                            groupName = "The Hybrid";
+                            groupName = "hybrid";
                             break;
                         } else if (p === stonehengeGroup) {
-                            groupName = "StoneHenge";
+                            groupName = "stonehenge";
                             break;
                         } else if (p === verticalVillageGroup) {
-                            groupName = "Vertical Village";
+                            groupName = "verticalVillage";
                             break;
                         } else if (p === dirtPoliticsGroup) {
-                            groupName = "Dirt Politics";
+                            groupName = "dirtPolitics";
                             break;
                         }
                         p = p.parent;
                     }
 
-                    if (groupName) {
+                    if (groupName && projectData[groupName]) {
                         hoveredObject = object;
                         tooltip.style.display = 'block';
-                        tooltip.textContent = groupName;
+                        tooltip.innerHTML = `<h3>${projectData[groupName].title}</h3><p>${projectData[groupName].description}</p>`;
                         document.body.style.cursor = 'pointer';
                         foundInteractable = true;
                         break; // Stop at first valid hit
