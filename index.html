@@ -66,35 +66,35 @@
             border-radius: 15px; /* More rounded for speech bubble effect */
             pointer-events: none;
             display: none;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', 'Courier New', sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             font-size: 16px;
             z-index: 1000;
             width: 300px;
             box-shadow: 8px 8px 0px rgba(0,0,0,0.2); /* Comic book depth */
         }
 
-        /* Speech bubble tail border (outer) */
+        /* Speech bubble tail border (outer) - Points Left */
         #tooltip::before {
             content: '';
             position: absolute;
             top: 50%;
-            right: -24px; /* Position outside the bubble */
+            left: -24px; /* Position outside the bubble (left side) */
             margin-top: -12px;
             border-width: 12px;
             border-style: solid;
-            border-color: transparent transparent transparent #000;
+            border-color: transparent #000 transparent transparent;
         }
 
-        /* Speech bubble tail fill (inner) */
+        /* Speech bubble tail fill (inner) - Points Left */
         #tooltip::after {
             content: '';
             position: absolute;
             top: 50%;
-            right: -16px; /* Overlap the border to create the opening */
+            left: -16px; /* Overlap the border */
             margin-top: -8px;
             border-width: 8px;
             border-style: solid;
-            border-color: transparent transparent transparent #fff;
+            border-color: transparent #fff transparent transparent;
         }
 
         #tooltip h3 {
