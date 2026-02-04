@@ -745,6 +745,56 @@
         const tooltip = document.getElementById('tooltip');
         let hoveredObject = null;
 
+        // Typewriter State
+        let typingInterval = null;
+        let currentGroup = null;
+
+        function startTypewriter(data) {
+            // Clear any existing typing
+            if (typingInterval) clearInterval(typingInterval);
+
+            tooltip.innerHTML = ''; // Clear content
+            tooltip.style.display = 'block';
+
+            // Create container elements
+            const h3 = document.createElement('h3');
+            const p = document.createElement('p');
+            tooltip.appendChild(h3);
+            tooltip.appendChild(p);
+
+            const titleText = data.title;
+            const descText = data.description;
+
+            let tIndex = 0;
+            let dIndex = 0;
+
+            typingInterval = setInterval(() => {
+                // Type Title First
+                if (tIndex < titleText.length) {
+                    h3.textContent += titleText.charAt(tIndex);
+                    tIndex++;
+                }
+                // Then Type Description
+                else if (dIndex < descText.length) {
+                    p.textContent += descText.charAt(dIndex);
+                    dIndex++;
+                }
+                // Finished
+                else {
+                    clearInterval(typingInterval);
+                    typingInterval = null;
+                }
+            }, 30); // Speed: 30ms per character
+        }
+
+        function clearTooltip() {
+            if (typingInterval) clearInterval(typingInterval);
+            typingInterval = null;
+            tooltip.style.display = 'none';
+            tooltip.innerHTML = '';
+            currentGroup = null;
+        }
+
         // Mouse interaction (Relative Movement + Raycasting)
         const sensitivityY = 0.0002; // Yaw (Left/Right) - Greatly reduced
 
@@ -889,10 +939,15 @@
 
                     if (groupName && projectData[groupName]) {
                         hoveredObject = object;
-                        tooltip.style.display = 'block';
-                        tooltip.innerHTML = `<h3>${projectData[groupName].title}</h3><p>${projectData[groupName].description}</p>`;
                         document.body.style.cursor = 'pointer';
                         foundInteractable = true;
+
+                        // Only start typing if we switched to a new group
+                        if (currentGroup !== groupName) {
+                            currentGroup = groupName;
+                            startTypewriter(projectData[groupName]);
+                        }
+
                         break; // Stop at first valid hit
                     }
                 }
@@ -900,7 +955,10 @@
 
             if (!foundInteractable) {
                 hoveredObject = null;
-                tooltip.style.display = 'none';
+                // Only clear if we were previously showing something
+                if (currentGroup !== null) {
+                    clearTooltip();
+                }
                 document.body.style.cursor = 'default';
             }
 
