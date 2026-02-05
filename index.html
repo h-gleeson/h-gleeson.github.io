@@ -688,6 +688,48 @@
 
         const terracottaTextures = createTerracottaTexture();
 
+        // Procedural Purple Texture (Binder Cover)
+        function createPurpleTexture() {
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Base Dark Purple
+            ctx.fillStyle = '#2e003e';
+            ctx.fillRect(0, 0, size, size);
+
+            // Noise with high variance
+            for (let i = 0; i < 400; i++) {
+                const x = Math.floor(Math.random() * size);
+                const y = Math.floor(Math.random() * size);
+                const w = 1 + Math.random() * 2;
+                const h = 1 + Math.random() * 2;
+
+                // Varied purple/blue/pink shades
+                const r = 40 + Math.random() * 60;
+                const g = Math.random() * 40;
+                const b = 60 + Math.random() * 100;
+                const alpha = 0.2 + Math.random() * 0.4;
+
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                ctx.fillRect(x, y, w, h);
+            }
+
+            const albedoMap = new THREE.CanvasTexture(canvas);
+            albedoMap.magFilter = THREE.NearestFilter;
+            albedoMap.minFilter = THREE.NearestFilter;
+
+            const roughnessMap = new THREE.CanvasTexture(canvas);
+            roughnessMap.magFilter = THREE.NearestFilter;
+            roughnessMap.minFilter = THREE.NearestFilter;
+
+            return { map: albedoMap, roughnessMap: roughnessMap };
+        }
+
+        const purpleTextures = createPurpleTexture();
+
         function loadModel(filename, path = 'assets/models/') {
             loader.load(path + filename, (gltf) => {
                 const model = gltf.scene;
@@ -776,11 +818,17 @@
                                 color: 0xffffff,
                                 roughness: 0.5
                             });
-                        } else if (filename === 'Landscape.glb') {
+                        } else if (filename === 'BinderCover.glb') {
                             n.material = new THREE.MeshStandardMaterial({
-                                map: greenTextures.map,
+                                map: purpleTextures.map,
+                                roughnessMap: purpleTextures.roughnessMap,
                                 color: 0xffffff,
-                                roughness: 1.0
+                                roughness: 0.8
+                            });
+                        } else if (filename === 'BinderPages.glb') {
+                             n.material = new THREE.MeshStandardMaterial({
+                                color: 0xF0EAD6, // Eggshell
+                                roughness: 0.5
                             });
                         }
                     }
@@ -798,7 +846,7 @@
                     dirtPoliticsGroup.add(model);
                 } else if (filename === 'resume.glb') {
                     resumeGroup.add(model);
-                } else if (filename === 'Landscape.glb') {
+                } else if (filename === 'BinderCover.glb' || filename === 'BinderPages.glb') {
                     landscapeGroup.add(model);
                 } else {
                     deskGroup.add(model);
@@ -824,7 +872,8 @@
         loadModel('DirtPoliticsTop.glb', 'projects/dirtpolitics/models/');
         loadModel('DirtPoliticsBottom.glb', 'projects/dirtpolitics/models/');
         loadModel('resume.glb');
-        loadModel('Landscape.glb', 'projects/landscape/models/');
+        loadModel('BinderCover.glb', 'projects/landscape/models/');
+        loadModel('BinderPages.glb', 'projects/landscape/models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
