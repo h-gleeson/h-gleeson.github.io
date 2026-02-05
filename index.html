@@ -203,10 +203,6 @@
         const dirtPoliticsGroup = new THREE.Group();
         deskGroup.add(dirtPoliticsGroup);
 
-        // Resume Group (Child of Desk Group)
-        const resumeGroup = new THREE.Group();
-        deskGroup.add(resumeGroup);
-
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -290,10 +286,6 @@
             dirtPolitics: {
                 title: "Dirt Politics",
                 description: "Examining the intersection of ecology and governance, visualizing the complex layers of environmental policy."
-            },
-            resume: {
-                title: "Resume",
-                description: "My professional journey, skills, and experience sitting right here on the desk."
             }
         };
 
@@ -725,62 +717,6 @@
         loadModel('DirtPoliticsTop.glb', 'projects/dirtpolitics/models/');
         loadModel('DirtPoliticsBottom.glb', 'projects/dirtpolitics/models/');
 
-        // Create Resume (Procedural Paper)
-        function createResumeObject() {
-            // A4 Proportions: 0.21 x 0.297
-            const geometry = new THREE.PlaneGeometry(0.21, 0.297);
-
-            // Create a simple texture for the resume
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 724; // ~A4 ratio
-            const ctx = canvas.getContext('2d');
-
-            // Background
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 512, 724);
-
-            // Fake Text Lines
-            ctx.fillStyle = '#000000';
-            // Header
-            ctx.fillRect(40, 40, 200, 20); // Name
-            // Content blocks
-            for(let i=100; i<700; i+=30) {
-                const width = 200 + Math.random() * 200;
-                ctx.fillRect(40, i, width, 5);
-                ctx.fillRect(40, i+10, width * 0.8, 5);
-            }
-
-            const texture = new THREE.CanvasTexture(canvas);
-
-            const material = new THREE.MeshStandardMaterial({
-                map: texture,
-                roughness: 0.5,
-                side: THREE.DoubleSide
-            });
-
-            const resumeMesh = new THREE.Mesh(geometry, material);
-
-            // Position on desk
-            resumeMesh.rotation.x = -Math.PI / 2; // Flat on table
-            resumeMesh.rotation.z = 0.2; // Slightly angled casually
-            resumeMesh.position.set(0.5, 0.75, 0.2); // Adjust position to sit on desk surface (y ~ 0.75 roughly based on camera height)
-            // Note: Camera Y is ~1.1, so desk surface is likely around 0.7-0.8 or 0 if we look at other models.
-            // Actually, DeskTopSurface.glb usually sits at 0 if the group is at 0. Let's assume y=0.01 to be just above standard origin if that's where the desk top is.
-            // Wait, other models are loaded at (0,0,0). The desk surface geometry itself defines the height.
-            // Let's guess y=0.74 (standard desk height) if origin is floor, but here 'RoomFloor' is at y=-2.
-            // DeskGroup is at y=0. This implies the models are modeled relative to the desk origin.
-            // Most "sitting" models are likely at y=0 relative to the group.
-            resumeMesh.position.set(0.6, 0.01, 0.3); // Slightly to the right, just above origin
-
-            resumeMesh.castShadow = true;
-            resumeMesh.receiveShadow = true;
-
-            resumeGroup.add(resumeMesh);
-        }
-
-        createResumeObject();
-
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
         camera.position.set(-1.1, initialCameraY, -0.5);
@@ -912,9 +848,6 @@
                     } else if (parent === dirtPoliticsGroup) {
                         window.location.href = 'projects/dirtpolitics/index.html';
                         return;
-                    } else if (parent === resumeGroup) {
-                        window.location.href = 'projects/resume/index.html';
-                        return;
                     }
                     parent = parent.parent;
                 }
@@ -999,9 +932,6 @@
                             break;
                         } else if (p === dirtPoliticsGroup) {
                             groupName = "dirtPolitics";
-                            break;
-                        } else if (p === resumeGroup) {
-                            groupName = "resume";
                             break;
                         }
                         p = p.parent;
