@@ -131,11 +131,36 @@
             justify-content: center;
             align-items: center;
         }
-        #resume-overlay img {
-            max-width: 90%;
-            max-height: 90%;
+        .resume-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-height: 95vh;
+        }
+        .resume-container img {
+            max-width: 90vw;
+            max-height: 80vh;
             border: 2px solid white;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            object-fit: contain;
+        }
+        .download-btn {
+            padding: 12px 24px;
+            background-color: white;
+            color: black;
+            text-decoration: none;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 18px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            border: 2px solid transparent;
+        }
+        .download-btn:hover {
+            background-color: #ddd;
+            border-color: #fff;
         }
         #resume-close {
             position: absolute;
@@ -163,7 +188,12 @@
     <div id="debug-log"></div>
     <div id="resume-overlay">
         <span id="resume-close">&times;</span>
-        <img src="https://placehold.co/600x800/EEE/31343C?text=Resume+Placeholder" alt="Resume Placeholder">
+        <div class="resume-container">
+            <img src="assets/images/resume.jpg"
+                 alt="Resume"
+                 onerror="this.onerror=null;this.src='https://placehold.co/600x800/EEE/31343C?text=Resume+Placeholder';">
+            <a href="assets/documents/resume.pdf" download="Resume.pdf" class="download-btn">Download Resume</a>
+        </div>
     </div>
     <div id="canvas-container"></div>
 
@@ -304,6 +334,11 @@
 
         // GLTF Model Loading
         const loader = new THREE.GLTFLoader();
+
+        // Texture Loader
+        const textureLoader = new THREE.TextureLoader();
+        const resumeTexture = textureLoader.load('assets/images/resume.jpg');
+        resumeTexture.flipY = false;
 
         // Project Data for Tooltips
         const projectData = {
@@ -725,6 +760,7 @@
                             });
                         } else if (filename === 'resume.glb') {
                             n.material = new THREE.MeshStandardMaterial({
+                                map: resumeTexture,
                                 color: 0xffffff,
                                 roughness: 0.5
                             });
