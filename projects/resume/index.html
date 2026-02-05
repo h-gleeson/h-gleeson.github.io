@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume - spare-desk.space</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --secondary-text: #666666;
+            --accent-color: #000000;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* Header / Nav */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background-color: rgba(255, 255, 255, 0.95);
+            z-index: 1000;
+            box-sizing: border-box;
+            border-bottom: 1px solid #eee;
+        }
+
+        .project-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .close-btn {
+            text-decoration: none;
+            color: var(--text-color);
+            font-size: 2rem;
+            line-height: 1;
+            font-weight: 300;
+            transition: opacity 0.3s;
+        }
+
+        .close-btn:hover {
+            opacity: 0.6;
+        }
+
+        /* Main Layout */
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 100px;
+            min-height: 100vh;
+        }
+
+        .resume-container {
+            width: 100%;
+            max-width: 800px;
+            padding: 40px;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            color: var(--secondary-text);
+            margin-bottom: 30px;
+            font-weight: 400;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            border-left: 3px solid black;
+            padding-left: 10px;
+        }
+
+        .job-block {
+            margin-bottom: 25px;
+        }
+
+        .job-title {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .job-date {
+            float: right;
+            color: var(--secondary-text);
+            font-size: 0.9rem;
+        }
+
+        .job-company {
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .resume-container {
+                padding: 20px;
+                box-shadow: none;
+            }
+            .job-date {
+                float: none;
+                display: block;
+                margin-top: 5px;
+            }
+            header {
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="project-title">Resume</div>
+        <!-- Link back to desk -->
+        <a href="../../index.html" class="close-btn">&times;</a>
+    </header>
+
+    <main>
+        <div class="resume-container">
+            <h1>Spare Desk</h1>
+            <h2>Creative Developer & Designer</h2>
+
+            <h3>Experience</h3>
+
+            <div class="job-block">
+                <div class="job-title">Senior Developer <span class="job-date">2020 - Present</span></div>
+                <div class="job-company">Tech Solutions Inc.</div>
+                <ul>
+                    <li>Led development of 3D interactive web experiences using Three.js and WebGL.</li>
+                    <li>Optimized rendering pipelines for high-performance browser-based graphics.</li>
+                    <li>Mentored junior developers and established code quality standards.</li>
+                </ul>
+            </div>
+
+            <div class="job-block">
+                <div class="job-title">Creative Technologist <span class="job-date">2017 - 2020</span></div>
+                <div class="job-company">Digital Agency X</div>
+                <ul>
+                    <li>Prototyped and built experimental interfaces for major brand campaigns.</li>
+                    <li>Bridged the gap between design and engineering teams.</li>
+                </ul>
+            </div>
+
+            <h3>Education</h3>
+            <div class="job-block">
+                <div class="job-title">B.S. Computer Science</div>
+                <div class="job-company">University of Technology</div>
+            </div>
+
+            <h3>Skills</h3>
+            <p>JavaScript, Three.js, WebGL, GLSL, HTML/CSS, Python, Blender, Creative Coding</p>
+        </div>
+    </main>
+
+</body>
+</html>
