@@ -119,6 +119,38 @@
         p {
             font-size: 1.2rem;
         }
+        #resume-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        #resume-overlay img {
+            max-width: 90%;
+            max-height: 90%;
+            border: 2px solid white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #resume-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            z-index: 2001;
+        }
+        #resume-close:hover {
+            color: #ccc;
+        }
     </style>
 </head>
 <body>
@@ -129,6 +161,10 @@
         <p>something is being built here.</p>
     </div>
     <div id="debug-log"></div>
+    <div id="resume-overlay">
+        <span id="resume-close">&times;</span>
+        <img src="https://placehold.co/600x800/EEE/31343C?text=Resume+Placeholder" alt="Resume Placeholder">
+    </div>
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -202,6 +238,10 @@
         // Dirt Politics Group (Child of Desk Group)
         const dirtPoliticsGroup = new THREE.Group();
         deskGroup.add(dirtPoliticsGroup);
+
+        // Resume Group (Child of Desk Group)
+        const resumeGroup = new THREE.Group();
+        deskGroup.add(resumeGroup);
 
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
@@ -286,6 +326,10 @@
             dirtPolitics: {
                 title: "Dirt Politics",
                 description: "I kept that plant alive for so long. It definitely helps that this one is just a 3D model. That is my visual studies project from my first semester at SCI-Arc (Fall 2025)."
+            },
+            resume: {
+                title: "Resume",
+                description: "Click to view my resume."
             }
         };
 
@@ -679,6 +723,11 @@
                                 color: 0xffffff,
                                 roughness: 0.9
                             });
+                        } else if (filename === 'resume.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                color: 0xffffff,
+                                roughness: 0.5
+                            });
                         }
                     }
                 });
@@ -693,6 +742,8 @@
                     verticalVillageGroup.add(model);
                 } else if (filename === 'DirtPoliticsTop.glb' || filename === 'DirtPoliticsBottom.glb') {
                     dirtPoliticsGroup.add(model);
+                } else if (filename === 'resume.glb') {
+                    resumeGroup.add(model);
                 } else {
                     deskGroup.add(model);
                 }
@@ -716,6 +767,7 @@
         loadModel('MonopolyHouse.glb', 'projects/vertical_village/models/');
         loadModel('DirtPoliticsTop.glb', 'projects/dirtpolitics/models/');
         loadModel('DirtPoliticsBottom.glb', 'projects/dirtpolitics/models/');
+        loadModel('resume.glb');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
@@ -848,6 +900,9 @@
                     } else if (parent === dirtPoliticsGroup) {
                         window.location.href = 'projects/dirtpolitics/index.html';
                         return;
+                    } else if (parent === resumeGroup) {
+                        document.getElementById('resume-overlay').style.display = 'flex';
+                        return;
                     }
                     parent = parent.parent;
                 }
@@ -933,6 +988,9 @@
                         } else if (p === dirtPoliticsGroup) {
                             groupName = "dirtPolitics";
                             break;
+                        } else if (p === resumeGroup) {
+                            groupName = "resume";
+                            break;
                         }
                         p = p.parent;
                     }
@@ -972,6 +1030,21 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Resume Overlay Close Logic
+        const resumeOverlay = document.getElementById('resume-overlay');
+        const resumeClose = document.getElementById('resume-close');
+
+        resumeClose.addEventListener('click', () => {
+            resumeOverlay.style.display = 'none';
+        });
+
+        // Close when clicking outside the image
+        resumeOverlay.addEventListener('click', (e) => {
+            if (e.target === resumeOverlay) {
+                resumeOverlay.style.display = 'none';
+            }
         });
 
     </script>
