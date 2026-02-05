@@ -273,6 +273,10 @@
         const resumeGroup = new THREE.Group();
         deskGroup.add(resumeGroup);
 
+        // Landscape Group (Child of Desk Group)
+        const landscapeGroup = new THREE.Group();
+        deskGroup.add(landscapeGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -369,6 +373,10 @@
             resume: {
                 title: "Resume",
                 description: "Click to view my resume."
+            },
+            landscape: {
+                title: "Landscape",
+                description: "A new landscape architecture project."
             }
         };
 
@@ -768,6 +776,12 @@
                                 color: 0xffffff,
                                 roughness: 0.5
                             });
+                        } else if (filename === 'Landscape.glb') {
+                            n.material = new THREE.MeshStandardMaterial({
+                                map: greenTextures.map,
+                                color: 0xffffff,
+                                roughness: 1.0
+                            });
                         }
                     }
                 });
@@ -784,6 +798,8 @@
                     dirtPoliticsGroup.add(model);
                 } else if (filename === 'resume.glb') {
                     resumeGroup.add(model);
+                } else if (filename === 'Landscape.glb') {
+                    landscapeGroup.add(model);
                 } else {
                     deskGroup.add(model);
                 }
@@ -808,6 +824,7 @@
         loadModel('DirtPoliticsTop.glb', 'projects/dirtpolitics/models/');
         loadModel('DirtPoliticsBottom.glb', 'projects/dirtpolitics/models/');
         loadModel('resume.glb');
+        loadModel('Landscape.glb', 'projects/landscape/models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
@@ -1030,6 +1047,9 @@
                             break;
                         } else if (p === resumeGroup) {
                             groupName = "resume";
+                            break;
+                        } else if (p === landscapeGroup) {
+                            groupName = "landscape";
                             break;
                         }
                         p = p.parent;
