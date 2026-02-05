@@ -55,15 +55,62 @@
             background: rgba(50, 50, 50, 0.9);
         }
         #tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 14px;
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            background: #ffffff;
+            color: #000000;
+            padding: 20px;
+            border: 3px solid #000;
+            border-radius: 15px; /* More rounded for speech bubble effect */
             pointer-events: none;
             display: none;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
             z-index: 1000;
+            width: 300px;
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.2); /* Comic book depth */
+        }
+
+        /* Speech bubble tail border (outer) - Points Left */
+        #tooltip::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -24px; /* Position outside the bubble (left side) */
+            margin-top: -12px;
+            border-width: 12px;
+            border-style: solid;
+            border-color: transparent #000 transparent transparent;
+        }
+
+        /* Speech bubble tail fill (inner) - Points Left */
+        #tooltip::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -16px; /* Overlap the border */
+            margin-top: -8px;
+            border-width: 8px;
+            border-style: solid;
+            border-color: transparent #fff transparent transparent;
+        }
+
+        #tooltip h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+        }
+
+        #tooltip p {
+            margin: 0;
+            line-height: 1.4;
         }
         h1 {
             font-size: 3rem;
@@ -156,6 +203,10 @@
         const dirtPoliticsGroup = new THREE.Group();
         deskGroup.add(dirtPoliticsGroup);
 
+        // Resume Group (Child of Desk Group)
+        const resumeGroup = new THREE.Group();
+        deskGroup.add(resumeGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -217,6 +268,34 @@
 
         // GLTF Model Loading
         const loader = new THREE.GLTFLoader();
+
+        // Project Data for Tooltips
+        const projectData = {
+            palace: {
+                title: "The Palace",
+                description: "A conceptual exploration of form and void, challenging traditional architectural boundaries through procedural generation."
+            },
+            hybrid: {
+                title: "The Hybrid",
+                description: "Blending disparate elements into a cohesive structure, this project investigates the intersection of organic and synthetic forms."
+            },
+            stonehenge: {
+                title: "StoneHenge",
+                description: "A modern reinterpretation of ancient monolithic structures, utilizing digital noise to simulate weathering and time."
+            },
+            verticalVillage: {
+                title: "Vertical Village",
+                description: "High-density living reimagined for community interaction, stacking residential units to maximize shared vertical space."
+            },
+            dirtPolitics: {
+                title: "Dirt Politics",
+                description: "Examining the intersection of ecology and governance, visualizing the complex layers of environmental policy."
+            },
+            resume: {
+                title: "Resume",
+                description: "My professional journey, skills, and experience sitting right here on the desk."
+            }
+        };
 
         // Procedural Wood Texture Generator
         function createWoodTextures() {
@@ -608,6 +687,12 @@
                                 color: 0xffffff,
                                 roughness: 0.9
                             });
+                        } else if (filename === 'resume.glb') {
+                             // White paper-like material for the resume
+                             n.material = new THREE.MeshStandardMaterial({
+                                color: 0xffffff,
+                                roughness: 0.5
+                            });
                         }
                     }
                 });
@@ -622,6 +707,11 @@
                     verticalVillageGroup.add(model);
                 } else if (filename === 'DirtPoliticsTop.glb' || filename === 'DirtPoliticsBottom.glb') {
                     dirtPoliticsGroup.add(model);
+                } else if (filename === 'resume.glb') {
+                    resumeGroup.add(model);
+                    // Position resume on desk
+                    model.position.set(0.6, 0.01, 0.3);
+                    model.rotation.y = 0.2; // Slight rotation
                 } else {
                     deskGroup.add(model);
                 }
@@ -645,6 +735,7 @@
         loadModel('MonopolyHouse.glb', 'projects/vertical_village/models/');
         loadModel('DirtPoliticsTop.glb', 'projects/dirtpolitics/models/');
         loadModel('DirtPoliticsBottom.glb', 'projects/dirtpolitics/models/');
+        loadModel('resume.glb', 'projects/resume/models/');
 
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
@@ -674,6 +765,56 @@
         const tooltip = document.getElementById('tooltip');
         let hoveredObject = null;
 
+        // Typewriter State
+        let typingInterval = null;
+        let currentGroup = null;
+
+        function startTypewriter(data) {
+            // Clear any existing typing
+            if (typingInterval) clearInterval(typingInterval);
+
+            tooltip.innerHTML = ''; // Clear content
+            tooltip.style.display = 'block';
+
+            // Create container elements
+            const h3 = document.createElement('h3');
+            const p = document.createElement('p');
+            tooltip.appendChild(h3);
+            tooltip.appendChild(p);
+
+            const titleText = data.title;
+            const descText = data.description;
+
+            let tIndex = 0;
+            let dIndex = 0;
+
+            typingInterval = setInterval(() => {
+                // Type Title First
+                if (tIndex < titleText.length) {
+                    h3.textContent += titleText.charAt(tIndex);
+                    tIndex++;
+                }
+                // Then Type Description
+                else if (dIndex < descText.length) {
+                    p.textContent += descText.charAt(dIndex);
+                    dIndex++;
+                }
+                // Finished
+                else {
+                    clearInterval(typingInterval);
+                    typingInterval = null;
+                }
+            }, 10); // Speed: 10ms per character
+        }
+
+        function clearTooltip() {
+            if (typingInterval) clearInterval(typingInterval);
+            typingInterval = null;
+            tooltip.style.display = 'none';
+            tooltip.innerHTML = '';
+            currentGroup = null;
+        }
+
         // Mouse interaction (Relative Movement + Raycasting)
         const sensitivityY = 0.0002; // Yaw (Left/Right) - Greatly reduced
 
@@ -702,9 +843,7 @@
             if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
             if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
 
-            // 3. Update Tooltip Position
-            tooltip.style.left = event.clientX + 10 + 'px';
-            tooltip.style.top = event.clientY + 10 + 'px';
+            // 3. Update Tooltip Position - REMOVED (Fixed Position used now)
         });
 
         // Click Handler
@@ -800,30 +939,38 @@
                     let p = object.parent;
                     while(p) {
                         if (p === palaceGroup) {
-                            groupName = "The Palace";
+                            groupName = "palace";
                             break;
                         } else if (p === hybridGroup) {
-                            groupName = "The Hybrid";
+                            groupName = "hybrid";
                             break;
                         } else if (p === stonehengeGroup) {
-                            groupName = "StoneHenge";
+                            groupName = "stonehenge";
                             break;
                         } else if (p === verticalVillageGroup) {
-                            groupName = "Vertical Village";
+                            groupName = "verticalVillage";
                             break;
                         } else if (p === dirtPoliticsGroup) {
-                            groupName = "Dirt Politics";
+                            groupName = "dirtPolitics";
+                            break;
+                        } else if (p === resumeGroup) {
+                            groupName = "resume";
                             break;
                         }
                         p = p.parent;
                     }
 
-                    if (groupName) {
+                    if (groupName && projectData[groupName]) {
                         hoveredObject = object;
-                        tooltip.style.display = 'block';
-                        tooltip.textContent = groupName;
                         document.body.style.cursor = 'pointer';
                         foundInteractable = true;
+
+                        // Only start typing if we switched to a new group
+                        if (currentGroup !== groupName) {
+                            currentGroup = groupName;
+                            startTypewriter(projectData[groupName]);
+                        }
+
                         break; // Stop at first valid hit
                     }
                 }
@@ -831,7 +978,10 @@
 
             if (!foundInteractable) {
                 hoveredObject = null;
-                tooltip.style.display = 'none';
+                // Only clear if we were previously showing something
+                if (currentGroup !== null) {
+                    clearTooltip();
+                }
                 document.body.style.cursor = 'default';
             }
 
