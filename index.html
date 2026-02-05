@@ -339,6 +339,10 @@
         const textureLoader = new THREE.TextureLoader();
         const resumeTexture = textureLoader.load('assets/images/resume.jpg');
         resumeTexture.flipY = false;
+        resumeTexture.center.set(0.5, 0.5);
+        resumeTexture.rotation = -Math.PI / 2;
+        resumeTexture.repeat.x = -1;
+        resumeTexture.wrapS = THREE.RepeatWrapping;
 
         // Project Data for Tooltips
         const projectData = {
