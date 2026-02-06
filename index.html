@@ -1009,6 +1009,9 @@
                     } else if (parent === resumeGroup) {
                         document.getElementById('resume-overlay').style.display = 'flex';
                         return;
+                    } else if (parent === landscapeGroup) {
+                        window.location.href = 'projects/landscape/index.html';
+                        return;
                     }
                     parent = parent.parent;
                 }
