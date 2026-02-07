@@ -845,6 +845,17 @@
                 } else if (filename === 'DirtPoliticsTop.glb' || filename === 'DirtPoliticsBottom.glb') {
                     dirtPoliticsGroup.add(model);
                 } else if (filename === 'resume.glb') {
+                    // Scale resume down by 50% and re-center
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = new THREE.Vector3();
+                    box.getCenter(center);
+
+                    const scale = 0.5;
+                    model.scale.set(scale, scale, scale);
+
+                    // Compensation: move model so its visual center remains at the same world position
+                    model.position.add(center.multiplyScalar(1 - scale));
+
                     resumeGroup.add(model);
                 } else if (filename === 'BinderCover.glb' || filename === 'BinderPages.glb') {
                     landscapeGroup.add(model);
