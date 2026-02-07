@@ -26,6 +26,9 @@
             pointer-events: none; /* Let clicks pass through to canvas if needed */
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
+        #overlay * {
+            pointer-events: none;
+        }
         #debug-log {
             position: absolute;
             bottom: 10px;
@@ -183,7 +186,8 @@
             transform: translateX(-50%);
             display: none;
             gap: 20px;
-            z-index: 2000;
+            z-index: 3000; /* Increased to be above everything */
+            pointer-events: auto; /* Ensure clickable */
         }
         #project-controls button {
             padding: 12px 24px;
@@ -938,7 +942,8 @@
         let hoveredObject = null;
 
         // Focus State
-        let focusedGroup = null;
+        let focusedGroup = null; // This will hold the pivot/wrapper
+        let originalModel = null; // The actual model group
         let originalParent = null;
         let originalPosition = new THREE.Vector3();
         let originalRotation = new THREE.Euler();
@@ -951,35 +956,105 @@
         function focusGroup(group, url) {
             if (focusedGroup) return; // Already focused
 
-            focusedGroup = group;
+            console.log("FocusGroup called for:", group);
+
+            originalModel = group;
             originalParent = group.parent;
             originalPosition.copy(group.position);
             originalRotation.copy(group.rotation);
             originalScale.copy(group.scale);
 
-            // Move to Scene to handle world coordinates easily
+            // Move to Scene to handle world coordinates easily and reset
             scene.attach(group);
+
+            // Force update matrix world to ensure accurate bounding box
+            group.updateMatrixWorld(true);
+
+            // Reset rotation to ensure object is upright for measurement
+            group.rotation.set(0, 0, 0);
+            group.updateMatrixWorld(true);
 
             // Calculate Center and Size
             const box = new THREE.Box3().setFromObject(group);
+
+            if (box.isEmpty()) {
+                console.warn("Focused group has empty bounding box");
+            }
+
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
+
+            // Serialize for debugging
+            console.log("FocusGroup Debug Center:", JSON.stringify(center));
+            console.log("FocusGroup Debug Size:", JSON.stringify(size));
+            console.log("FocusGroup Debug BoxMin:", JSON.stringify(box.min));
+            console.log("FocusGroup Debug BoxMax:", JSON.stringify(box.max));
+
+            if (isNaN(center.x) || isNaN(size.x)) {
+                 console.error("Bounding box calculation resulted in NaN");
+                 // Revert
+                 originalParent.attach(group);
+                 originalModel = null;
+                 return;
+            }
+
+            // Calculate Offset (Vector from Group Origin to Box Center)
+            const offset = center.clone().sub(group.position);
+
             const maxDim = Math.max(size.x, size.y, size.z);
 
             // Calculate Target Position (in front of camera)
             const cameraDir = new THREE.Vector3();
             camera.getWorldDirection(cameraDir);
 
-            // Distance depends on object size? Or fixed?
-            const distance = 2.0 + maxDim * 0.5;
+            // Distance depends on object size
+            // Move it closer for better visibility
+            const distance = 1.2 + maxDim * 0.5;
             const targetPos = camera.position.clone().add(cameraDir.multiplyScalar(distance));
 
-            // Shift group to align center with target
-            const shift = targetPos.clone().sub(center);
-            group.position.add(shift);
+            console.log("FocusGroup Target Pos:", JSON.stringify(targetPos));
+            console.log("FocusGroup Camera Pos:", JSON.stringify(camera.position));
+            console.log("FocusGroup Camera Dir:", JSON.stringify(cameraDir));
+            console.log("FocusGroup Distance:", distance);
+
+            // Create a Pivot Group (Wrapper)
+            const pivotGroup = new THREE.Group();
+            pivotGroup.position.copy(targetPos);
+            scene.add(pivotGroup);
+
+            // Add model to pivot
+            pivotGroup.add(group);
+
+            // Disable Frustum Culling and Reset Transforms
+            group.traverse(child => {
+                if (child.isMesh) {
+                    child.frustumCulled = false;
+                }
+            });
+
+            // Scale up small objects to be more visible
+            // Target size roughly 1.0 unit
+            let scaleFactor = 1.0;
+            if (maxDim < 1.0) {
+                scaleFactor = 1.0 / maxDim;
+                // Cap scaling to avoid massive explosions of tiny things
+                scaleFactor = Math.min(scaleFactor, 5.0);
+            }
+
+            group.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            // Center the model within the pivot
+            // Since we scaled the group, the internal offset is also scaled visually,
+            // so we must counteract the scaled offset to center it.
+            group.position.copy(offset).multiplyScalar(-scaleFactor);
+
+            group.rotation.set(0, 0, 0); // Ensure upright
+
+            focusedGroup = pivotGroup; // Animate this wrapper
 
             // UI
             projectControls.style.display = 'flex';
+            document.getElementById('overlay').style.display = 'none'; // Hide title overlay
 
             // Update button action
             btnDetails.onclick = () => {
@@ -995,16 +1070,28 @@
             if (!focusedGroup) return;
 
             // Restore
-            if (originalParent) {
-                originalParent.attach(focusedGroup);
-                focusedGroup.position.copy(originalPosition);
-                focusedGroup.rotation.copy(originalRotation);
-                focusedGroup.scale.copy(originalScale);
+            if (originalModel && originalParent) {
+                // Detach model from pivot
+                // We use attach to preserve world transform temporarily, then reset
+                // Actually, just re-attaching to original parent and restoring transform is cleaner
+
+                // First, remove pivot from scene
+                scene.remove(focusedGroup);
+
+                // Re-attach model to original parent
+                originalParent.add(originalModel);
+
+                // Restore original transforms
+                originalModel.position.copy(originalPosition);
+                originalModel.rotation.copy(originalRotation);
+                originalModel.scale.copy(originalScale);
             }
 
             focusedGroup = null;
+            originalModel = null;
             originalParent = null;
             projectControls.style.display = 'none';
+            document.getElementById('overlay').style.display = 'block'; // Show title overlay
         }
 
         btnClose.addEventListener('click', unfocusGroup);
