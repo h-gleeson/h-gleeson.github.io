@@ -1207,8 +1207,8 @@
                     y: event.clientY - previousMousePosition.y
                 };
 
-                focusedGroup.rotation.y -= deltaMove.x * 0.005;
-                focusedGroup.rotation.x -= deltaMove.y * 0.005;
+                focusedGroup.rotation.y += deltaMove.x * 0.005;
+                focusedGroup.rotation.x += deltaMove.y * 0.005;
 
                 previousMousePosition = {
                     x: event.clientX,
