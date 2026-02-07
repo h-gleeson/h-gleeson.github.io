@@ -176,6 +176,37 @@
         #resume-close:hover {
             color: #ccc;
         }
+        #project-controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 20px;
+            z-index: 2000;
+        }
+        #project-controls button {
+            padding: 12px 24px;
+            background-color: white;
+            color: black;
+            border: 2px solid black;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        #project-controls button:hover {
+            background-color: #f0f0f0;
+            transform: scale(1.05);
+        }
+        #btn-close {
+            background-color: #ffcccc; /* Light red for close */
+        }
+        #btn-close:hover {
+            background-color: #ffaaaa;
+        }
     </style>
 </head>
 <body>
@@ -186,6 +217,10 @@
         <p>something is being built here.</p>
     </div>
     <div id="debug-log"></div>
+    <div id="project-controls">
+        <button id="btn-details">Project Details</button>
+        <button id="btn-close">Close</button>
+    </div>
     <div id="resume-overlay">
         <span id="resume-close">&times;</span>
         <div class="resume-container">
@@ -353,31 +388,38 @@
         const projectData = {
             palace: {
                 title: "The Palace of All Trades",
-                description: "Ahhhh, the project from my undergrad Honors Studio. We designed a building concept that it is totally open to the public. It was completed in Fall 2024."
+                description: "Ahhhh, the project from my undergrad Honors Studio. We designed a building concept that it is totally open to the public. It was completed in Fall 2024.",
+                url: "projects/palace"
             },
             hybrid: {
                 title: "The Hybrid",
-                description: "That is my first studio project from SCI-Arc. Using generative AI as a starting point, we created a hybrid shell for our adaptive reuse of the Lincoln Heights Jail in Los Angeles, CA. It was completed Fall 2025."
+                description: "That is my first studio project from SCI-Arc. Using generative AI as a starting point, we created a hybrid shell for our adaptive reuse of the Lincoln Heights Jail in Los Angeles, CA. It was completed Fall 2025.",
+                url: "projects/hybrid"
             },
             stonehenge: {
                 title: "Stonehenge Nighttime Studies",
-                description: "This series of drawings is a reinterpretation of stonehenge, utilizing digital noise to simulate weathering and time. It was part of a research seminar I took in Fall of 2024"
+                description: "This series of drawings is a reinterpretation of stonehenge, utilizing digital noise to simulate weathering and time. It was part of a research seminar I took in Fall of 2024",
+                url: "projects/stonehenge"
             },
             verticalVillage: {
                 title: "Vertical Village",
-                description: "That project is a community center with an emphasis on its makerspace. It is one of my undergraduate projects from Fall of 2023."
+                description: "That project is a community center with an emphasis on its makerspace. It is one of my undergraduate projects from Fall of 2023.",
+                url: "projects/vertical_village"
             },
             dirtPolitics: {
                 title: "Dirt Politics",
-                description: "I kept that plant alive for so long. It definitely helps that this one is just a 3D model. That is my visual studies project from my first semester at SCI-Arc (Fall 2025)."
+                description: "I kept that plant alive for so long. It definitely helps that this one is just a 3D model. That is my visual studies project from my first semester at SCI-Arc (Fall 2025).",
+                url: "projects/dirtpolitics"
             },
             resume: {
                 title: "Resume",
-                description: "That's a piece of paper, but I've been told it's an important one."
+                description: "That's a piece of paper, but I've been told it's an important one.",
+                url: "#"
             },
             landscape: {
                 title: "Landscape Drawings",
-                description: "That binder is a group of drawings I did during my landscape internship in the summer of 23'. I worked in a small team so I got to do a lot of design work while I was there. Good times..."
+                description: "That binder is a group of drawings I did during my landscape internship in the summer of 23'. I worked in a small team so I got to do a lot of design work while I was there. Good times...",
+                url: "projects/landscape"
             }
         };
 
@@ -895,6 +937,91 @@
         const tooltip = document.getElementById('tooltip');
         let hoveredObject = null;
 
+        // Focus State
+        let focusedGroup = null;
+        let originalParent = null;
+        let originalPosition = new THREE.Vector3();
+        let originalRotation = new THREE.Euler();
+        let originalScale = new THREE.Vector3();
+
+        const projectControls = document.getElementById('project-controls');
+        const btnDetails = document.getElementById('btn-details');
+        const btnClose = document.getElementById('btn-close');
+
+        function focusGroup(group, url) {
+            if (focusedGroup) return; // Already focused
+
+            focusedGroup = group;
+            originalParent = group.parent;
+            originalPosition.copy(group.position);
+            originalRotation.copy(group.rotation);
+            originalScale.copy(group.scale);
+
+            // Move to Scene to handle world coordinates easily
+            scene.attach(group);
+
+            // Calculate Center and Size
+            const box = new THREE.Box3().setFromObject(group);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+
+            // Calculate Target Position (in front of camera)
+            const cameraDir = new THREE.Vector3();
+            camera.getWorldDirection(cameraDir);
+
+            // Distance depends on object size? Or fixed?
+            const distance = 2.0 + maxDim * 0.5;
+            const targetPos = camera.position.clone().add(cameraDir.multiplyScalar(distance));
+
+            // Shift group to align center with target
+            const shift = targetPos.clone().sub(center);
+            group.position.add(shift);
+
+            // UI
+            projectControls.style.display = 'flex';
+
+            // Update button action
+            btnDetails.onclick = () => {
+                window.location.href = url;
+            };
+
+            // Hide tooltip
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+        }
+
+        function unfocusGroup() {
+            if (!focusedGroup) return;
+
+            // Restore
+            if (originalParent) {
+                originalParent.attach(focusedGroup);
+                focusedGroup.position.copy(originalPosition);
+                focusedGroup.rotation.copy(originalRotation);
+                focusedGroup.scale.copy(originalScale);
+            }
+
+            focusedGroup = null;
+            originalParent = null;
+            projectControls.style.display = 'none';
+        }
+
+        btnClose.addEventListener('click', unfocusGroup);
+
+        // Expose for testing
+        window.testFocus = (groupName) => {
+            let group = null;
+            if (groupName === 'palace') group = palaceGroup;
+            else if (groupName === 'hybrid') group = hybridGroup;
+            else if (groupName === 'stonehenge') group = stonehengeGroup;
+            else if (groupName === 'verticalVillage') group = verticalVillageGroup;
+            else if (groupName === 'dirtPolitics') group = dirtPoliticsGroup;
+            else if (groupName === 'landscape') group = landscapeGroup;
+
+            if (group) focusGroup(group, projectData[groupName].url);
+        };
+
         // Typewriter State
         let typingInterval = null;
         let currentGroup = null;
@@ -953,32 +1080,35 @@
         });
 
         // Click Handler
-        document.addEventListener('click', () => {
+        document.addEventListener('click', (event) => {
+            // Ignore clicks on UI
+            if (event.target.closest('#project-controls') || event.target.closest('#resume-overlay')) return;
+
+            if (focusedGroup) {
+                return;
+            }
+
             if (hoveredObject) {
-                // Check if it is part of the Palace Group
-                // We traverse up to find the group logic or check names
                 let parent = hoveredObject.parent;
                 while (parent) {
-                    if (parent === palaceGroup) {
-                        window.location.href = 'projects/palace';
-                        return;
-                    } else if (parent === hybridGroup) {
-                        window.location.href = 'projects/hybrid';
-                        return;
-                    } else if (parent === stonehengeGroup) {
-                        window.location.href = 'projects/stonehenge';
-                        return;
-                    } else if (parent === verticalVillageGroup) {
-                        window.location.href = 'projects/vertical_village';
-                        return;
-                    } else if (parent === dirtPoliticsGroup) {
-                        window.location.href = 'projects/dirtpolitics';
-                        return;
-                    } else if (parent === resumeGroup) {
-                        document.getElementById('resume-overlay').style.display = 'flex';
-                        return;
-                    } else if (parent === landscapeGroup) {
-                        window.location.href = 'projects/landscape';
+                    let groupName = null;
+                    if (parent === palaceGroup) groupName = 'palace';
+                    else if (parent === hybridGroup) groupName = 'hybrid';
+                    else if (parent === stonehengeGroup) groupName = 'stonehenge';
+                    else if (parent === verticalVillageGroup) groupName = 'verticalVillage';
+                    else if (parent === dirtPoliticsGroup) groupName = 'dirtPolitics';
+                    else if (parent === resumeGroup) groupName = 'resume';
+                    else if (parent === landscapeGroup) groupName = 'landscape';
+
+                    if (groupName) {
+                        if (groupName === 'resume') {
+                            document.getElementById('resume-overlay').style.display = 'flex';
+                        } else {
+                            const data = projectData[groupName];
+                            if (data && data.url) {
+                                focusGroup(parent, data.url);
+                            }
+                        }
                         return;
                     }
                     parent = parent.parent;
@@ -990,13 +1120,17 @@
         function animate() {
             requestAnimationFrame(animate);
 
+            if (focusedGroup) {
+                focusedGroup.rotation.y += 0.005;
+            }
+
             // Raycasting
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(scene.children, true);
 
             let foundInteractable = false;
 
-            if (intersects.length > 0) {
+            if (intersects.length > 0 && !focusedGroup) {
                 // Find the first object that is part of our interactable groups
                 for (let i = 0; i < intersects.length; i++) {
                     const object = intersects[i].object;
