@@ -1002,7 +1002,7 @@
             // Distance depends on object size
             // Move it closer for better visibility
             // Fixed distance to ensure it appears in front of the desk
-            const distance = 0.7;
+            const distance = 0.4;
             const targetPos = camera.position.clone().add(cameraDir.multiplyScalar(distance));
 
             // Create a Pivot Group (Wrapper)
@@ -1022,7 +1022,7 @@
 
             // Scale objects to be a consistent size
             // Target size roughly 0.5 units to fit between camera and desk
-            const targetSize = 0.5;
+            const targetSize = 0.35;
             let scaleFactor = maxDim > 0.001 ? targetSize / maxDim : 1;
 
             group.scale.set(scaleFactor, scaleFactor, scaleFactor);
