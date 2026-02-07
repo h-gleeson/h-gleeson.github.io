@@ -886,17 +886,8 @@
         // Initial LookAt Configuration
         const lookAtTarget = new THREE.Vector3(-4, 0.5, 1);
         camera.lookAt(lookAtTarget);
-
-        // Capture the initial rotation to use as a baseline for head movement
-        const initialRotation = new THREE.Euler().copy(camera.rotation);
-
-        // Target rotation (initialized to current)
-        let targetRotationX = initialRotation.x;
-        let targetRotationY = initialRotation.y;
-
-        // Mouse Zone State
-        let inTopZone = false;
-        let inBottomZone = false;
+        // Permanently offset camera to look slightly to the right
+        camera.rotation.y -= 0.1;
 
         // Raycaster for Interaction your mother
         const raycaster = new THREE.Raycaster();
@@ -954,35 +945,11 @@
             currentGroup = null;
         }
 
-        // Mouse interaction (Relative Movement + Raycasting)
-        const sensitivityY = 0.0002; // Yaw (Left/Right) - Greatly reduced
-
+        // Mouse interaction (Raycasting only)
         document.addEventListener('mousemove', (event) => {
-            // 1. Calculate Mouse Position for Raycasting (-1 to +1)
+            // Calculate Mouse Position for Raycasting (-1 to +1)
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            // 2. Head Movement Logic
-            const yRatio = event.clientY / window.innerHeight;
-            const xRatio = event.clientX / window.innerWidth;
-
-            // Define Deadzone (10% margins)
-            inTopZone = yRatio < 0.10;
-            inBottomZone = yRatio > 0.90;
-            const inLeftZone = xRatio < 0.15;
-            const inRightZone = xRatio > 0.85;
-
-            // Left/Right Zones: Yaw Control
-            if (inLeftZone || inRightZone) {
-                targetRotationY -= event.movementX * sensitivityY;
-            }
-
-            // Clamp Yaw (Y) to restrict left/right movement
-            const yawLimit = 0.1;
-            if (targetRotationY < initialRotation.y - yawLimit) targetRotationY = initialRotation.y - yawLimit;
-            if (targetRotationY > initialRotation.y + yawLimit) targetRotationY = initialRotation.y + yawLimit;
-
-            // 3. Update Tooltip Position - REMOVED (Fixed Position used now)
         });
 
         // Click Handler
@@ -1022,51 +989,6 @@
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
-
-            // Constant movement in top/bottom zones
-            const speed = 0.003;
-
-            // Calculate rotation limits based on height limits
-            // Height = initialCameraY + (rotX - initialRotation.x) * 2.5
-            // Limit Height to [0.4, 4.0]
-            // rotX = (Height - initialCameraY) / 2.5 + initialRotation.x
-
-            const minHeight = 0.7;
-            const maxHeight = 1.5;
-
-            // Calculate rotation bounds corresponding to height bounds
-            const minRotX = (minHeight - initialCameraY) / 2.5 + initialRotation.x;
-            const maxRotX = (maxHeight - initialCameraY) / 2.5 + initialRotation.x;
-
-            if (inTopZone) {
-                targetRotationX += speed;
-            }
-            if (inBottomZone) {
-                targetRotationX -= speed;
-            }
-
-            // Clamp Pitch (X) based on Height Limits
-            if (targetRotationX < minRotX) targetRotationX = minRotX;
-            if (targetRotationX > maxRotX) targetRotationX = maxRotX;
-
-            // Also respect hard clamp for safety/flipping prevention
-            if (targetRotationX < -1.5) targetRotationX = -1.5;
-            if (targetRotationX > 1.5) targetRotationX = 1.5;
-
-            // Smoothly interpolate current rotation to target
-            camera.rotation.y += (targetRotationY - camera.rotation.y) * 0.1;
-            camera.rotation.x += (targetRotationX - camera.rotation.x) * 0.1;
-
-            // Dynamic height adjustment (Leaning)
-            // Based on pitch change relative to initial
-            const currentPitchChange = camera.rotation.x - initialRotation.x;
-            let targetCameraY = initialCameraY + currentPitchChange * 2.5;
-
-            // Clamp height
-            if (targetCameraY < 0.7) targetCameraY = 0.7;
-            if (targetCameraY > 1.5) targetCameraY = 1.5;
-
-            camera.position.y += (targetCameraY - camera.position.y) * 0.05;
 
             // Raycasting
             raycaster.setFromCamera(mouse, camera);
