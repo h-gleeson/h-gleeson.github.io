@@ -988,6 +988,15 @@
 
             // Restore rotation (though it should be 0 initially)
             hybridGroup.rotation.copy(oldRot);
+
+            // Recenter Palace Group for animation
+            const oldRotPalace = palaceGroup.rotation.clone();
+            palaceGroup.rotation.set(0, 0, 0);
+            palaceGroup.updateMatrixWorld(true);
+
+            recenterGroup(palaceGroup);
+
+            palaceGroup.rotation.copy(oldRotPalace);
         };
 
         // Position Camera (Center, Closer)
@@ -1397,10 +1406,18 @@
                 document.body.style.cursor = 'default';
             }
 
-            // Hover Animation for Hybrid
+            // Hover Animation
             if (!focusedGroup) {
-                const targetRotation = (currentGroup === 'hybrid') ? (20 * Math.PI / 180) : 0;
-                hybridGroup.rotation.z += (targetRotation - hybridGroup.rotation.z) * 0.1;
+                // Hybrid
+                const hybridTarget = (currentGroup === 'hybrid') ? (20 * Math.PI / 180) : 0;
+                hybridGroup.rotation.z += (hybridTarget - hybridGroup.rotation.z) * 0.1;
+
+                // Palace
+                const palaceTargetZ = (currentGroup === 'palace') ? (15 * Math.PI / 180) : 0;
+                const palaceTargetY = (currentGroup === 'palace') ? (Math.PI * 2) : 0;
+
+                palaceGroup.rotation.z += (palaceTargetZ - palaceGroup.rotation.z) * 0.1;
+                palaceGroup.rotation.y += (palaceTargetY - palaceGroup.rotation.y) * 0.1;
             }
 
             renderer.render(scene, camera);
