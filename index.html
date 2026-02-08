@@ -612,7 +612,7 @@
             const ctx = canvas.getContext('2d');
 
             // 1. Base Red Color
-            ctx.fillStyle = '#ff3333';
+            ctx.fillStyle = '#8B0000';
             ctx.fillRect(0, 0, size, size);
 
             // 2. Add Noise/Texture
@@ -624,7 +624,7 @@
                 const alpha = 0.1 + Math.random() * 0.3;
 
                 // Varied red shades
-                const r = 150 + Math.random() * 105;
+                const r = 100 + Math.random() * 100;
                 ctx.fillStyle = `rgba(${r}, 0, 0, ${alpha})`;
                 ctx.fillRect(x, y, w, h);
             }
@@ -1288,6 +1288,39 @@
         });
 
         document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Touch Interaction
+        document.addEventListener('touchstart', (event) => {
+            if (focusedGroup && event.touches.length === 1) {
+                isDragging = true;
+                previousMousePosition = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (event) => {
+            if (focusedGroup && isDragging && event.touches.length === 1) {
+                event.preventDefault();
+                const deltaMove = {
+                    x: event.touches[0].clientX - previousMousePosition.x,
+                    y: event.touches[0].clientY - previousMousePosition.y
+                };
+
+                focusedGroup.rotation.y += deltaMove.x * 0.005;
+                focusedGroup.rotation.x += deltaMove.y * 0.005;
+
+                previousMousePosition = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
             isDragging = false;
         });
 
