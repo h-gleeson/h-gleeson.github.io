@@ -957,6 +957,39 @@
         loadModel('BinderCover.glb', 'projects/landscape/models/');
         loadModel('BinderPages.glb', 'projects/landscape/models/');
 
+        function recenterGroup(group) {
+            if (group.children.length === 0) return;
+
+            // 1. Calculate World Center
+            const box = new THREE.Box3().setFromObject(group);
+            const center = box.getCenter(new THREE.Vector3());
+
+            // 2. Convert to Local Space (relative to parent)
+            if (group.parent) {
+                group.parent.worldToLocal(center);
+            }
+
+            // 3. Move group to center
+            group.position.copy(center);
+
+            // 4. Shift children back
+            group.children.forEach(child => {
+                child.position.sub(center);
+            });
+        }
+
+        THREE.DefaultLoadingManager.onLoad = function () {
+            // Ensure rotation is zero before recentering to simplify calculations
+            const oldRot = hybridGroup.rotation.clone();
+            hybridGroup.rotation.set(0, 0, 0);
+            hybridGroup.updateMatrixWorld(true);
+
+            recenterGroup(hybridGroup);
+
+            // Restore rotation (though it should be 0 initially)
+            hybridGroup.rotation.copy(oldRot);
+        };
+
         // Position Camera (Center, Closer)
         const initialCameraY = 1.1;
         camera.position.set(-1.1, initialCameraY, -0.5);
@@ -1329,6 +1362,12 @@
                     clearTooltip();
                 }
                 document.body.style.cursor = 'default';
+            }
+
+            // Hover Animation for Hybrid
+            if (!focusedGroup) {
+                const targetRotation = (currentGroup === 'hybrid') ? (20 * Math.PI / 180) : 0;
+                hybridGroup.rotation.z += (targetRotation - hybridGroup.rotation.z) * 0.1;
             }
 
             renderer.render(scene, camera);
