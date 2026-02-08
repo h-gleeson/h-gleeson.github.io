@@ -270,8 +270,10 @@
         const focusScene = new THREE.Scene();
 
         const focusRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        focusRenderer.setClearColor(0x000000, 0); // Explicitly transparent
         focusRenderer.setSize(window.innerWidth, window.innerHeight);
         focusRenderer.setPixelRatio(window.devicePixelRatio);
+        focusRenderer.domElement.style.pointerEvents = 'none'; // Ensure clicks pass through
         document.getElementById('focus-container').appendChild(focusRenderer.domElement);
 
         // Lighting
