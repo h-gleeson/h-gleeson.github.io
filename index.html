@@ -15,6 +15,19 @@
             width: 100vw;
             height: 100vh;
             display: block;
+            transition: filter 0.5s ease;
+        }
+        #canvas-container.blur {
+            filter: blur(8px);
+        }
+        #focus-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none; /* Let clicks pass through */
+            z-index: 10;
         }
         #overlay {
             position: absolute;
@@ -234,6 +247,7 @@
             <a href="assets/documents/HGResume.pdf" download="HGResume.pdf" class="download-btn">Download Resume</a>
         </div>
     </div>
+    <div id="focus-container"></div>
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -252,9 +266,20 @@
         renderer.shadowMap.enabled = true;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
+        // Focus Scene Setup (Second Canvas)
+        const focusScene = new THREE.Scene();
+
+        const focusRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        focusRenderer.setClearColor(0x000000, 0); // Explicitly transparent
+        focusRenderer.setSize(window.innerWidth, window.innerHeight);
+        focusRenderer.setPixelRatio(window.devicePixelRatio);
+        focusRenderer.domElement.style.pointerEvents = 'none'; // Ensure clicks pass through
+        document.getElementById('focus-container').appendChild(focusRenderer.domElement);
+
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
+        focusScene.add(ambientLight.clone());
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(5, 10, 7);
@@ -262,6 +287,7 @@
         dirLight.shadow.mapSize.width = 1024;
         dirLight.shadow.mapSize.height = 1024;
         scene.add(dirLight);
+        focusScene.add(dirLight.clone());
 
         // Overhead Light (Desk Lamp / Room Light)
         const pointLight = new THREE.PointLight(0xfffaed, 0.5);
@@ -271,6 +297,7 @@
         pointLight.shadow.mapSize.width = 2048;
         pointLight.shadow.mapSize.height = 2048;
         scene.add(pointLight);
+        focusScene.add(pointLight.clone());
 
         // Floor
         const floorGeometry = new THREE.PlaneGeometry(100, 100);
@@ -1008,7 +1035,7 @@
             // Create a Pivot Group (Wrapper)
             const pivotGroup = new THREE.Group();
             pivotGroup.position.copy(targetPos);
-            scene.add(pivotGroup);
+            focusScene.add(pivotGroup);
 
             // Add model to pivot
             pivotGroup.add(group);
@@ -1039,6 +1066,7 @@
             // UI
             projectControls.style.display = 'flex';
             document.getElementById('overlay').style.display = 'none'; // Hide title overlay
+            document.getElementById('canvas-container').classList.add('blur');
 
             // Update button action
             btnDetails.onclick = () => {
@@ -1060,7 +1088,7 @@
                 // Actually, just re-attaching to original parent and restoring transform is cleaner
 
                 // First, remove pivot from scene
-                scene.remove(focusedGroup);
+                focusScene.remove(focusedGroup);
 
                 // Re-attach model to original parent
                 originalParent.add(originalModel);
@@ -1076,6 +1104,7 @@
             originalParent = null;
             projectControls.style.display = 'none';
             document.getElementById('overlay').style.display = 'block'; // Show title overlay
+            document.getElementById('canvas-container').classList.remove('blur');
         }
 
         btnClose.addEventListener('click', unfocusGroup);
@@ -1295,6 +1324,11 @@
             }
 
             renderer.render(scene, camera);
+            if (focusedGroup) {
+                focusRenderer.render(focusScene, camera);
+            } else {
+                focusRenderer.clear();
+            }
         }
 
         animate();
@@ -1304,6 +1338,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            focusRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         // Resume Overlay Close Logic
