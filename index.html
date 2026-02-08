@@ -1331,6 +1331,12 @@
                 document.body.style.cursor = 'default';
             }
 
+            // Hover Animation for Hybrid
+            if (!focusedGroup) {
+                const targetRotation = (currentGroup === 'hybrid') ? (30 * Math.PI / 180) : 0;
+                hybridGroup.rotation.y += (targetRotation - hybridGroup.rotation.y) * 0.1;
+            }
+
             renderer.render(scene, camera);
             if (focusedGroup) {
                 focusRenderer.render(focusScene, camera);
