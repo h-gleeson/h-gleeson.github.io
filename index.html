@@ -1459,7 +1459,7 @@
             if (event.target.closest('#project-controls') || event.target.closest('#resume-overlay') || event.target.closest('#landing-page')) return;
 
             // If landing page is visible, prevent any interaction
-            if (document.getElementById('landing-page').style.display !== 'none') return;
+            if (getComputedStyle(landingPage).display !== 'none') return;
 
             if (focusedGroup) {
                 return;
