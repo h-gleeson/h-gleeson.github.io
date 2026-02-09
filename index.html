@@ -1257,6 +1257,18 @@
 
         btnClose.addEventListener('click', unfocusGroup);
 
+        // Expose for testing
+        window.testFocus = (groupName) => {
+            let group = null;
+            if (groupName === 'palace') group = palaceGroup;
+            else if (groupName === 'hybrid') group = hybridGroup;
+            else if (groupName === 'stonehenge') group = stonehengeGroup;
+            else if (groupName === 'verticalVillage') group = verticalVillageGroup;
+            else if (groupName === 'dirtPolitics') group = dirtPoliticsGroup;
+            else if (groupName === 'landscape') group = landscapeGroup;
+
+            if (group) focusGroup(group, projectData[groupName].url);
+        };
 
         // Typewriter State
         let typingInterval = null;
@@ -1499,6 +1511,13 @@
 
                 verticalVillageGroup.rotation.z += (verticalVillageTargetZ - verticalVillageGroup.rotation.z) * 0.1;
                 verticalVillageGroup.rotation.y += (verticalVillageTargetY - verticalVillageGroup.rotation.y) * 0.1;
+
+                // Dirt Politics
+                const dirtTargetZ = (currentGroup === 'dirtPolitics') ? (20 * Math.PI / 180) : 0;
+                const dirtTargetY = (currentGroup === 'dirtPolitics') ? Math.PI : 0;
+
+                dirtPoliticsGroup.rotation.z += (dirtTargetZ - dirtPoliticsGroup.rotation.z) * 0.1;
+                dirtPoliticsGroup.rotation.y += (dirtTargetY - dirtPoliticsGroup.rotation.y) * 0.1;
             }
 
             renderer.render(scene, camera);
