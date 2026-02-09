@@ -1734,10 +1734,10 @@
             updateSize();
 
             if (type === 'mobile') {
-                // Angled perspective view
-                camera.position.set(1.15, 1.5, -0.2);
-                camera.up.set(0, 1, 0);
-                camera.lookAt(1.8, 1, -0.3);
+                // Closer top-down architectural plan view
+                camera.position.set(-1.8, 2, 0);
+                camera.up.set(0, 0, 1);
+                camera.lookAt(-1.8, 0, 0);
                 // No rotation offset for plan view
             } else {
                 // Desktop / Default
