@@ -997,6 +997,16 @@
             recenterGroup(palaceGroup);
 
             palaceGroup.rotation.copy(oldRotPalace);
+
+            // Recenter Stonehenge Group for animation
+            const oldRotStone = stonehengeGroup.rotation.clone();
+            stonehengeGroup.rotation.set(0, 0, 0);
+            stonehengeGroup.updateMatrixWorld(true);
+
+            recenterGroup(stonehengeGroup);
+
+            stonehengeGroup.rotation.copy(oldRotStone);
+            stonehengeBaseY = stonehengeGroup.position.y;
         };
 
         // Position Camera (Center, Closer)
@@ -1021,6 +1031,7 @@
         // Focus State
         let focusedGroup = null; // This will hold the pivot/wrapper
         let originalModel = null; // The actual model group
+        let stonehengeBaseY = 0; // Base Y position for Stonehenge
         let originalParent = null;
         let originalPosition = new THREE.Vector3();
         let originalRotation = new THREE.Euler();
@@ -1418,6 +1429,13 @@
 
                 palaceGroup.rotation.z += (palaceTargetZ - palaceGroup.rotation.z) * 0.1;
                 palaceGroup.rotation.y += (palaceTargetY - palaceGroup.rotation.y) * 0.1;
+
+                // Stonehenge
+                const stoneTargetRotY = (currentGroup === 'stonehenge') ? (Math.PI * 2) : 0;
+                const stoneTargetPosY = (currentGroup === 'stonehenge') ? (stonehengeBaseY + 0.1) : stonehengeBaseY;
+
+                stonehengeGroup.rotation.y += (stoneTargetRotY - stonehengeGroup.rotation.y) * 0.1;
+                stonehengeGroup.position.y += (stoneTargetPosY - stonehengeGroup.position.y) * 0.1;
             }
 
             renderer.render(scene, camera);
