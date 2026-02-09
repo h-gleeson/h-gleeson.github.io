@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>spare-desk.space</title>
+    <script>
+        // Immediate check to show landing page if not visited
+        if (sessionStorage.getItem('visited') !== 'true') {
+            document.write('<style>#landing-page { display: flex !important; }</style>');
+        }
+    </script>
     <style>
         body {
             margin: 0;
@@ -233,7 +239,7 @@
             width: 100%;
             height: 100%;
             background-color: rgba(240, 240, 240, 0.98);
-            display: flex;
+            display: none; /* Hidden by default to prevent flash for returning users */
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -1688,8 +1694,8 @@
             if (type === 'mobile') {
                 // Adjust for mobile portrait view - further back/up to see more desk width
                 // Original: (-1.1, 1.1, -0.5)
-                // Adjusted to avoid clipping: (-1.1, 1.5, 0.5)
-                camera.position.set(-1.1, 1.5, 0.5);
+                // Adjusted to avoid clipping while maintaining wide view: (-1.1, 1.4, -0.2)
+                camera.position.set(-1.1, 1.4, -0.2);
             } else {
                 // Desktop / Default
                 camera.position.set(-1.1, 1.1, -0.5);
@@ -1701,7 +1707,7 @@
         }
 
         function closeLandingPage(type) {
-            landingPage.style.display = 'none';
+            landingPage.style.setProperty('display', 'none', 'important');
             overlay.style.display = 'block';
             sessionStorage.setItem('visited', 'true');
             sessionStorage.setItem('deviceType', type);
@@ -1709,10 +1715,12 @@
         }
 
         function checkVisited() {
+            // If visited, landing page is hidden by CSS default.
+            // We just need to ensure overlay is shown and camera set.
             if (sessionStorage.getItem('visited') === 'true') {
-                landingPage.style.display = 'none';
                 overlay.style.display = 'block';
                 const savedType = sessionStorage.getItem('deviceType') || 'desktop';
+                // Wait for camera to be ready if needed, though script runs at end of body so it should be fine
                 setDeviceView(savedType);
             }
         }
@@ -1720,15 +1728,18 @@
         // Run check on load
         checkVisited();
 
-        btnDesktop.addEventListener('click', (e) => {
+        function handleSelection(type, e) {
+            e.preventDefault();
             e.stopPropagation();
-            closeLandingPage('desktop');
-        });
+            closeLandingPage(type);
+        }
 
-        btnMobile.addEventListener('click', (e) => {
-            e.stopPropagation();
-            closeLandingPage('mobile');
-        });
+        btnDesktop.addEventListener('click', (e) => handleSelection('desktop', e));
+        btnMobile.addEventListener('click', (e) => handleSelection('mobile', e));
+
+        // Add touchstart listener to capture touch events early and prevent ghost clicks
+        btnDesktop.addEventListener('touchstart', (e) => handleSelection('desktop', e), {passive: false});
+        btnMobile.addEventListener('touchstart', (e) => handleSelection('mobile', e), {passive: false});
 
     </script>
 </body>
