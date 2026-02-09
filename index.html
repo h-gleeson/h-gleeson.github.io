@@ -60,22 +60,6 @@
             max-width: 80%;
             pointer-events: none;
         }
-        #grid-toggle {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: 1px solid white;
-            cursor: pointer;
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
-            z-index: 100;
-        }
-        #grid-toggle:hover {
-            background: rgba(50, 50, 50, 0.9);
-        }
         #tooltip {
             position: fixed;
             top: 50%;
@@ -325,7 +309,6 @@
     </style>
 </head>
 <body>
-    <button id="grid-toggle">Show Grid</button>
     <div id="tooltip"></div>
 
     <div id="landing-page">
@@ -471,65 +454,6 @@
         // Hit Box Group (Child of Desk Group - Static Interaction Targets)
         const hitBoxGroup = new THREE.Group();
         deskGroup.add(hitBoxGroup);
-
-        // --- Grid & Debug Helpers ---
-        const debugHelpers = new THREE.Group();
-        debugHelpers.visible = false; // Hidden by default
-        scene.add(debugHelpers);
-
-        // 1. Grid Helper (XZ Plane)
-        const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x888888);
-        debugHelpers.add(gridHelper);
-
-        // 2. Axes Helper (RGB = XYZ)
-        const axesHelper = new THREE.AxesHelper(5);
-        debugHelpers.add(axesHelper);
-
-        // 3. Text Labels for Units
-        function createLabel(text, x, y, z, color = 'white') {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = 128;
-            canvas.height = 64;
-
-            context.fillStyle = color;
-            context.font = 'Bold 24px Courier New';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillText(text, 64, 32);
-
-            const texture = new THREE.CanvasTexture(canvas);
-            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
-            const sprite = new THREE.Sprite(spriteMaterial);
-
-            sprite.position.set(x, y, z);
-            sprite.scale.set(1, 0.5, 1); // Adjust aspect ratio
-            return sprite;
-        }
-
-        // Add labels along axes
-        for (let i = 0.25; i <= 5; i += 0.25) {
-            // Format number to remove trailing zeros if integer
-            const val = parseFloat(i.toFixed(2));
-
-            // X Axis (Red)
-            debugHelpers.add(createLabel('X=' + val, i, 0.2, 0, '#ff5555'));
-            debugHelpers.add(createLabel('X=' + (-val), -i, 0.2, 0, '#ff5555'));
-
-            // Y Axis (Green)
-            debugHelpers.add(createLabel('Y=' + val, 0, i, 0, '#55ff55'));
-
-            // Z Axis (Blue)
-            debugHelpers.add(createLabel('Z=' + val, 0, 0.2, i, '#5555ff'));
-            debugHelpers.add(createLabel('Z=' + (-val), 0, 0.2, -i, '#5555ff'));
-        }
-
-        // Toggle Button Logic
-        const toggleBtn = document.getElementById('grid-toggle');
-        toggleBtn.addEventListener('click', () => {
-            debugHelpers.visible = !debugHelpers.visible;
-            toggleBtn.textContent = debugHelpers.visible ? "Hide Grid" : "Show Grid";
-        });
 
         // GLTF Model Loading
         const loader = new THREE.GLTFLoader();
