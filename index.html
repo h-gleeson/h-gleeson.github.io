@@ -1045,6 +1045,43 @@
             stonehengeGroup.rotation.copy(oldRotStone);
             stonehengeBaseY = stonehengeGroup.position.y;
 
+            // Recenter Vertical Village Group
+            const oldRotVerticalVillage = verticalVillageGroup.rotation.clone();
+            verticalVillageGroup.rotation.set(0, 0, 0);
+            verticalVillageGroup.updateMatrixWorld(true);
+
+            recenterGroup(verticalVillageGroup);
+
+            verticalVillageGroup.rotation.copy(oldRotVerticalVillage);
+
+            // Recenter Dirt Politics Group
+            const oldRotDirtPolitics = dirtPoliticsGroup.rotation.clone();
+            dirtPoliticsGroup.rotation.set(0, 0, 0);
+            dirtPoliticsGroup.updateMatrixWorld(true);
+
+            recenterGroup(dirtPoliticsGroup);
+
+            dirtPoliticsGroup.rotation.copy(oldRotDirtPolitics);
+
+            // Recenter Resume Group
+            const oldRotResume = resumeGroup.rotation.clone();
+            resumeGroup.rotation.set(0, 0, 0);
+            resumeGroup.updateMatrixWorld(true);
+
+            recenterGroup(resumeGroup);
+
+            resumeGroup.rotation.copy(oldRotResume);
+
+            // Recenter Landscape Group
+            const oldRotLandscape = landscapeGroup.rotation.clone();
+            landscapeGroup.rotation.set(0, 0, 0);
+            landscapeGroup.updateMatrixWorld(true);
+
+            recenterGroup(landscapeGroup);
+
+            landscapeGroup.rotation.copy(oldRotLandscape);
+            landscapeBaseX = landscapeGroup.position.x;
+
             // Create Hit Boxes for all interactive groups
             // Make sure matrix world is updated before calculating boxes
             deskGroup.updateMatrixWorld(true);
@@ -1081,6 +1118,7 @@
         let focusedGroup = null; // This will hold the pivot/wrapper
         let originalModel = null; // The actual model group
         let stonehengeBaseY = 0; // Base Y position for Stonehenge
+        let landscapeBaseX = 0; // Base X position for Landscape
         let originalParent = null;
         let originalPosition = new THREE.Vector3();
         let originalRotation = new THREE.Euler();
@@ -1462,6 +1500,24 @@
 
                 stonehengeGroup.rotation.y += (stoneTargetRotY - stonehengeGroup.rotation.y) * 0.1;
                 stonehengeGroup.position.y += (stoneTargetPosY - stonehengeGroup.position.y) * 0.1;
+
+                // Landscape
+                const landscapeTargetX = (currentGroup === 'landscape') ? (landscapeBaseX - 0.1) : landscapeBaseX;
+                landscapeGroup.position.x += (landscapeTargetX - landscapeGroup.position.x) * 0.1;
+
+                // Vertical Village
+                const verticalVillageTargetZ = 0;
+                const verticalVillageTargetY = (currentGroup === 'verticalVillage') ? (Math.PI * 1.5) : 0;
+
+                verticalVillageGroup.rotation.z += (verticalVillageTargetZ - verticalVillageGroup.rotation.z) * 0.1;
+                verticalVillageGroup.rotation.y += (verticalVillageTargetY - verticalVillageGroup.rotation.y) * 0.1;
+
+                // Dirt Politics
+                const dirtTargetZ = (currentGroup === 'dirtPolitics') ? (20 * Math.PI / 180) : 0;
+                const dirtTargetY = (currentGroup === 'dirtPolitics') ? Math.PI : 0;
+
+                dirtPoliticsGroup.rotation.z += (dirtTargetZ - dirtPoliticsGroup.rotation.z) * 0.1;
+                dirtPoliticsGroup.rotation.y += (dirtTargetY - dirtPoliticsGroup.rotation.y) * 0.1;
             }
 
             renderer.render(scene, camera);
