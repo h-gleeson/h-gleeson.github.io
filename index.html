@@ -349,8 +349,7 @@
             </div>
 
             <div class="device-selection">
-                <button class="device-btn" id="btn-desktop">Desktop</button>
-                <button class="device-btn" id="btn-mobile">Mobile</button>
+                <button class="device-btn" id="btn-enter">Come on in</button>
             </div>
         </div>
     </div>
@@ -1660,46 +1659,20 @@
         animate();
 
         // Handle Window Resize
-        let currentDeviceType = 'desktop';
-
         function updateSize() {
-            let width, height;
-            if (currentDeviceType === 'mobile') {
-                // Force 4:3 aspect ratio
-                if (window.innerWidth / window.innerHeight > 4/3) {
-                    height = window.innerHeight;
-                    width = height * 4/3;
-                } else {
-                    width = window.innerWidth;
-                    height = width * 3/4;
-                }
+            const width = window.innerWidth;
+            const height = window.innerHeight;
 
-                // Center the canvas
-                renderer.domElement.style.position = 'absolute';
-                renderer.domElement.style.left = ((window.innerWidth - width) / 2) + 'px';
-                renderer.domElement.style.top = ((window.innerHeight - height) / 2) + 'px';
+            // Reset styles
+            renderer.domElement.style.position = '';
+            renderer.domElement.style.left = '';
+            renderer.domElement.style.top = '';
 
-                // Focus renderer matches main renderer
-                focusRenderer.domElement.style.position = 'absolute';
-                focusRenderer.domElement.style.left = ((window.innerWidth - width) / 2) + 'px';
-                focusRenderer.domElement.style.top = ((window.innerHeight - height) / 2) + 'px';
+            focusRenderer.domElement.style.position = '';
+            focusRenderer.domElement.style.left = '';
+            focusRenderer.domElement.style.top = '';
 
-                camera.aspect = 4/3;
-            } else {
-                width = window.innerWidth;
-                height = window.innerHeight;
-
-                // Reset styles
-                renderer.domElement.style.position = '';
-                renderer.domElement.style.left = '';
-                renderer.domElement.style.top = '';
-
-                focusRenderer.domElement.style.position = '';
-                focusRenderer.domElement.style.left = '';
-                focusRenderer.domElement.style.top = '';
-
-                camera.aspect = width / height;
-            }
+            camera.aspect = width / height;
 
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
@@ -1726,64 +1699,48 @@
         // Landing Page Logic
         const landingPage = document.getElementById('landing-page');
         const overlay = document.getElementById('overlay');
-        const btnDesktop = document.getElementById('btn-desktop');
-        const btnMobile = document.getElementById('btn-mobile');
+        const btnEnter = document.getElementById('btn-enter');
 
-        function setDeviceView(type) {
-            currentDeviceType = type;
+        function setDesktopView() {
+            // Desktop / Default
+            camera.up.set(0, 1, 0);
+            camera.position.set(-1.1, 1.1, -0.5);
+            const lookAtTarget = new THREE.Vector3(-4, 0.5, 1);
+            camera.lookAt(lookAtTarget);
+            // Re-apply the slight Y rotation offset used in initialization
+            camera.rotation.y -= 0.1;
             updateSize();
-
-            if (type === 'mobile') {
-                // Closer top-down architectural plan view
-                camera.position.set(-1.8, 2, 0);
-                camera.up.set(0, 0, 1);
-                camera.lookAt(-1.8, 0, 0);
-                // No rotation offset for plan view
-            } else {
-                // Desktop / Default
-                camera.up.set(0, 1, 0);
-                camera.position.set(-1.1, 1.1, -0.5);
-                const lookAtTarget = new THREE.Vector3(-4, 0.5, 1);
-                camera.lookAt(lookAtTarget);
-                // Re-apply the slight Y rotation offset used in initialization
-                camera.rotation.y -= 0.1;
-            }
         }
 
-        function closeLandingPage(type) {
+        function closeLandingPage() {
             landingPage.style.setProperty('display', 'none', 'important');
             overlay.style.display = 'block';
             sessionStorage.setItem('visited', 'true');
-            sessionStorage.setItem('deviceType', type);
-            setDeviceView(type);
+            setDesktopView();
         }
 
         function checkVisited() {
             // If visited, landing page is hidden by CSS default.
-            // We just need to ensure overlay is shown and camera set.
+            // We just need to ensure overlay is shown.
             if (sessionStorage.getItem('visited') === 'true') {
                 overlay.style.display = 'block';
-                const savedType = sessionStorage.getItem('deviceType') || 'desktop';
-                // Wait for camera to be ready if needed, though script runs at end of body so it should be fine
-                setDeviceView(savedType);
+                setDesktopView();
             }
         }
 
         // Run check on load
         checkVisited();
 
-        function handleSelection(type, e) {
+        function handleSelection(e) {
             e.preventDefault();
             e.stopPropagation();
-            closeLandingPage(type);
+            closeLandingPage();
         }
 
-        btnDesktop.addEventListener('click', (e) => handleSelection('desktop', e));
-        btnMobile.addEventListener('click', (e) => handleSelection('mobile', e));
-
-        // Add touchstart listener to capture touch events early and prevent ghost clicks
-        btnDesktop.addEventListener('touchstart', (e) => handleSelection('desktop', e), {passive: false});
-        btnMobile.addEventListener('touchstart', (e) => handleSelection('mobile', e), {passive: false});
+        if (btnEnter) {
+            btnEnter.addEventListener('click', handleSelection);
+            btnEnter.addEventListener('touchstart', handleSelection, {passive: false});
+        }
 
     </script>
 </body>
