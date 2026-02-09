@@ -1469,6 +1469,13 @@
                 // Landscape
                 const landscapeTargetX = (currentGroup === 'landscape') ? (landscapeBaseX - 0.1) : landscapeBaseX;
                 landscapeGroup.position.x += (landscapeTargetX - landscapeGroup.position.x) * 0.1;
+
+                // Vertical Village
+                const verticalVillageTargetZ = (currentGroup === 'verticalVillage') ? (-45 * Math.PI / 180) : 0;
+                const verticalVillageTargetY = (currentGroup === 'verticalVillage') ? (Math.PI * 2) : 0;
+
+                verticalVillageGroup.rotation.z += (verticalVillageTargetZ - verticalVillageGroup.rotation.z) * 0.1;
+                verticalVillageGroup.rotation.y += (verticalVillageTargetY - verticalVillageGroup.rotation.y) * 0.1;
             }
 
             renderer.render(scene, camera);
