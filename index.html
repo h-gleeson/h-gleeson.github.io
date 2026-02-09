@@ -1450,7 +1450,10 @@
         // Click Handler
         document.addEventListener('click', (event) => {
             // Ignore clicks on UI
-            if (event.target.closest('#project-controls') || event.target.closest('#resume-overlay')) return;
+            if (event.target.closest('#project-controls') || event.target.closest('#resume-overlay') || event.target.closest('#landing-page')) return;
+
+            // If landing page is visible, prevent any interaction
+            if (document.getElementById('landing-page').style.display !== 'none') return;
 
             if (focusedGroup) {
                 return;
@@ -1685,7 +1688,8 @@
             if (type === 'mobile') {
                 // Adjust for mobile portrait view - further back/up to see more desk width
                 // Original: (-1.1, 1.1, -0.5)
-                camera.position.set(-1.1, 1.8, 1.2);
+                // Adjusted to avoid clipping: (-1.1, 1.5, 0.5)
+                camera.position.set(-1.1, 1.5, 0.5);
             } else {
                 // Desktop / Default
                 camera.position.set(-1.1, 1.1, -0.5);
@@ -1699,11 +1703,32 @@
         function closeLandingPage(type) {
             landingPage.style.display = 'none';
             overlay.style.display = 'block';
+            sessionStorage.setItem('visited', 'true');
+            sessionStorage.setItem('deviceType', type);
             setDeviceView(type);
         }
 
-        btnDesktop.addEventListener('click', () => closeLandingPage('desktop'));
-        btnMobile.addEventListener('click', () => closeLandingPage('mobile'));
+        function checkVisited() {
+            if (sessionStorage.getItem('visited') === 'true') {
+                landingPage.style.display = 'none';
+                overlay.style.display = 'block';
+                const savedType = sessionStorage.getItem('deviceType') || 'desktop';
+                setDeviceView(savedType);
+            }
+        }
+
+        // Run check on load
+        checkVisited();
+
+        btnDesktop.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeLandingPage('desktop');
+        });
+
+        btnMobile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeLandingPage('mobile');
+        });
 
     </script>
 </body>
