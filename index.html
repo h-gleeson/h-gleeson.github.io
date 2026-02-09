@@ -35,19 +35,6 @@
             pointer-events: none; /* Let clicks pass through */
             z-index: 10;
         }
-        #overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            text-align: center;
-            pointer-events: none; /* Let clicks pass through to canvas if needed */
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        #overlay * {
-            pointer-events: none;
-        }
         #debug-log {
             position: absolute;
             bottom: 10px;
@@ -302,10 +289,6 @@
             box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
         }
 
-        /* Initial state of overlay hidden until landing page dismissed */
-        #overlay {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -337,10 +320,6 @@
         </div>
     </div>
 
-    <div id="overlay">
-        <h1>spare-desk.space</h1>
-        <p>something is being built here.</p>
-    </div>
     <div id="debug-log"></div>
     <div id="project-controls">
         <button id="btn-details">Project Details</button>
@@ -1262,7 +1241,6 @@
 
             // UI
             projectControls.style.display = 'flex';
-            document.getElementById('overlay').style.display = 'none'; // Hide title overlay
             document.getElementById('canvas-container').classList.add('blur');
 
             // Update button action
@@ -1300,7 +1278,6 @@
             originalModel = null;
             originalParent = null;
             projectControls.style.display = 'none';
-            document.getElementById('overlay').style.display = 'block'; // Show title overlay
             document.getElementById('canvas-container').classList.remove('blur');
         }
 
@@ -1622,7 +1599,6 @@
 
         // Landing Page Logic
         const landingPage = document.getElementById('landing-page');
-        const overlay = document.getElementById('overlay');
         const btnEnter = document.getElementById('btn-enter');
 
         function setDesktopView() {
@@ -1638,16 +1614,13 @@
 
         function closeLandingPage() {
             landingPage.style.setProperty('display', 'none', 'important');
-            overlay.style.display = 'block';
             sessionStorage.setItem('visited', 'true');
             setDesktopView();
         }
 
         function checkVisited() {
             // If visited, landing page is hidden by CSS default.
-            // We just need to ensure overlay is shown.
             if (sessionStorage.getItem('visited') === 'true') {
-                overlay.style.display = 'block';
                 setDesktopView();
             }
         }
