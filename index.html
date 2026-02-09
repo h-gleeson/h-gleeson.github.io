@@ -343,6 +343,10 @@
         const landscapeGroup = new THREE.Group();
         deskGroup.add(landscapeGroup);
 
+        // Hit Box Group (Child of Desk Group - Static Interaction Targets)
+        const hitBoxGroup = new THREE.Group();
+        deskGroup.add(hitBoxGroup);
+
         // --- Grid & Debug Helpers ---
         const debugHelpers = new THREE.Group();
         debugHelpers.visible = false; // Hidden by default
@@ -978,6 +982,39 @@
             });
         }
 
+        function createHitBox(targetGroup, name) {
+            if (targetGroup.children.length === 0) return;
+
+            const box = new THREE.Box3().setFromObject(targetGroup);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+
+            // Create Hit Box Geometry
+            const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x00ff00,
+                wireframe: true,
+                visible: false // Hidden by default
+            });
+            const hitBox = new THREE.Mesh(geometry, material);
+
+            // Position Hit Box (Center is World Space)
+            hitBox.position.copy(center);
+
+            // Convert to Local Space of hitBoxGroup (child of deskGroup)
+            // Since hitBoxGroup is at (0,0,0) of deskGroup, we just need to account for deskGroup transform?
+            // Actually, if we add it to hitBoxGroup which is a child of deskGroup, we need local coordinates relative to deskGroup.
+
+            if (deskGroup) {
+                deskGroup.worldToLocal(hitBox.position);
+            }
+
+            hitBox.userData = { groupName: name, targetGroup: targetGroup };
+            hitBoxGroup.add(hitBox);
+        }
+
         THREE.DefaultLoadingManager.onLoad = function () {
             // Ensure rotation is zero before recentering to simplify calculations
             const oldRot = hybridGroup.rotation.clone();
@@ -1007,6 +1044,18 @@
 
             stonehengeGroup.rotation.copy(oldRotStone);
             stonehengeBaseY = stonehengeGroup.position.y;
+
+            // Create Hit Boxes for all interactive groups
+            // Make sure matrix world is updated before calculating boxes
+            deskGroup.updateMatrixWorld(true);
+
+            createHitBox(palaceGroup, 'palace');
+            createHitBox(hybridGroup, 'hybrid');
+            createHitBox(stonehengeGroup, 'stonehenge');
+            createHitBox(verticalVillageGroup, 'verticalVillage');
+            createHitBox(dirtPoliticsGroup, 'dirtPolitics');
+            createHitBox(resumeGroup, 'resume');
+            createHitBox(landscapeGroup, 'landscape');
         };
 
         // Position Camera (Center, Closer)
@@ -1354,56 +1403,33 @@
 
             // Raycasting
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            // Prioritize hit boxes for stable interaction
+            const intersects = raycaster.intersectObjects(hitBoxGroup.children, false);
 
             let foundInteractable = false;
 
             if (intersects.length > 0 && !focusedGroup) {
-                // Find the first object that is part of our interactable groups
-                for (let i = 0; i < intersects.length; i++) {
-                    const object = intersects[i].object;
+                const hitObject = intersects[0].object;
+                const groupName = hitObject.userData.groupName;
+                const targetGroup = hitObject.userData.targetGroup;
 
-                    // Check ownership
-                    let groupName = null;
-                    let p = object.parent;
-                    while(p) {
-                        if (p === palaceGroup) {
-                            groupName = "palace";
-                            break;
-                        } else if (p === hybridGroup) {
-                            groupName = "hybrid";
-                            break;
-                        } else if (p === stonehengeGroup) {
-                            groupName = "stonehenge";
-                            break;
-                        } else if (p === verticalVillageGroup) {
-                            groupName = "verticalVillage";
-                            break;
-                        } else if (p === dirtPoliticsGroup) {
-                            groupName = "dirtPolitics";
-                            break;
-                        } else if (p === resumeGroup) {
-                            groupName = "resume";
-                            break;
-                        } else if (p === landscapeGroup) {
-                            groupName = "landscape";
-                            break;
-                        }
-                        p = p.parent;
+                if (groupName && projectData[groupName]) {
+                    // Ensure hoveredObject points to a child of the visual group for click logic
+                    if (targetGroup && targetGroup.children.length > 0) {
+                        hoveredObject = targetGroup.children[0];
+                    } else {
+                         // Fallback: If group is empty, we can't really focus it anyway
+                         hoveredObject = null;
                     }
 
-                    if (groupName && projectData[groupName]) {
-                        hoveredObject = object;
-                        document.body.style.cursor = 'pointer';
-                        foundInteractable = true;
+                    document.body.style.cursor = 'pointer';
+                    foundInteractable = true;
 
-                        // Only start typing if we switched to a new group
-                        if (currentGroup !== groupName) {
-                            currentGroup = groupName;
-                            startTypewriter(projectData[groupName]);
-                        }
-
-                        break; // Stop at first valid hit
+                    // Only start typing if we switched to a new group
+                    if (currentGroup !== groupName) {
+                        currentGroup = groupName;
+                        startTypewriter(projectData[groupName]);
                     }
                 }
             }
