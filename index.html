@@ -1045,6 +1045,41 @@
             stonehengeGroup.rotation.copy(oldRotStone);
             stonehengeBaseY = stonehengeGroup.position.y;
 
+            // Recenter Vertical Village Group
+            const oldRotVerticalVillage = verticalVillageGroup.rotation.clone();
+            verticalVillageGroup.rotation.set(0, 0, 0);
+            verticalVillageGroup.updateMatrixWorld(true);
+
+            recenterGroup(verticalVillageGroup);
+
+            verticalVillageGroup.rotation.copy(oldRotVerticalVillage);
+
+            // Recenter Dirt Politics Group
+            const oldRotDirtPolitics = dirtPoliticsGroup.rotation.clone();
+            dirtPoliticsGroup.rotation.set(0, 0, 0);
+            dirtPoliticsGroup.updateMatrixWorld(true);
+
+            recenterGroup(dirtPoliticsGroup);
+
+            dirtPoliticsGroup.rotation.copy(oldRotDirtPolitics);
+
+            // Recenter Resume Group
+            const oldRotResume = resumeGroup.rotation.clone();
+            resumeGroup.rotation.set(0, 0, 0);
+            resumeGroup.updateMatrixWorld(true);
+
+            recenterGroup(resumeGroup);
+
+            resumeGroup.rotation.copy(oldRotResume);
+
+            // Recenter Landscape Group
+            const oldRotLandscape = landscapeGroup.rotation.clone();
+            landscapeGroup.rotation.set(0, 0, 0);
+            landscapeGroup.updateMatrixWorld(true);
+
+            recenterGroup(landscapeGroup);
+
+            landscapeGroup.rotation.copy(oldRotLandscape);
             landscapeBaseX = landscapeGroup.position.x;
 
             // Create Hit Boxes for all interactive groups
