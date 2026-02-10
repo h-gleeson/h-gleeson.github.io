@@ -202,6 +202,35 @@
             background-color: #ffaaaa;
         }
 
+        #palette-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 4000;
+        }
+        #palette-controls button {
+            padding: 10px 15px;
+            background-color: white;
+            color: black;
+            border: 2px solid black;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        #palette-controls button:hover {
+            background-color: #f0f0f0;
+            transform: scale(1.05);
+        }
+        #palette-controls button.active {
+            background-color: #000;
+            color: #fff;
+        }
+
         /* Landing Page Styles */
         #landing-page {
             position: fixed;
@@ -334,6 +363,13 @@
             <a href="assets/documents/resume.pdf" download="resume.pdf" class="download-btn">Download Resume</a>
         </div>
     </div>
+
+    <div id="palette-controls">
+        <button id="btn-standard" class="active">Standard</button>
+        <button id="btn-retro">Retro</button>
+        <button id="btn-noir">Noir</button>
+    </div>
+
     <div id="focus-container"></div>
     <div id="canvas-container"></div>
 
@@ -1559,6 +1595,55 @@
 
         animate();
 
+        // Global Palette State
+        window.pixelationFactor = 1;
+        window.currentPalette = 'standard';
+
+        function setPalette(mode) {
+            window.currentPalette = mode;
+            const btnStandard = document.getElementById('btn-standard');
+            const btnRetro = document.getElementById('btn-retro');
+            const btnNoir = document.getElementById('btn-noir');
+
+            // Reset Active Classes
+            btnStandard.classList.remove('active');
+            btnRetro.classList.remove('active');
+            btnNoir.classList.remove('active');
+
+            // Reset CSS Styles
+            renderer.domElement.style.imageRendering = 'auto';
+            renderer.domElement.style.filter = 'none';
+            focusRenderer.domElement.style.imageRendering = 'auto';
+            focusRenderer.domElement.style.filter = 'none';
+
+            if (mode === 'standard') {
+                window.pixelationFactor = 1;
+                btnStandard.classList.add('active');
+            } else if (mode === 'retro') {
+                window.pixelationFactor = 6;
+                btnRetro.classList.add('active');
+
+                // Apply Pixelation CSS
+                renderer.domElement.style.imageRendering = 'pixelated';
+                focusRenderer.domElement.style.imageRendering = 'pixelated';
+
+                // Apply Color Filter
+                const filter = 'contrast(1.2) saturate(1.2)';
+                renderer.domElement.style.filter = filter;
+                focusRenderer.domElement.style.filter = filter;
+            } else if (mode === 'noir') {
+                window.pixelationFactor = 1;
+                btnNoir.classList.add('active');
+
+                const filter = 'grayscale(100%) contrast(1.5)';
+                renderer.domElement.style.filter = filter;
+                focusRenderer.domElement.style.filter = filter;
+            }
+
+            // Apply Size Changes
+            updateSize();
+        }
+
         // Handle Window Resize
         function updateSize() {
             const width = window.innerWidth;
@@ -1568,19 +1653,32 @@
             renderer.domElement.style.position = '';
             renderer.domElement.style.left = '';
             renderer.domElement.style.top = '';
+            renderer.domElement.style.width = width + 'px';
+            renderer.domElement.style.height = height + 'px';
 
             focusRenderer.domElement.style.position = '';
             focusRenderer.domElement.style.left = '';
             focusRenderer.domElement.style.top = '';
+            focusRenderer.domElement.style.width = width + 'px';
+            focusRenderer.domElement.style.height = height + 'px';
 
             camera.aspect = width / height;
 
             camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
-            focusRenderer.setSize(width, height);
+
+            const renderWidth = Math.floor(width / window.pixelationFactor);
+            const renderHeight = Math.floor(height / window.pixelationFactor);
+
+            renderer.setSize(renderWidth, renderHeight, false);
+            focusRenderer.setSize(renderWidth, renderHeight, false);
         }
 
         window.addEventListener('resize', updateSize);
+
+        // Palette Button Event Listeners
+        document.getElementById('btn-standard').addEventListener('click', () => setPalette('standard'));
+        document.getElementById('btn-retro').addEventListener('click', () => setPalette('retro'));
+        document.getElementById('btn-noir').addEventListener('click', () => setPalette('noir'));
 
         // Resume Overlay Close Logic
         const resumeOverlay = document.getElementById('resume-overlay');
