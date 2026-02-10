@@ -367,7 +367,8 @@
     <div id="palette-controls">
         <button id="btn-standard" class="active">Standard</button>
         <button id="btn-retro">Retro</button>
-        <button id="btn-noir">Noir</button>
+        <button id="btn-gameboy">Gameboy</button>
+        <button id="btn-2bit">2-Bit</button>
     </div>
 
     <div id="focus-container"></div>
@@ -376,6 +377,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
+        // Global Palette State (Initialized early)
+        window.pixelationFactor = 1;
+        window.currentPalette = 'standard';
+
         // Scene setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0f0f0);
@@ -1595,20 +1600,18 @@
 
         animate();
 
-        // Global Palette State
-        window.pixelationFactor = 1;
-        window.currentPalette = 'standard';
-
         function setPalette(mode) {
             window.currentPalette = mode;
             const btnStandard = document.getElementById('btn-standard');
             const btnRetro = document.getElementById('btn-retro');
-            const btnNoir = document.getElementById('btn-noir');
+            const btnGameboy = document.getElementById('btn-gameboy');
+            const btn2Bit = document.getElementById('btn-2bit');
 
             // Reset Active Classes
             btnStandard.classList.remove('active');
             btnRetro.classList.remove('active');
-            btnNoir.classList.remove('active');
+            if (btnGameboy) btnGameboy.classList.remove('active');
+            if (btn2Bit) btn2Bit.classList.remove('active');
 
             // Reset CSS Styles
             renderer.domElement.style.imageRendering = 'auto';
@@ -1631,11 +1634,26 @@
                 const filter = 'contrast(1.2) saturate(1.2)';
                 renderer.domElement.style.filter = filter;
                 focusRenderer.domElement.style.filter = filter;
-            } else if (mode === 'noir') {
-                window.pixelationFactor = 1;
-                btnNoir.classList.add('active');
+            } else if (mode === 'gameboy') {
+                window.pixelationFactor = 6;
+                if (btnGameboy) btnGameboy.classList.add('active');
 
-                const filter = 'grayscale(100%) contrast(1.5)';
+                renderer.domElement.style.imageRendering = 'pixelated';
+                focusRenderer.domElement.style.imageRendering = 'pixelated';
+
+                // Greenish Tint
+                const filter = 'contrast(1.2) brightness(1.1) sepia(100%) hue-rotate(65deg) saturate(200%)';
+                renderer.domElement.style.filter = filter;
+                focusRenderer.domElement.style.filter = filter;
+            } else if (mode === '2bit') {
+                window.pixelationFactor = 6;
+                if (btn2Bit) btn2Bit.classList.add('active');
+
+                renderer.domElement.style.imageRendering = 'pixelated';
+                focusRenderer.domElement.style.imageRendering = 'pixelated';
+
+                // High Contrast BW/Yellow Tint
+                const filter = 'grayscale(100%) contrast(1.5) sepia(100%) hue-rotate(5deg) saturate(500%)';
                 renderer.domElement.style.filter = filter;
                 focusRenderer.domElement.style.filter = filter;
             }
@@ -1678,7 +1696,8 @@
         // Palette Button Event Listeners
         document.getElementById('btn-standard').addEventListener('click', () => setPalette('standard'));
         document.getElementById('btn-retro').addEventListener('click', () => setPalette('retro'));
-        document.getElementById('btn-noir').addEventListener('click', () => setPalette('noir'));
+        document.getElementById('btn-gameboy').addEventListener('click', () => setPalette('gameboy'));
+        document.getElementById('btn-2bit').addEventListener('click', () => setPalette('2bit'));
 
         // Resume Overlay Close Logic
         const resumeOverlay = document.getElementById('resume-overlay');
