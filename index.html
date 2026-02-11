@@ -202,6 +202,60 @@
             background-color: #ffaaaa;
         }
 
+        #palette-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 4000;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #palette-toggle {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 10px;
+            background: white;
+            border: 2px solid black;
+            text-transform: uppercase;
+        }
+        #palette-toggle:hover {
+            background-color: #f0f0f0;
+        }
+        #palette-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 2px solid black;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+            width: 200px;
+            margin-top: 5px;
+        }
+        .palette-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px dashed #ccc;
+        }
+        .palette-item:last-child {
+            border-bottom: none;
+        }
+        .palette-item:hover {
+            background-color: #f0f0f0;
+        }
+        .palette-item span {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .palette-preview {
+            width: 20px;
+            height: 20px;
+            border: 1px solid black;
+        }
+
         /* Landing Page Styles */
         #landing-page {
             position: fixed;
@@ -334,12 +388,39 @@
             <a href="assets/documents/resume.pdf" download="resume.pdf" class="download-btn">Download Resume</a>
         </div>
     </div>
+
+    <div id="palette-controls">
+        <div id="palette-toggle">Filter: Standard</div>
+        <div id="palette-menu">
+            <div class="palette-item" data-mode="standard">
+                <span>Standard</span>
+                <div class="palette-preview" style="background: linear-gradient(135deg, #ffffff 50%, #000000 50%);"></div>
+            </div>
+            <div class="palette-item" data-mode="retro">
+                <span>Retro</span>
+                <div class="palette-preview" style="background: linear-gradient(135deg, #ff00ff 50%, #00ffff 50%);"></div>
+            </div>
+            <div class="palette-item" data-mode="gameboy">
+                <span>Gameboy</span>
+                <div class="palette-preview" style="background: linear-gradient(135deg, #0f380f 50%, #8bac0f 50%);"></div>
+            </div>
+            <div class="palette-item" data-mode="2bit">
+                <span>2-Bit</span>
+                <div class="palette-preview" style="background: linear-gradient(135deg, #000000 50%, #ffff00 50%);"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="focus-container"></div>
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
+        // Global Palette State (Initialized early)
+        window.pixelationFactor = 1;
+        window.currentPalette = 'standard';
+
         // Scene setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0f0f0);
@@ -1559,6 +1640,59 @@
 
         animate();
 
+        function setPalette(mode) {
+            window.currentPalette = mode;
+            const toggle = document.getElementById('palette-toggle');
+
+            // Reset CSS Styles
+            renderer.domElement.style.imageRendering = 'auto';
+            renderer.domElement.style.filter = 'none';
+            focusRenderer.domElement.style.imageRendering = 'auto';
+            focusRenderer.domElement.style.filter = 'none';
+
+            if (mode === 'standard') {
+                window.pixelationFactor = 1;
+                toggle.textContent = 'Filter: Standard';
+            } else if (mode === 'retro') {
+                window.pixelationFactor = 3;
+                toggle.textContent = 'Filter: Retro';
+
+                // Apply Pixelation CSS
+                renderer.domElement.style.imageRendering = 'pixelated';
+                focusRenderer.domElement.style.imageRendering = 'pixelated';
+
+                // Apply Color Filter
+                const filter = 'contrast(1.2) saturate(1.2)';
+                renderer.domElement.style.filter = filter;
+                focusRenderer.domElement.style.filter = filter;
+            } else if (mode === 'gameboy') {
+                window.pixelationFactor = 6;
+                toggle.textContent = 'Filter: Gameboy';
+
+                renderer.domElement.style.imageRendering = 'pixelated';
+                focusRenderer.domElement.style.imageRendering = 'pixelated';
+
+                // Greenish Tint
+                const filter = 'contrast(1.2) brightness(1.1) sepia(100%) hue-rotate(65deg) saturate(200%)';
+                renderer.domElement.style.filter = filter;
+                focusRenderer.domElement.style.filter = filter;
+            } else if (mode === '2bit') {
+                window.pixelationFactor = 6;
+                toggle.textContent = 'Filter: 2-Bit';
+
+                renderer.domElement.style.imageRendering = 'pixelated';
+                focusRenderer.domElement.style.imageRendering = 'pixelated';
+
+                // High Contrast BW/Yellow Tint
+                const filter = 'grayscale(100%) contrast(1.5) sepia(100%) hue-rotate(5deg) saturate(500%)';
+                renderer.domElement.style.filter = filter;
+                focusRenderer.domElement.style.filter = filter;
+            }
+
+            // Apply Size Changes
+            updateSize();
+        }
+
         // Handle Window Resize
         function updateSize() {
             const width = window.innerWidth;
@@ -1568,19 +1702,49 @@
             renderer.domElement.style.position = '';
             renderer.domElement.style.left = '';
             renderer.domElement.style.top = '';
+            renderer.domElement.style.width = width + 'px';
+            renderer.domElement.style.height = height + 'px';
 
             focusRenderer.domElement.style.position = '';
             focusRenderer.domElement.style.left = '';
             focusRenderer.domElement.style.top = '';
+            focusRenderer.domElement.style.width = width + 'px';
+            focusRenderer.domElement.style.height = height + 'px';
 
             camera.aspect = width / height;
 
             camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
-            focusRenderer.setSize(width, height);
+
+            const renderWidth = Math.floor(width / window.pixelationFactor);
+            const renderHeight = Math.floor(height / window.pixelationFactor);
+
+            renderer.setSize(renderWidth, renderHeight, false);
+            focusRenderer.setSize(renderWidth, renderHeight, false);
         }
 
         window.addEventListener('resize', updateSize);
+
+        // Palette Dropdown Event Listeners
+        const paletteToggle = document.getElementById('palette-toggle');
+        const paletteMenu = document.getElementById('palette-menu');
+
+        paletteToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            paletteMenu.style.display = paletteMenu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', () => {
+            paletteMenu.style.display = 'none';
+        });
+
+        // Add listeners to palette items
+        document.querySelectorAll('.palette-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const mode = item.getAttribute('data-mode');
+                setPalette(mode);
+            });
+        });
 
         // Resume Overlay Close Logic
         const resumeOverlay = document.getElementById('resume-overlay');
