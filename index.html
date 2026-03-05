@@ -289,9 +289,37 @@
             box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
         }
 
+
+
+        #extra-links {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        #extra-links a {
+            display: block;
+            color: #000;
+            text-decoration: none;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+            transition: opacity 0.2s;
+        }
+
+        #extra-links a:hover {
+            opacity: 0.5;
+        }
+
     </style>
 </head>
 <body>
+    <div id="extra-links">
+        <a href="projects/media-symbol">Program Diagram &rarr;</a>
+    </div>
     <div id="tooltip"></div>
 
     <div id="landing-page">
