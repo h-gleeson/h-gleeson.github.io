@@ -345,35 +345,33 @@
 
 
 
-        #extra-links {
+        #media-symbol-link {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+            bottom: 20px;
+            left: 20px;
+            z-index: 4000;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 10px;
+            background: white;
+            border: 2px solid black;
+            text-transform: uppercase;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-            text-align: right;
-        }
-
-        #extra-links a {
-            display: block;
-            color: #000;
             text-decoration: none;
-            border-bottom: 1px solid #000;
-            padding-bottom: 2px;
-            transition: opacity 0.2s;
+            color: black;
+            transition: background-color 0.3s, transform 0.1s;
         }
 
-        #extra-links a:hover {
-            opacity: 0.5;
+        #media-symbol-link:hover {
+            background-color: #f0f0f0;
+            transform: scale(1.05);
         }
 
     </style>
 </head>
 <body>
-    <div id="extra-links">
-        <a href="projects/media-symbol">Program Diagram &rarr;</a>
-    </div>
+    <a href="projects/media-symbol" id="media-symbol-link">Media Symbol</a>
     <div id="tooltip"></div>
 
     <div id="landing-page">
