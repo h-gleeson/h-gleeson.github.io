@@ -63,6 +63,7 @@ import { GLTFLoader }    from "three/addons/loaders/GLTFLoader.js";
 //  set  perMesh: true  and add a  meshInfo  map of { "MeshName": {...} }
 //  to get per-mesh hover labels instead.
 // =============================================================================
+const CACHE_BUST = Date.now();
 const MODELS = [
     {
         path:     "./models/datastacks.glb",
@@ -231,7 +232,7 @@ let   loadedCount = 0;
 
 function loadModel(entry) {
     return new Promise((resolve, reject) => {
-        loader.load(entry.path, gltf => {
+        loader.load(entry.path + `?v=${CACHE_BUST}`, gltf => {
             gltf.scene.traverse(child => {
                 if (!child.isMesh) return;
                 child.castShadow = child.receiveShadow = true;
