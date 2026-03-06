@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -130,10 +130,7 @@ const fill = new THREE.DirectionalLight(0xddeeff, 0.55);
 fill.position.set(-28, 18, -24);
 scene.add(fill);
 
-const gm = new THREE.Mesh(new THREE.PlaneGeometry(1200,1200), new THREE.MeshLambertMaterial({ color: 0xd8d4cc }));
-gm.rotation.x = -Math.PI/2; gm.receiveShadow = true; scene.add(gm);
-const grid = new THREE.GridHelper(1200, 600, 0xc4c0b8, 0xc4c0b8);
-grid.position.y = 0.01; scene.add(grid);
+
 
 // =============================================================================
 //  TREES
