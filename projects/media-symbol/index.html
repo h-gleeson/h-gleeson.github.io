@@ -253,12 +253,12 @@ function loadModel(entry) {
             loadedCount++;
             loadingBar.style.width = (loadedCount / MODELS.length * 100) + "%";
             resolve(gltf.scene);
-        }, null, reject);
+        }, null, () => { loadedCount++; resolve(null); });
     });
 }
 
 Promise.all(MODELS.map(m => loadModel(m)))
-    .then(scenes => {
+    .then(allScenes => { const scenes = allScenes.filter(s => s !== null);
         const box = new THREE.Box3();
         scenes.forEach(s => box.expandByObject(s));
         if (!box.isEmpty()) {
