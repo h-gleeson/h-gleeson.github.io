@@ -1,0 +1,2848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architectural Visualization</title>
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GLTFLoader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #ffffff;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+
+        body.pointer-active {
+            cursor: pointer;
+        }
+
+        body.pointer-active.detail-view {
+            cursor: default;
+        }
+
+        /* Canvas */
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Header - Model List */
+        .header-list {
+            position: absolute;
+            top: 100px;
+            right: 32px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid #000;
+            border-radius: 0;
+            padding: 24px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            line-height: 2.1;
+            color: #1a1a1a;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            z-index: 100;
+            max-width: 330px;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            position: absolute;
+            top: 32px;
+            right: 32px;
+            display: flex;
+            gap: 0;
+            z-index: 101;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid #000;
+            border-radius: 0;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .mode-btn {
+            padding: 15px 30px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: none;
+            border-right: 1px solid #000;
+            background: transparent;
+            color: #1a1a1a;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn:last-child {
+            border-right: none;
+        }
+
+        .mode-btn:hover {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        .mode-btn.active {
+            background-color: rgba(0, 0, 0, 0.08);
+            font-weight: 700;
+            color: #000;
+        }
+
+        /* Overview mode: hide list */
+        .overview-mode .header-list {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Program mode: show list */
+        .program-mode .header-list {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            top: 170px;
+        }
+
+        .program-mode .info-panel {
+            top: 170px !important;
+        }
+
+        .model-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .model-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .model-item.clickable {
+            cursor: pointer;
+            transition: background-color 0.2s ease, font-weight 0.2s ease;
+            padding: 6px 9px;
+            margin-left: -9px;
+            margin-right: -9px;
+            border-radius: 4px;
+        }
+
+        .model-item.clickable:hover {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        .model-item.clickable:active {
+            background-color: rgba(0, 0, 0, 0.08);
+        }
+
+        /* Active state: Currently selected model */
+        .model-item.clickable.active {
+            background-color: rgba(0, 0, 0, 0.07);
+            font-weight: 600;
+        }
+
+        /* Hover state: Being hovered (from 3D or list) */
+        .model-item.clickable.hover-active {
+            background-color: rgba(0, 0, 0, 0.12);
+            font-weight: 600;
+            border-left: 3px solid rgba(0, 0, 0, 0.4);
+            padding-left: 6px;
+        }
+
+        .model-number {
+            display: inline-block;
+            width: 36px;
+            height: 36px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            color: #000;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+        }
+
+        .model-name {
+            flex: 1;
+            color: #333;
+            font-size: 13px;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+        }
+
+        .interactive-badge {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            background: #000;
+            border-radius: 50%;
+            margin-left: auto;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 32px;
+            right: 420px;
+            bottom: auto;
+            left: auto;
+            transform: none;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid #000;
+            border-radius: 0;
+            padding: 32px 28px;
+            width: 320px;
+            max-height: 60vh;
+            overflow-y: auto;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease-out;
+            z-index: 90;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+
+        .info-panel.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .info-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .info-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+
+        .info-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .info-title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            color: #000;
+            text-transform: uppercase;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-category {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #000;
+            margin-bottom: 6px;
+            display: block;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-description {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 20px;
+            word-break: keep-all;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-specs {
+            font-size: 11px;
+            color: #333;
+            line-height: 1.8;
+            margin-bottom: 24px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            padding-top: 16px;
+            font-family: 'Courier New', monospace;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+        }
+
+        .spec-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .spec-label {
+            color: #000;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .spec-value {
+            color: #333;
+            font-weight: 400;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Back Button */
+        .back-button {
+            position: absolute;
+            bottom: 32px;
+            left: 32px;
+            background: rgba(255, 255, 255, 0.98);
+            color: #1a1a1a;
+            border: 1px solid #000;
+            padding: 12px 20px;
+            border-radius: 0;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 85;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            margin-top: 16px;
+        }
+
+        .back-button.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .back-button:hover {
+            background: #333;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+        }
+
+        .back-button:active {
+            transform: translateY(0);
+        }
+
+        /* Mouse Tooltip */
+        .mouse-tooltip {
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 8px 12px;
+            border-radius: 4px;
+            pointer-events: none;  /* CRITICAL to prevent raycaster flicker */
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 9999;
+            transform: translate(15px, 15px);  /* Offset from the cursor */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            white-space: nowrap;
+        }
+
+        .tooltip-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .tooltip-cat {
+            font-size: 9px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        /* Loading Indicator */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            color: #999;
+            letter-spacing: 1px;
+            z-index: 1000;
+            opacity: 1;
+            transition: opacity 0.6s ease-out 0.3s;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .header-list {
+                right: 16px;
+                top: 16px;
+                font-size: 10px;
+                padding: 12px 16px;
+            }
+
+            .info-panel {
+                right: 16px;
+                width: 280px;
+                padding: 24px 20px;
+                max-height: 50vh;
+            }
+
+            .back-button {
+                right: 16px;
+                bottom: 16px;
+                padding: 9px 14px;
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-list {
+                display: none;
+            }
+
+            .info-panel {
+                width: 90vw;
+                right: 5vw;
+                top: 120px;
+                left: auto;
+                transform: none;
+                max-width: none;
+            }
+        }
+
+        /* =====================================================
+        DRAWING ARCHIVE UI LAYER
+        ===================================================== */
+
+        .project-info-box {
+            position: absolute;
+            top: 100px;
+            right: 32px;
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid #000;
+            border-radius: 0;
+            padding: 24px 30px;
+            max-width: 420px;
+            max-height: 650px;
+            overflow-y: auto;
+            z-index: 75;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .project-info-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .project-info-box::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .project-info-box::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        .project-info-box::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .overview-mode .project-info-box {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .program-mode .project-info-box {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .project-title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #000;
+            margin-bottom: 18px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 12px;
+        }
+
+        .project-field {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #000;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .project-value {
+            font-size: 13px;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            color: #333;
+            margin-bottom: 14px;
+            line-height: 1.5;
+        }
+
+        .project-description {
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+            color: #555;
+            line-height: 1.6;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+            text-align: justify;
+            word-break: keep-all;
+        }
+
+        .drawing-archive-menu {
+            position: absolute;
+            top: 770px;
+            right: 32px;
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid #000;
+            border-radius: 0;
+            padding: 24px 30px;
+            max-width: 420px;
+            z-index: 85;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .overview-mode .drawing-archive-menu {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .program-mode .drawing-archive-menu {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .drawing-archive-title {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #000;
+            margin-bottom: 18px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 12px;
+        }
+
+        .drawing-item {
+            padding: 12px 0;
+            font-size: 13px;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            padding-left: 9px;
+            margin-left: -9px;
+            text-transform: uppercase;
+            position: relative;
+            font-family: 'Courier New', monospace;
+        }
+
+        .drawing-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-left-color: #000;
+        }
+
+        .drawing-item:active {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* =====================================================
+        DRAWING IN-PLACE POPUP
+        ===================================================== */
+
+        .drawing-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 12px;
+            background: #ffffff;
+            border: 1px solid #000;
+            border-radius: 0;
+            padding: 16px;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .drawing-popup.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            max-height: 600px;
+        }
+
+        .drawing-popup-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid #ddd;
+            margin-bottom: 12px;
+            max-height: 400px;
+            object-fit: contain;
+            cursor: zoom-in;
+            transition: all 0.2s ease;
+        }
+
+        .drawing-popup-image:hover {
+            opacity: 0.9;
+        }
+
+        /* Image Zoom Overlay */
+        .drawing-zoom-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 500;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.3s ease, background 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .drawing-zoom-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .drawing-zoom-image-container {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        .drawing-zoom-image {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            display: block;
+        }
+
+        .drawing-zoom-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #fff;
+            color: #000;
+            font-size: 24px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-family: 'Courier New', monospace;
+        }
+
+        .drawing-zoom-close:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.1);
+        }
+
+        .drawing-metadata-item {
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .drawing-metadata-label {
+            font-weight: 700;
+            color: #000;
+            text-transform: uppercase;
+        }
+
+        .drawing-metadata-value {
+            color: #666;
+        }
+
+        /* OLD OVERLAY - HIDDEN */
+        .drawing-overlay {
+            display: none;
+        }
+
+        .drawing-overlay.active {
+            display: none;
+        }
+    </style>
+</head>
+<body class="overview-mode">
+    <!-- Loading Indicator -->
+    <div class="loading">LOADING MODELS...</div>
+
+    <!-- Mode Selector -->
+    <div class="mode-selector">
+        <button id="overviewModeBtn" class="mode-btn active">Overview</button>
+        <button id="programModeBtn" class="mode-btn">Program</button>
+    </div>
+
+    <!-- Header - Model List -->
+    <div class="header-list">
+        <div id="modelList"></div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="info-panel" id="infoPanel">
+        <span class="info-category" id="infoCategory">Category</span>
+        <h2 class="info-title" id="infoTitle">Model Name</h2>
+        <p class="info-description" id="infoDescription">Description text</p>
+        <div class="info-specs" id="infoSpecs"></div>
+    </div>
+
+    <!-- Back Button -->
+    <button class="back-button" id="backButton">← Back to Overview</button>
+
+    <!-- Project Information Dashboard (OVERVIEW Mode Only) -->
+    <div class="project-info-box" id="projectInfoBox">
+        <div class="project-title">[ PROJECT_SUMMARY ]</div>
+        <span class="project-field">CLASS</span>
+        <div class="project-value">2GBX GENERATIVE MORPHOLOGIES</div>
+        <span class="project-field">PROJECT</span>
+        <div class="project-value">MEDIA ARCHIVE TOWER [HUDSON YARDS, NYC]</div>
+        <span class="project-field">TEAM</span>
+        <div class="project-value">HYUNG GU HAN + HENRY GLESSON + SUNGMIN JUNG</div>
+        <span class="project-field">TERM</span>
+        <div class="project-value">SPRING 2026</div>
+        <span class="project-field">SITE_LOCATION</span>
+        <div class="project-value">40.7538° N, 74.0022° W (HUDSON YARDS)</div>
+        <span class="project-field">SYSTEM_LOGIC</span>
+        <div class="project-value">MORPHOGENETIC VOXEL SUBDIVISION</div>
+        <div class="project-description">A vertical data center designed as a new architectural typology to archive media art, which exists as non-physical digital assets. This tower functions as a high-density 'Data Vault' in Hudson Yards, redefining the museum experience for the digital era.</div>
+    </div>
+
+    <!-- Drawing Archive Menu (OVERVIEW Mode Only) -->
+    <div class="drawing-archive-menu" id="drawingArchiveMenu">
+        <div class="drawing-archive-title">[ DRAWING_ARCHIVE ]</div>
+        <div class="drawing-item" data-drawing-id="01" data-drawing-title="CONCEPT_DIAGRAM">
+            [01] CONCEPT_DIAGRAM
+            <div class="drawing-popup" data-popup-id="01">
+                <img class="drawing-popup-image" src="" alt="Concept Diagram">
+                <div class="drawing-popup-metadata">
+                    <div class="drawing-metadata-item">
+                        <span class="drawing-metadata-label">FILE:</span>
+                        <span class="drawing-metadata-value">concept-program-diagram.jpg</span>
+                    </div>
+                    <div class="drawing-metadata-item">
+                        <span class="drawing-metadata-label">CATEGORY:</span>
+                        <span class="drawing-metadata-value">Conceptual Design</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="drawing-item" data-drawing-id="02" data-drawing-title="FLOOR_PLAN">
+            [02] FLOOR_PLAN
+            <div class="drawing-popup" data-popup-id="02">
+                <img class="drawing-popup-image" src="" alt="Floor Plan">
+                <div class="drawing-popup-metadata">
+                    <div class="drawing-metadata-item">
+                        <span class="drawing-metadata-label">FILE:</span>
+                        <span class="drawing-metadata-value">FLOOR_PLAN.png</span>
+                    </div>
+                    <div class="drawing-metadata-item">
+                        <span class="drawing-metadata-label">CATEGORY:</span>
+                        <span class="drawing-metadata-value">Spatial Organization</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="drawing-item" data-drawing-id="03" data-drawing-title="TECHNICAL_SECTION">
+            [03] TECHNICAL_SECTION
+            <div class="drawing-popup" data-popup-id="03">
+                <img class="drawing-popup-image" src="" alt="Technical Section">
+                <div class="drawing-popup-metadata">
+                    <div class="drawing-metadata-item">
+                        <span class="drawing-metadata-label">FILE:</span>
+                        <span class="drawing-metadata-value">midterm_section.png</span>
+                    </div>
+                    <div class="drawing-metadata-item">
+                        <span class="drawing-metadata-label">CATEGORY:</span>
+                        <span class="drawing-metadata-value">Building Systems</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drawing Image Zoom Overlay -->
+    <div id="drawingZoomOverlay" class="drawing-zoom-overlay">
+        <div class="drawing-zoom-image-container">
+            <img id="drawingZoomImage" class="drawing-zoom-image" src="" alt="Zoomed Drawing">
+            <div class="drawing-zoom-close" id="drawingZoomClose">×</div>
+        </div>
+    </div>
+
+    <!-- Mouse Tooltip (follows cursor) -->
+    <div id="mouseTooltip" class="mouse-tooltip">
+        <div class="tooltip-cat" id="tooltipCategory"></div>
+        <div class="tooltip-title" id="tooltipTitle"></div>
+    </div>
+
+    <script>
+        // =====================================================
+        // VERIFY THREE.JS LIBRARIES
+        // =====================================================
+
+        console.log('THREE version:', THREE.REVISION);
+        console.log('THREE.GLTFLoader exists:', typeof THREE.GLTFLoader !== 'undefined');
+        console.log('THREE.OrbitControls exists:', typeof THREE.OrbitControls !== 'undefined');
+
+        // =====================================================
+        // CONFIGURATION & CONSTANTS
+        // =====================================================
+
+        const CONFIG = {
+            // Model paths - REPLACE THESE WITH YOUR ACTUAL PATHS
+            models: [
+                { id: 1, path: 'models/01_site.glb', name: '01_site.glb', label: 'Site' },
+                { id: 2, path: 'models/02_river.glb', name: '02_river.glb', label: 'River' },
+                { id: 3, path: 'models/03_buildings.glb', name: '03_buildings.glb', label: 'Buildings' },
+                { id: 4, path: 'models/04_highline.glb', name: '04_highline.glb', label: 'Highline Bridge' },
+                { id: 5, path: 'models/05_MASSING_SITE.glb', name: '05_massing_site.glb', label: 'Site', interactive: true },
+                { id: 6, path: 'models/06_bridge.glb', name: '06_bridge.glb', label: 'Bridge', interactive: true },
+                { id: 7, path: 'models/07_datacore.glb', name: '07_datacore.glb'
+                , label: 'Datacore', interactive: true },
+                { id: 8, path: 'models/08_skin1.glb', name: '08_skin1.glb', label: 'Skin 01', interactive: true },
+                { id: 9, path: 'models/09_skin2.glb', name: '09_skin2.glb', label: 'Skin 02', interactive: true },
+                { id: 10, path: 'models/10_cooling system.glb', name: '10_cooling_system', label: 'Cooling System', interactive: true },
+            ],
+
+            // Model information for detail view
+            modelInfo: {
+                5: {
+                    category: 'Urban Planning',
+                    title: 'Massing Site',
+                    description: 'The master plan defines the urban volume and spatial relationships. This massing study represents the primary spatial envelope, establishing the scale and density within the site context.',
+                    specs: [
+                        { label: 'Height', value: '120m' },
+                        { label: 'Coverage', value: '45%' },
+                        { label: 'Density', value: 'Mixed-use' }
+                    ],
+                    viewConfig: {
+                        camera: { x: -0.3319, y: 0.7263, z: 0.5095 },
+                        target: { x: 0.3761, y: 0.1664, z: 0.6148 }
+                    }
+                },
+                6: {
+                    category: 'Infrastructure',
+                    title: 'Bridge Structure',
+                    description: 'Pedestrian and vehicular bridge connecting the site to urban corridors. Engineered for structural efficiency and visual lightness, emphasizing transparency and flow.',
+                    specs: [
+                        { label: 'Span', value: '280m' },
+                        { label: 'Material', value: 'Steel & Glass' },
+                        { label: 'Clearance', value: '25m' }
+                    ],
+                    viewConfig: {
+                        camera: { x: 0.0730, y: 0.6129, z: 0.3583 },
+                        target: { x: 0.4266, y: 0.2119, z: 0.6057 }
+                    }
+                },
+                7: {
+                    category: 'Core Systems',
+                    title: 'Data Core',
+                    description: 'Central services and mechanical core housing essential building systems. Optimized layout for efficient routing and future flexibility.',
+                    specs: [
+                        { label: 'GFA', value: '8,500m²' },
+                        { label: 'Floors', value: '32' },
+                        { label: 'Systems', value: 'MEP + Data' }
+                    ],
+                    viewConfig: {
+                        camera: { x: 0.0818, y: 0.3562, z: 1.0610 },
+                        target: { x: 0.4266, y: 0.2119, z: 0.6057 }
+                    }
+                },
+                8: {
+                    category: 'Facade System',
+                    title: 'Skin 01',
+                    description: 'Primary facade treatment featuring integrated environmental controls. Parametric geometry responds to solar orientation and ventilation requirements.',
+                    specs: [
+                        { label: 'Area', value: '28,000m²' },
+                        { label: 'Material', value: 'Aluminum + Glass' },
+                        { label: 'SHGC', value: '0.28' }
+                    ],
+                    viewConfig: {
+                        camera: { x: 0.4510, y: 0.2514, z: 0.0184 },
+                        target: { x: 0.4266, y: 0.2119, z: 0.6057 }
+                    }
+                },
+                9: {
+                    category: 'Facade System',
+                    title: 'Skin 02',
+                    description: 'Secondary facade element providing thermal mass and visual depth. Creates breathing envelope effect with modulated opacity levels.',
+                    specs: [
+                        { label: 'Area', value: '18,500m²' },
+                        { label: 'Material', value: 'Ceramic + Steel' },
+                        { label: 'Opacity', value: 'Variable' }
+                    ],
+                    viewConfig: {
+                        camera: { x: -0.0691, y: 0.3034, z: 0.9105 },
+                        target: { x: 0.4266, y: 0.2119, z: 0.6057 }
+                    }
+                },
+                10: {
+                    category: 'Thermal Systems',
+                    title: 'Cooling System',
+                    description: 'Advanced thermal management infrastructure providing critical cooling for the data vault. Direct functional integration with the datacore ensures optimal server performance and energy efficiency.',
+                    specs: [
+                        { label: 'Capacity', value: '2.5MW' },
+                        { label: 'Integration', value: 'Direct to Datacore' },
+                        { label: 'Efficiency', value: 'PUE 1.2' }
+                    ],
+                    viewConfig: {
+                        camera: { x: 0.5, y: 0.5, z: 1.2 },
+                        target: { x: 0.4266, y: 0.2119, z: 0.6057 }
+                    }
+                }
+            },
+
+            // Camera animation settings
+            animation: {
+                duration: 1.2,
+                easing: 'power2.inOut'
+            },
+
+            // Drawing Archive Data
+            drawings: {
+                '01': {
+                    id: '01',
+                    title: 'CONCEPT_DIAGRAM',
+                    category: 'Conceptual Design',
+                    url: 'drawings/concept-program-diagram.jpg',
+                    fileName: 'concept-program-diagram.jpg',
+                    scale: 'Variable'
+                },
+                '02': {
+                    id: '02',
+                    title: 'FLOOR_PLAN',
+                    category: 'Spatial Organization',
+                    url: 'drawings/FLOOR_PLAN.jpg',
+                    fileName: 'FLOOR_PLAN.jpg',
+                    scale: '1:250'
+                },
+                '03': {
+                    id: '03',
+                    title: 'TECHNICAL_SECTION',
+                    category: 'Building Systems',
+                    url: 'drawings/midterm_section.jpg',
+                    fileName: 'midterm_section.jpg',
+                    scale: '1:100'
+                }
+            }
+        };
+
+        // =====================================================
+        // THREE.JS SCENE SETUP
+        // =====================================================
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+
+        const camera = new THREE.PerspectiveCamera(
+            45,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            10000
+        );
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting - C4D Studio Render Style (High-End Clay Render)
+        // Professional 3-point studio lighting with soft shadows
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        // Key Light: Main light source casting soft shadows
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        keyLight.position.set(100, 150, 100);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 2048;   // High-res shadow map
+        keyLight.shadow.mapSize.height = 2048;
+        keyLight.shadow.bias = -0.0001;         // Prevent shadow acne
+        keyLight.shadow.camera.left = -500;
+        keyLight.shadow.camera.right = 500;
+        keyLight.shadow.camera.top = 500;
+        keyLight.shadow.camera.bottom = -500;
+        keyLight.shadow.camera.near = 0.1;
+        keyLight.shadow.camera.far = 1000;
+        scene.add(keyLight);
+
+        // Fill Light: Soften dark areas with cool tint
+        const fillLight = new THREE.DirectionalLight(0xe6f2ff, 0.3);
+        fillLight.position.set(-100, 50, -100);
+        scene.add(fillLight);
+
+        console.log('✓ Lighting setup: C4D Studio 3-point lighting with soft shadows');
+
+        // =====================================================
+        // INTERACTIVE RIPPLE GRID BACKGROUND
+        // =====================================================
+
+        let gridPlane = null;
+        let gridGeometry = null;
+        const gridState = {
+            time: 0,
+            mouseX: 0,
+            mouseY: 0,
+            mouseActive: false
+        };
+
+        // Create grid plane
+        gridGeometry = new THREE.PlaneGeometry(300, 300, 100, 100);
+        const originalPositions = new Float32Array(gridGeometry.getAttribute('position').array);
+        gridGeometry.userData.originalPositions = originalPositions;
+
+        // Create canvas texture for grid
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#f8f8f8';
+        ctx.fillRect(0, 0, 512, 512);
+
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 0.8;
+
+        for (let i = 0; i <= 512; i += 32) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 512);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(512, i);
+            ctx.stroke();
+        }
+
+        const gridTexture = new THREE.CanvasTexture(canvas);
+        gridTexture.repeat.set(4, 4);
+        gridTexture.wrapS = THREE.RepeatWrapping;
+        gridTexture.wrapT = THREE.RepeatWrapping;
+
+        const gridMaterial = new THREE.MeshBasicMaterial({
+            map: gridTexture,
+            transparent: true,
+            opacity: 0.5
+        });
+
+        gridPlane = new THREE.Mesh(gridGeometry, gridMaterial);
+        gridPlane.rotation.x = -Math.PI / 2;
+        gridPlane.position.y = -8;
+        gridPlane.receiveShadow = false;
+        scene.add(gridPlane);
+
+        // Mouse tracking for ripple
+        document.addEventListener('mousemove', (event) => {
+            gridState.mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            gridState.mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+            gridState.mouseActive = true;
+        });
+
+        console.log('✓ Interactive Ripple Grid created');
+
+        // =====================================================
+        // ORBIT CONTROLS SETUP
+        // =====================================================
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // Disable panning - center target remains fixed
+        controls.enablePan = false;
+
+        // DISABLE ZOOM - Camera distance is locked
+        controls.enableZoom = false;
+
+        // Configure mouse buttons: Right = Rotate, Left = Disabled
+        controls.mouseButtons = {
+            LEFT: null,  // Left click disabled for controls
+            MIDDLE: THREE.MOUSE.DOLLY,  // Scroll wheel (disabled by enableZoom: false)
+            RIGHT: THREE.MOUSE.ROTATE   // Right mouse button for rotation
+        };
+
+        // Rotation settings
+        controls.rotateSpeed = 1.0;
+        controls.autoRotate = false;
+
+        console.log('✓ OrbitControls initialized (Zoom DISABLED - rotation only)');
+
+        // =====================================================
+        // STATE MANAGEMENT
+        // =====================================================
+
+        const state = {
+            models: [],
+            interactiveModels: [],
+            hoveredModel: null,
+            selectedModel: null,
+            isDetailView: false,
+            initialCameraPos: null,
+            initialCameraTarget: null,
+            currentMode: 'overview'
+        };
+
+        // =====================================================
+        // GLB LOADER - OPTIMIZED FOR COMPLEX GEOMETRIES
+        // =====================================================
+
+        const gltfLoader = new THREE.GLTFLoader();
+        let modelsLoaded = 0;
+
+        function loadGLBModels() {
+            console.log('='.repeat(60));
+            console.log('STARTING GLB MODEL LOADING PROCESS');
+            console.log('='.repeat(60));
+
+            CONFIG.models.forEach((modelConfig, index) => {
+                console.log(`[${index + 1}/9] Attempting to load: ${modelConfig.name}`);
+            });
+
+            CONFIG.models.forEach((modelConfig) => {
+                gltfLoader.load(
+                    modelConfig.path,
+                    (gltf) => {
+                        console.log(`✓ SUCCESS: ${modelConfig.name}`);
+                        const model = gltf.scene;
+                        model.userData = {
+                            ...modelConfig,
+                            originalMaterial: null,
+                            outlineGroup: new THREE.Group(),
+                            isInteractive: modelConfig.interactive || false,
+                            loaded: true
+                        };
+
+                        // Recursively process all geometries
+                        applyMaterialsAndOutlines(model);
+
+                        scene.add(model);
+                        state.models.push(model);
+
+                        if (modelConfig.interactive) {
+                            state.interactiveModels.push(model);
+                            console.log(`  → Interactive model registered (ID: ${modelConfig.id})`);
+                        }
+
+                        modelsLoaded++;
+                        console.log(`Progress: ${modelsLoaded}/${CONFIG.models.length}`);
+
+                        if (modelsLoaded === CONFIG.models.length) {
+                            onModelsLoaded();
+                        }
+                    },
+                    undefined,
+                    (error) => {
+                        console.error(`✗ FAILED: ${modelConfig.name}`);
+                        console.error(`  Path: ${modelConfig.path}`);
+                        console.error(`  Error: ${error.message}`);
+
+                        modelsLoaded++;
+                        if (modelsLoaded === CONFIG.models.length) {
+                            onModelsLoaded();
+                        }
+                    }
+                );
+            });
+        }
+
+        /**
+         * Recursively apply C4D MeshPhysicalMaterial and black EdgesGeometry
+         * to all child meshes in a complex model hierarchy
+         * Creates premium C4D clay render look with soft shadows
+         *
+         * Color Logic:
+         * - Interactive Models (05-09): Pure White (0xffffff)
+         * - Background Models (01-04): Light Grey (0xd1d1d1)
+         */
+        function applyMaterialsAndOutlines(object) {
+            object.traverse((child) => {
+                if (child.isMesh) {
+                    // Store original material for potential future use
+                    if (!child.userData.originalMaterial) {
+                        child.userData.originalMaterial = child.material;
+                    }
+
+                    // =====================================================
+                    // CONDITIONAL COLOR: Interactive vs Background
+                    // =====================================================
+
+                    let materialColor = 0xffffff;  // Default: Pure white for interactive models
+
+                    // Check if parent model is interactive
+                    if (!object.userData.isInteractive) {
+                        materialColor = 0x444444;  // Dark grey for background models (01-04)
+                    }
+
+                    // Apply premium C4D MeshPhysicalMaterial with conditional color
+                    child.material = new THREE.MeshPhysicalMaterial({
+                        color: materialColor,
+                        metalness: 0.05,           // Minimal metallic (nearly diffuse)
+                        roughness: 0.65,           // Slightly rough for clay feel
+                        clearcoat: 0.1,            // Subtle glossy finish
+                        clearcoatRoughness: 0.4,   // Soft glossiness
+                        side: THREE.DoubleSide,    // Show both sides
+                        wireframe: false
+                    });
+
+                    // Enable shadow casting and receiving for high-end render
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                    // Create outline using EdgesGeometry with angle threshold
+                    const edges = new THREE.EdgesGeometry(child.geometry, 15);
+
+                    // =====================================================
+                    // CONDITIONAL OUTLINE OPACITY
+                    // Interactive models: opacity 0.25 (visible)
+                    // Background models: opacity 0.15 (subtle)
+                    // =====================================================
+
+                    let outlineOpacity = 0.25;  // Default: visible for interactive models
+
+                    if (!object.userData.isInteractive) {
+                        outlineOpacity = 0.15;  // More subtle for background models
+                    }
+
+                    const line = new THREE.LineSegments(
+                        edges,
+                        new THREE.LineBasicMaterial({
+                            color: 0x333333,       // Dark gray for all outlines
+                            transparent: true,
+                            opacity: outlineOpacity,
+                            depthTest: true,
+                            depthWrite: false
+                        })
+                    );
+
+                    child.add(line);
+                    child.userData.outlineGeometry = edges;
+                    child.userData.outlineLines = line;
+                }
+            });
+        }
+
+        // =====================================================
+        // DRAWING ARCHIVE VIEWER SYSTEM
+        // =====================================================
+
+        function initDrawingViewer() {
+            console.log('[ DRAWING_ARCHIVE ] Initializing In-Place Popup System');
+
+            const drawingItems = document.querySelectorAll('.drawing-item');
+
+            // Drawing item click handlers
+            drawingItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+
+                    const drawingId = item.getAttribute('data-drawing-id');
+                    const drawingTitle = item.getAttribute('data-drawing-title');
+
+                    if (state.currentMode === 'overview') {
+                        toggleDrawingPopup(item, drawingId, drawingTitle);
+                    }
+                });
+            });
+
+            // Close all popups when clicking outside drawing archive
+            document.addEventListener('click', (e) => {
+                const drawingMenu = document.getElementById('drawingArchiveMenu');
+                if (drawingMenu && !drawingMenu.contains(e.target)) {
+                    closeAllDrawingPopups();
+                }
+            });
+
+            // Escape key to close all popups and zoomed image
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const overlay = document.getElementById('drawingZoomOverlay');
+                    if (overlay.classList.contains('active')) {
+                        closeDrawingZoom();
+                    } else {
+                        closeAllDrawingPopups();
+                    }
+                }
+            });
+
+            // Zoom overlay close button
+            const zoomCloseBtn = document.getElementById('drawingZoomClose');
+            if (zoomCloseBtn) {
+                zoomCloseBtn.addEventListener('click', closeDrawingZoom);
+            }
+
+            // Zoom overlay background click to close
+            const zoomOverlay = document.getElementById('drawingZoomOverlay');
+            if (zoomOverlay) {
+                zoomOverlay.addEventListener('click', (e) => {
+                    if (e.target === zoomOverlay) {
+                        closeDrawingZoom();
+                    }
+                });
+            }
+
+            console.log('✓ In-Place Popup System initialized with Zoom');
+        }
+
+        function toggleDrawingPopup(itemElement, drawingId, drawingTitle) {
+            console.log(`[DRAWING] Toggling popup: ${drawingTitle}`);
+
+            const drawingData = CONFIG.drawings[drawingId];
+            if (!drawingData) {
+                console.warn(`⚠️ Drawing ${drawingId} not found in CONFIG`);
+                return;
+            }
+
+            // Close other popups first
+            const allPopups = document.querySelectorAll('.drawing-popup');
+            allPopups.forEach(popup => {
+                if (popup !== itemElement.querySelector('.drawing-popup')) {
+                    popup.classList.remove('active');
+                }
+            });
+
+            // Toggle current popup
+            const popup = itemElement.querySelector('.drawing-popup');
+            if (!popup) return;
+
+            const isActive = popup.classList.contains('active');
+
+            if (!isActive) {
+                // Open popup
+                const popupImage = popup.querySelector('.drawing-popup-image');
+                popupImage.src = drawingData.url;
+                popupImage.alt = drawingTitle;
+
+                // Add click event to zoom
+                popupImage.addEventListener('click', () => {
+                    zoomDrawingImage(drawingData.url, drawingTitle);
+                });
+
+                // Animate in with GSAP
+                gsap.fromTo(popup,
+                    {
+                        opacity: 0,
+                        maxHeight: 0
+                    },
+                    {
+                        opacity: 1,
+                        maxHeight: 600,
+                        duration: 0.4,
+                        ease: 'expo.out',
+                        onStart: () => {
+                            popup.classList.add('active');
+                        }
+                    }
+                );
+
+                console.log(`✓ Drawing popup opened: ${drawingTitle}`);
+            } else {
+                // Close popup
+                gsap.to(popup,
+                    {
+                        opacity: 0,
+                        maxHeight: 0,
+                        duration: 0.3,
+                        ease: 'power2.in',
+                        onComplete: () => {
+                            popup.classList.remove('active');
+                        }
+                    }
+                );
+
+                console.log(`✓ Drawing popup closed: ${drawingTitle}`);
+            }
+        }
+
+        function zoomDrawingImage(imageUrl, imageTitle) {
+            console.log(`[ZOOM] Enlarging image: ${imageTitle}`);
+
+            const overlay = document.getElementById('drawingZoomOverlay');
+            const zoomImage = document.getElementById('drawingZoomImage');
+
+            zoomImage.src = imageUrl;
+            zoomImage.alt = imageTitle;
+
+            // GSAP animation: fade in + scale
+            gsap.fromTo(overlay,
+                {
+                    opacity: 0,
+                    background: 'rgba(0, 0, 0, 0)'
+                },
+                {
+                    opacity: 1,
+                    background: 'rgba(0, 0, 0, 0.95)',
+                    duration: 0.5,
+                    ease: 'expo.out',
+                    onStart: () => {
+                        overlay.classList.add('active');
+                    }
+                }
+            );
+
+            // Image scale animation
+            gsap.fromTo(zoomImage,
+                {
+                    scale: 0.3,
+                    opacity: 0
+                },
+                {
+                    scale: 1,
+                    opacity: 1,
+                    duration: 0.6,
+                    ease: 'cubic-bezier(0.23, 1, 0.320, 1)',
+                    delay: 0.1
+                }
+            );
+
+            console.log(`✓ Image zoomed: ${imageTitle}`);
+        }
+
+        function closeDrawingZoom() {
+            const overlay = document.getElementById('drawingZoomOverlay');
+
+            // GSAP animation: fade out
+            gsap.to(overlay,
+                {
+                    opacity: 0,
+                    background: 'rgba(0, 0, 0, 0)',
+                    duration: 0.3,
+                    ease: 'power2.in',
+                    onComplete: () => {
+                        overlay.classList.remove('active');
+                    }
+                }
+            );
+
+            console.log('[ZOOM] Closed zoomed image');
+        }
+
+        function closeAllDrawingPopups() {
+            console.log('[DRAWING] Closing all popups');
+
+            const allPopups = document.querySelectorAll('.drawing-popup');
+            allPopups.forEach(popup => {
+                if (popup.classList.contains('active')) {
+                    gsap.to(popup,
+                        {
+                            opacity: 0,
+                            maxHeight: 0,
+                            duration: 0.3,
+                            ease: 'power2.in',
+                            onComplete: () => {
+                                popup.classList.remove('active');
+                            }
+                        }
+                    );
+                }
+            });
+        }
+
+        function onModelsLoaded() {
+            console.log('\n' + '='.repeat(60));
+            console.log('ALL MODELS LOADED - INITIALIZING CAMERA');
+            console.log('='.repeat(60));
+
+            // Summary of loaded models
+            console.log(`\nTotal models loaded: ${state.models.length}/${CONFIG.models.length}`);
+
+            CONFIG.models.forEach((modelConfig) => {
+                const modelFound = state.models.some(m => m.userData.id === modelConfig.id);
+                if (modelFound) {
+                    console.log(`  ✓ ${modelConfig.name} (ID: ${modelConfig.id})`);
+                } else {
+                    console.log(`  ✗ ${modelConfig.name} (ID: ${modelConfig.id}) - NOT FOUND`);
+                }
+            });
+
+            // =====================================================
+            // FIND 07_DATACORE MODEL AND GET ITS CENTER
+            // =====================================================
+
+            let datacoreCenter = new THREE.Vector3(0, 0, 0);
+            const datacoreModel = state.models.find(m => m.userData.id === 7);
+
+            if (datacoreModel) {
+                const datacoreBBox = new THREE.Box3().setFromObject(datacoreModel);
+                datacoreCenter = datacoreBBox.getCenter(new THREE.Vector3());
+                console.log(`\n📌 07_DATACORE MODEL CENTER FOUND:`);
+                console.log(`   Position: (${datacoreCenter.x.toFixed(4)}, ${datacoreCenter.y.toFixed(4)}, ${datacoreCenter.z.toFixed(4)})`);
+            } else {
+                console.warn(`\n⚠️  07_DATACORE MODEL NOT FOUND - using origin (0, 0, 0)`);
+            }
+
+            // =====================================================
+            // ABSOLUTE HARDCODED CAMERA COORDINATES
+            // TARGET FIXED TO 07_DATACORE CENTER
+            // =====================================================
+
+            // TWEAK THESE NUMBERS TO GET THE PERFECT VIEW
+            const CAM_X = 0;
+            const CAM_Y = 0.5;     // Extremely close - micro scale
+            const CAM_Z = 0;       // Front view - directly facing the model
+
+            // TARGET FIXED TO 07_DATACORE CENTER
+            const TARGET_X = datacoreCenter.x;
+            const TARGET_Y = datacoreCenter.y;
+            const TARGET_Z = datacoreCenter.z;
+
+            console.log(`\nABSOLUTE CAMERA COORDINATES (EXTREME MICRO-SCALE):`);
+            console.log(`  Camera Position: (${CAM_X}, ${CAM_Y}, ${CAM_Z})`);
+            console.log(`  Camera Target (07_DATACORE CENTER): (${TARGET_X.toFixed(4)}, ${TARGET_Y.toFixed(4)}, ${TARGET_Z.toFixed(4)})`);
+            console.log(`\n💡 TO ADJUST VIEW, MODIFY CAM CONSTANTS:`);
+            console.log(`   const CAM_X = ${CAM_X};        // Left/Right movement`);
+            console.log(`   const CAM_Y = ${CAM_Y};        // Height`);
+            console.log(`   const CAM_Z = ${CAM_Z};        // Forward/Back (negative = front view)`);
+            console.log(`\n📌 TARGET IS LOCKED TO 07_DATACORE CENTER:`);
+            console.log(`   const TARGET_X = ${TARGET_X.toFixed(4)};`);
+            console.log(`   const TARGET_Y = ${TARGET_Y.toFixed(4)};`);
+            console.log(`   const TARGET_Z = ${TARGET_Z.toFixed(4)};`);
+            console.log(`\n🎥 CAMERA POSITION LOGGER:`);
+            console.log(`   Press 'C' key to log current camera position`);
+            console.log(`   Copy the output and paste it back here`);
+
+            // Set camera position directly
+            camera.position.set(CAM_X, CAM_Y, CAM_Z);
+            camera.lookAt(TARGET_X, TARGET_Y, TARGET_Z);
+
+            // CRITICAL: Set controls target to ensure perfect fixed center rotation
+            controls.target.set(TARGET_X, TARGET_Y, TARGET_Z);
+            controls.update();
+
+            // Store initial camera state for reset
+            state.initialCameraPos = { x: CAM_X, y: CAM_Y, z: CAM_Z };
+            state.initialCameraTarget = { x: TARGET_X, y: TARGET_Y, z: TARGET_Z };
+
+            console.log('\n✓ Camera initialized with EXTREME MICRO-SCALE coordinates.');
+            console.log('✓ Target LOCKED to 07_DATACORE (ID: 7) center.');
+            console.log('✓ Zoom limits: minDistance = 0.001 (EXTREME CLOSE), maxDistance = 100000 (VERY FAR).');
+            console.log('✓ OrbitControls: Right-click to rotate around 07_DATACORE center, Scroll to zoom (UNLIMITED).');
+            console.log('✓ Camera Logger: Press C key to copy current view coordinates.');
+            console.log('='.repeat(60) + '\n');
+
+            // Hide loading indicator
+            const loading = document.querySelector('.loading');
+            loading.classList.add('hidden');
+
+            // Populate model list
+            populateModelList();
+
+            // Setup raycaster for click detection
+            setupRaycaster();
+
+            // Start animation loop
+            animate();
+        }
+
+        // =====================================================
+        // UI SETUP
+        // =====================================================
+
+        function populateModelList() {
+            const modelList = document.getElementById('modelList');
+            modelList.innerHTML = '';
+
+            // PROGRAM 모드인지 확인
+            const isProgramMode = state.currentMode === 'program';
+
+            // 필터링: PROGRAM 모드에서는 interactive models만 표시
+            const modelsToShow = isProgramMode
+                ? CONFIG.models.filter(m => m.interactive)
+                : CONFIG.models;
+
+            modelsToShow.forEach((modelConfig) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.id = `model-list-item-${modelConfig.id}`;
+
+                if (isProgramMode) {
+                    // PROGRAM 모드: NODE_AUDIT 스타일
+                    itemDiv.className = 'node-audit-item';
+                    const nodeText = `[NODE_${String(modelConfig.id).padStart(2, '0')}] ${modelConfig.name.toUpperCase()} // STATUS_OK`;
+                    itemDiv.textContent = nodeText;
+                    itemDiv.setAttribute('data-node-text', nodeText);
+
+                    // 스타일: Project Summary와 일치 (13px, weight 400, letter-spacing 0.3px)
+                    itemDiv.style.fontFamily = "'Courier New', monospace";
+                    itemDiv.style.fontSize = '13px';
+                    itemDiv.style.fontWeight = '400';
+                    itemDiv.style.letterSpacing = '0.3px';
+                    itemDiv.style.color = '#000';
+                    itemDiv.style.padding = '12px 0';
+                    itemDiv.style.borderBottom = '1px solid #000';
+                    itemDiv.style.cursor = 'pointer';
+                    itemDiv.style.textTransform = 'uppercase';
+                    itemDiv.classList.add('clickable');
+
+                    // Hover: 괄호 추가
+                    itemDiv.addEventListener('mouseenter', () => {
+                        const originalText = itemDiv.getAttribute('data-node-text');
+                        itemDiv.textContent = `> ${originalText}`;
+                    });
+
+                    itemDiv.addEventListener('mouseleave', () => {
+                        const originalText = itemDiv.getAttribute('data-node-text');
+                        itemDiv.textContent = originalText;
+                    });
+
+                    // Click: selectModel 호출 (줌인 기능)
+                    itemDiv.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        const selectedId = modelConfig.id;
+                        const model3D = state.interactiveModels.find(m => m.userData && m.userData.id === selectedId);
+
+                        if (model3D && model3D.userData && model3D.userData.id) {
+                            const modelId = model3D.userData.id;
+                            const modelInfo = CONFIG.modelInfo[modelId];
+
+                            if (modelInfo) {
+                                console.log(`[NODE_AUDIT CLICK] Model ID: ${modelId}, Name: ${modelInfo.title}`);
+                                if (state.isDetailView) {
+                                    selectModel(model3D);
+                                } else {
+                                    selectModel(model3D);
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // OVERVIEW 모드: 원본 스타일 유지
+                    itemDiv.className = 'model-item';
+
+                    const numberSpan = document.createElement('div');
+                    numberSpan.className = 'model-number';
+                    numberSpan.textContent = `${modelConfig.id}`;
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'model-name';
+                    nameSpan.textContent = modelConfig.name;
+
+                    itemDiv.appendChild(numberSpan);
+                    itemDiv.appendChild(nameSpan);
+
+                    // =====================================================
+                    // INTERACTIVE MODELS (05-09)
+                    // =====================================================
+
+                    if (modelConfig.interactive) {
+                        const badgeSpan = document.createElement('span');
+                        badgeSpan.className = 'interactive-badge';
+                        itemDiv.appendChild(badgeSpan);
+
+                        itemDiv.classList.add('clickable');
+
+                    // =====================================================
+                    // MOUSEENTER: List hover → 3D highlight + Focus Mode
+                    // Use Unique ID to find the EXACT 3D model
+                    // =====================================================
+
+                    itemDiv.addEventListener('mouseenter', (event) => {
+                        // Only activate in Overview state
+                        if (!state.isDetailView) {
+                            // ✅ Use .find() with userData.id for unique ID matching
+                            const selectedId = modelConfig.id;
+                            const model3D = state.interactiveModels.find(m => m.userData && m.userData.id === selectedId);
+
+                            if (model3D && model3D.userData && model3D.userData.id) {
+                                const modelId = model3D.userData.id;
+                                const modelInfo = CONFIG.modelInfo[modelId];
+
+                                if (modelInfo) {
+                                    console.log(`[LIST HOVER VALIDATED] Model: ${modelConfig.name} (ID: ${modelId})`);
+
+                                    // ✅ Highlight outline + Focus Mode
+                                    highlightModelOutline(model3D);
+
+                                    // ✅ Show tooltip
+                                    const tooltip = document.getElementById('mouseTooltip');
+                                    const tooltipTitle = document.getElementById('tooltipTitle');
+                                    const tooltipCategory = document.getElementById('tooltipCategory');
+
+                                    tooltipTitle.textContent = modelInfo.title;
+                                    tooltipCategory.textContent = modelInfo.category;
+                                    tooltip.style.left = event.clientX + 'px';
+                                    tooltip.style.top = event.clientY + 'px';
+                                    tooltip.style.opacity = '1';
+
+                                    // ✅ Show pointer cursor
+                                    document.body.classList.add('pointer-active');
+
+                                    // ✅ Set hovered model
+                                    state.hoveredModel = model3D;
+                                } else {
+                                    console.warn(`⚠️ Invalid Model ID: ${modelId} - Not in CONFIG`);
+                                    // ✅ Force reset opacity
+                                    state.models.forEach(m => {
+                                        m.traverse(child => {
+                                            if (child.isMesh && child.material) {
+                                                child.material.opacity = 1.0;
+                                            }
+                                        });
+                                    });
+                                }
+                            } else {
+                                console.warn(`⚠️ Model ID ${selectedId} not found in state.interactiveModels`);
+                                // ✅ Force reset opacity
+                                state.models.forEach(m => {
+                                    m.traverse(child => {
+                                        if (child.isMesh && child.material) {
+                                            child.material.opacity = 1.0;
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                    });
+
+                    // =====================================================
+                    // MOUSEMOVE: Keep tooltip following cursor
+                    // =====================================================
+
+                    itemDiv.addEventListener('mousemove', (event) => {
+                        if (!state.isDetailView) {
+                            const tooltip = document.getElementById('mouseTooltip');
+                            if (tooltip.style.opacity === '1') {
+                                tooltip.style.left = event.clientX + 'px';
+                                tooltip.style.top = event.clientY + 'px';
+                            }
+                        }
+                    });
+
+                    // =====================================================
+                    // MOUSELEAVE: List unhover → 3D restore + Focus Mode off
+                    // =====================================================
+
+                    itemDiv.addEventListener('mouseleave', (event) => {
+                        if (!state.isDetailView) {
+                            // ✅ Use .find() with userData.id for unique ID matching
+                            const selectedId = modelConfig.id;
+                            const model3D = state.interactiveModels.find(m => m.userData && m.userData.id === selectedId);
+
+                            if (model3D && model3D.userData && model3D.userData.id) {
+                                console.log(`[LIST UNHOVER VALIDATED] Model: ${modelConfig.name} (ID: ${model3D.userData.id})`);
+
+                                // ✅ Restore outline + Normal opacity
+                                restoreModelOutlineColor(model3D);
+
+                                // ✅ Hide tooltip
+                                const tooltip = document.getElementById('mouseTooltip');
+                                tooltip.style.opacity = '0';
+
+                                // ✅ Clear hovered model
+                                state.hoveredModel = null;
+
+                                // ✅ Remove pointer cursor
+                                document.body.classList.remove('pointer-active');
+                            } else {
+                                console.warn(`⚠️ Model ID ${selectedId} not found on mouseleave`);
+                                // ✅ Force reset opacity for safety
+                                state.models.forEach(m => {
+                                    m.traverse(child => {
+                                        if (child.isMesh && child.material) {
+                                            child.material.opacity = 1.0;
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                    });
+
+                    // =====================================================
+                    // CLICK: Select model → Detail View
+                    // =====================================================
+
+                    itemDiv.addEventListener('click', (event) => {
+                        event.stopPropagation();
+
+                        // ✅ Use .find() with userData.id for unique ID matching
+                        const selectedId = modelConfig.id;
+                        const model3D = state.interactiveModels.find(m => m.userData && m.userData.id === selectedId);
+
+                        if (model3D && model3D.userData && model3D.userData.id) {
+                            const modelId = model3D.userData.id;
+                            const modelInfo = CONFIG.modelInfo[modelId];
+
+                            if (modelInfo) {
+                                console.log(`[LIST CLICK VALIDATED] Model ID: ${modelId}, Name: ${modelInfo.title}`);
+
+                                if (state.isDetailView) {
+                                    console.log(`[DIRECT TRANSITION] From model ${state.selectedModel.userData.id} to ${modelId}`);
+                                    selectModel(model3D);
+                                } else {
+                                    selectModel(model3D);
+                                }
+                            } else {
+                                console.warn(`⚠️ Invalid Model ID: ${modelId} - Not in CONFIG`);
+                            }
+                        } else {
+                            console.warn(`⚠️ Model with ID ${selectedId} not found in state.interactiveModels`);
+                        }
+                    });
+                    }
+                }
+
+                modelList.appendChild(itemDiv);
+            });
+
+            console.log('✓ Model list populated with bidirectional sync, focus mode, and tooltip');
+        }
+
+        /**
+         * Update the active state of the list items based on the current selection
+         */
+        function updateListActiveState(modelId) {
+            // Remove active class from all list items
+            document.querySelectorAll('.model-item.clickable.active').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Add active class to the selected model's list item
+            if (modelId) {
+                const activeItem = document.getElementById(`model-list-item-${modelId}`);
+                if (activeItem) {
+                    activeItem.classList.add('active');
+                    console.log(`[LIST ACTIVE] Model ID ${modelId} marked as active in list`);
+                }
+            }
+        }
+
+        // =====================================================
+        // RAYCASTER & INTERACTION
+        // =====================================================
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // =====================================================
+        // HELPER FUNCTION: Find Interactive Parent
+        // Recursively climb up the scene graph to find the interactive model
+        // Bulletproof detection regardless of nesting depth
+        // =====================================================
+
+        function findInteractiveParent(object) {
+            let current = object;
+            let depth = 0;
+            const maxDepth = 30; // Prevent infinite loops
+
+            while (current && depth < maxDepth) {
+                // ✅ Check for isInteractive flag
+                if (current.userData && current.userData.isInteractive === true) {
+                    console.log(`[PARENT FOUND] At depth ${depth}, ID: ${current.userData.id}`);
+                    return current;
+                }
+
+                // ✅ Stop at Scene
+                if (current instanceof THREE.Scene) {
+                    console.log(`[PARENT NOT FOUND] Reached Scene at depth ${depth}`);
+                    return null;
+                }
+
+                // Move up to parent
+                current = current.parent;
+                depth++;
+            }
+
+            console.warn(`[PARENT SEARCH] Max depth ${maxDepth} exceeded without finding interactive parent`);
+            return null;
+        }
+
+        // =====================================================
+        // MODE SWITCHING SYSTEM
+        // =====================================================
+
+        function setupModeSelector() {
+            const overviewBtn = document.getElementById('overviewModeBtn');
+            const programBtn = document.getElementById('programModeBtn');
+
+            overviewBtn.addEventListener('click', () => {
+                if (state.currentMode !== 'overview') {
+                    switchToOverviewMode();
+                }
+            });
+
+            programBtn.addEventListener('click', () => {
+                if (state.currentMode !== 'program') {
+                    switchToProgramMode();
+                }
+            });
+        }
+
+        function switchToOverviewMode() {
+            console.log('[MODE SWITCH] → OVERVIEW');
+            state.currentMode = 'overview';
+            document.body.classList.remove('program-mode');
+            document.body.classList.add('overview-mode');
+
+            document.getElementById('overviewModeBtn').classList.add('active');
+            document.getElementById('programModeBtn').classList.remove('active');
+
+            // Show all models
+            state.models.forEach(model => {
+                model.visible = true;
+            });
+
+            // =====================================================
+            // CONTEXTUAL COLOR CONTRAST: Urban Context vs Proposal
+            // Background models (01-04): Dark Gray (0x444444)
+            // Proposal models (05-09): Pure White (0xffffff)
+            // =====================================================
+
+            console.log('[VISUAL HIERARCHY] Applying contextual color contrast');
+
+            state.models.forEach(model => {
+                // Determine if this is background (01-04) or proposal (05-09)
+                const isBgModel = model.userData.id <= 4;
+                const targetColor = isBgModel ? 0x444444 : 0xffffff;  // Dark Gray for context, White for proposal
+                const colorLabel = isBgModel ? 'Dark Gray (Context)' : 'Pure White (Proposal)';
+
+                model.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        child.material.transparent = true;
+
+                        // GSAP smooth color transition
+                        gsap.to(child.material.color, {
+                            r: (targetColor >> 16 & 255) / 255,
+                            g: (targetColor >> 8 & 255) / 255,
+                            b: (targetColor & 255) / 255,
+                            duration: 1.0,
+                            ease: 'power2.inOut'
+                        });
+
+                        // Full opacity in OVERVIEW
+                        child.material.opacity = 1.0;
+                    }
+                    // Reset outline opacity
+                    if (child.userData.outlineLines) {
+                        child.userData.outlineLines.material.opacity = 0.1;
+                    }
+                });
+
+                const modelLabel = isBgModel ? `[BG] ${model.userData.name}` : `[PROPOSAL] ${model.userData.name}`;
+                console.log(`  ✓ ${modelLabel} → ${colorLabel}`);
+            });
+
+            console.log('\n✓ Visual hierarchy applied:');
+            console.log('  • Background (01-04): Dark Gray (0x444444) - recessive context');
+            console.log('  • Proposal (05-09): Pure White (0xffffff) - prominent architecture');
+
+            // Hide tooltips and info panels
+            const tooltip = document.getElementById('mouseTooltip');
+            if (tooltip) {
+                tooltip.style.opacity = '0';
+            }
+
+            const infoPanel = document.getElementById('infoPanel');
+            if (infoPanel) {
+                infoPanel.classList.remove('active');
+            }
+
+            // Reset hover state
+            state.hoveredModel = null;
+            document.body.classList.remove('pointer-active');
+
+            // Enable zoom
+            controls.enableZoom = true;
+
+            // Reset to initial camera
+            gsap.to(camera.position, {
+                x: state.initialCameraPos.x,
+                y: state.initialCameraPos.y,
+                z: state.initialCameraPos.z,
+                duration: 1.2,
+                ease: 'power2.inOut',
+                onUpdate: () => {
+                    camera.lookAt(state.initialCameraTarget.x, state.initialCameraTarget.y, state.initialCameraTarget.z);
+                }
+            });
+
+            gsap.to(controls.target, {
+                x: state.initialCameraTarget.x,
+                y: state.initialCameraTarget.y,
+                z: state.initialCameraTarget.z,
+                duration: 1.2,
+                ease: 'power2.inOut',
+                onUpdate: () => {
+                    controls.update();
+                }
+            });
+
+            // Exit detail view if active
+            if (state.isDetailView) {
+                goBackToOverview();
+            }
+
+            // Rebuild list for OVERVIEW mode
+            populateModelList();
+
+            console.log('✓ OVERVIEW mode activated - Visual context contrast enabled');
+        }
+
+        function switchToProgramMode() {
+            console.log('[MODE SWITCH] → PROGRAM');
+            state.currentMode = 'program';
+            document.body.classList.remove('overview-mode');
+            document.body.classList.add('program-mode');
+
+            document.getElementById('overviewModeBtn').classList.remove('active');
+            document.getElementById('programModeBtn').classList.add('active');
+
+            // =====================================================
+            // SELECTIVE VISIBILITY: Hide 01-04 (Site context)
+            // Show 05-10 (Tower components - ALL PARTS including Cooling System)
+            // =====================================================
+
+            state.models.forEach(model => {
+                if (model.userData.id <= 3) {
+                    model.visible = false;
+                    console.log(`  Hiding: ${model.userData.name}`);
+                } else {
+                    model.visible = true;
+                    console.log(`  Showing: ${model.userData.name}`);
+                }
+            });
+
+            // Disable zoom
+            controls.enableZoom = false;
+
+            // =====================================================
+            // CONTINUOUS VIEW TRANSITION
+            // MAINTAIN current camera position - NO JUMP
+            // Seamless transition from OVERVIEW to PROGRAM
+            // =====================================================
+
+            console.log('✓ PROGRAM mode activated - Camera position maintained');
+            console.log(`  Current Camera: (${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
+            console.log(`  Current Target: (${controls.target.x.toFixed(2)}, ${controls.target.y.toFixed(2)}, ${controls.target.z.toFixed(2)})`);
+            console.log(`  Visibility: [01-03: hidden] [04-09: visible]`);
+
+            // Exit detail view if active
+            if (state.isDetailView) {
+                goBackToOverview();
+            }
+
+            // Rebuild list for PROGRAM mode
+            populateModelList();
+        }
+
+        function setupRaycaster() {
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('click', onMouseClick);
+            window.addEventListener('resize', onWindowResize);
+
+            // CRITICAL: Camera Position Logger
+            // Press 'C' key to log current camera position
+            document.addEventListener('keydown', onKeyDown);
+
+            // Setup mode selector
+            setupModeSelector();
+
+            // Initialize Drawing Archive Viewer
+            initDrawingViewer();
+        }
+
+        // =====================================================
+        // CAMERA POSITION LOGGER (Press 'C' key)
+        // =====================================================
+
+        function onKeyDown(event) {
+            if (event.key === 'c' || event.key === 'C') {
+                // Log current camera position and target in copy-paste format
+                const camPos = camera.position;
+                const targetPos = controls.target;
+
+                console.log('\n' + '='.repeat(70));
+                console.log('🎥 CAMERA POSITION LOGGER (Press C)');
+                console.log('='.repeat(70));
+                console.log('\n📍 CURRENT CAMERA STATE:');
+                console.log(`   Camera Position: (${camPos.x.toFixed(4)}, ${camPos.y.toFixed(4)}, ${camPos.z.toFixed(4)})`);
+                console.log(`   Controls Target: (${targetPos.x.toFixed(4)}, ${targetPos.y.toFixed(4)}, ${targetPos.z.toFixed(4)})`);
+
+                console.log('\n✂️  COPY & PASTE THIS INTO CODE:');
+                console.log(`\nconst CAM_X = ${camPos.x.toFixed(4)};`);
+                console.log(`const CAM_Y = ${camPos.y.toFixed(4)};`);
+                console.log(`const CAM_Z = ${camPos.z.toFixed(4)};`);
+                console.log(`const TARGET_X = ${targetPos.x.toFixed(4)};`);
+                console.log(`const TARGET_Y = ${targetPos.y.toFixed(4)};`);
+                console.log(`const TARGET_Z = ${targetPos.z.toFixed(4)};`);
+
+                console.log('\n✅ STEP-BY-STEP TO APPLY:');
+                console.log('1. Find these lines in onModelsLoaded():');
+                console.log('   const CAM_X = 0;');
+                console.log('   const CAM_Y = 8;');
+                console.log('   const CAM_Z = -15;');
+                console.log('   const TARGET_X = 0;');
+                console.log('   const TARGET_Y = 0;');
+                console.log('   const TARGET_Z = 0;');
+                console.log('\n2. Replace them with the values above');
+                console.log('3. Reload the page to see the new view');
+
+                console.log('\n📊 DISTANCE FROM CENTER:');
+                const distance = Math.sqrt(
+                    Math.pow(camPos.x - targetPos.x, 2) +
+                    Math.pow(camPos.y - targetPos.y, 2) +
+                    Math.pow(camPos.z - targetPos.z, 2)
+                );
+                console.log(`   ${distance.toFixed(4)} units`);
+
+                console.log('\n' + '='.repeat(70) + '\n');
+            }
+        }
+
+        function onMouseMove(event) {
+            // =====================================================
+            // RESTRICTED INTERACTION: Only in PROGRAM mode
+            // OVERVIEW mode = clean, non-interactive observation
+            // =====================================================
+
+            // Early exit if in OVERVIEW mode
+            if (state.currentMode === 'overview') {
+                return;
+            }
+
+            // =====================================================
+            // FORCED CAMERA SYNC: Update world matrix for rotation accuracy
+            // This is CRITICAL for correct raycasting after any camera movement
+            // =====================================================
+
+            camera.updateMatrixWorld();
+            controls.update();
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // =====================================================
+            // RAYCASTER: Fire against ONLY interactive models (05-09)
+            // =====================================================
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(state.interactiveModels, true);
+
+            // Get tooltip elements
+            const tooltip = document.getElementById('mouseTooltip');
+            const tooltipTitle = document.getElementById('tooltipTitle');
+            const tooltipCategory = document.getElementById('tooltipCategory');
+
+            // Reset previous hover state
+            if (state.hoveredModel) {
+                restoreModelOutlineColor(state.hoveredModel);
+            }
+
+            // Check if hovering over interactive model in PROGRAM mode
+            if (intersects.length > 0 && !state.isDetailView && state.currentMode === 'program') {
+                const firstIntersection = intersects[0];
+                const hitMesh = firstIntersection.object;
+
+                console.log(`[RAYCASTER HIT] Mesh: ${hitMesh.name}, Distance: ${firstIntersection.distance.toFixed(2)}`);
+
+                // =====================================================
+                // USE HELPER: Find the interactive parent
+                // This climbs up the scene graph reliably
+                // =====================================================
+
+                const interactiveParent = findInteractiveParent(hitMesh);
+
+                if (interactiveParent) {
+                    const modelId = interactiveParent.userData.id;
+                    const modelInfo = CONFIG.modelInfo[modelId];
+
+                    // ✅ DEBUG LOG: Print the detected model ID
+                    console.log(`Hit detected: Model ID ${modelId}`);
+
+                    if (modelInfo) {
+                        state.hoveredModel = interactiveParent;
+
+                        console.log(`[HOVER VALIDATED] Model ID: ${modelId}, Title: ${modelInfo.title}`);
+
+                        // =====================================================
+                        // FOCUS MODE: Activate outline highlight + focus mode (opacity changes)
+                        // =====================================================
+
+                        highlightModelOutline(interactiveParent);
+                        document.body.classList.add('pointer-active');
+
+                        // =====================================================
+                        // TOOLTIP: Show with correct information
+                        // =====================================================
+
+                        tooltipTitle.textContent = modelInfo.title;
+                        tooltipCategory.textContent = modelInfo.category;
+
+                        // Position tooltip with cursor offset
+                        tooltip.style.left = event.clientX + 'px';
+                        tooltip.style.top = event.clientY + 'px';
+                        tooltip.style.opacity = '1';
+                    } else {
+                        // Model found but ID not in CONFIG - reset for safety
+                        console.warn(`⚠️ Invalid Model ID: ${modelId} - Not in CONFIG`);
+                        state.hoveredModel = null;
+                        document.body.classList.remove('pointer-active');
+                        tooltip.style.opacity = '0';
+
+                        // ✅ Force reset opacity
+                        state.models.forEach(m => {
+                            m.traverse(child => {
+                                if (child.isMesh && child.material) {
+                                    child.material.opacity = 1.0;
+                                }
+                            });
+                        });
+                    }
+                } else {
+                    // No interactive parent found
+                    console.warn(`⚠️ No interactive parent found for hit mesh`);
+                    state.hoveredModel = null;
+                    document.body.classList.remove('pointer-active');
+                    tooltip.style.opacity = '0';
+
+                    // ✅ Force reset opacity
+                    state.models.forEach(m => {
+                        m.traverse(child => {
+                            if (child.isMesh && child.material) {
+                                child.material.opacity = 1.0;
+                            }
+                        });
+                    });
+                }
+            } else {
+                // Not hovering over interactive model OR in Detail View OR in OVERVIEW mode
+                state.hoveredModel = null;
+                document.body.classList.remove('pointer-active');
+                tooltip.style.opacity = '0';
+            }
+        }
+
+        function onMouseClick(event) {
+            // Only respond to LEFT click (button 0)
+            if (event.button !== 0) return;
+
+            // =====================================================
+            // RESTRICTED INTERACTION: Only allow clicks in PROGRAM mode
+            // OVERVIEW mode = no interaction allowed
+            // =====================================================
+
+            if (state.currentMode === 'overview' && !state.isDetailView) {
+                console.log('[CLICK] OVERVIEW mode - interaction disabled');
+                return;
+            }
+
+            // =====================================================
+            // FORCED CAMERA SYNC: Update world matrix BEFORE raycasting
+            // =====================================================
+
+            camera.updateMatrixWorld();
+            controls.update();
+
+            console.log(`[LEFT CLICK] State: ${state.isDetailView ? 'DETAIL VIEW' : 'PROGRAM'}, Mode: ${state.currentMode}`);
+
+            // =====================================================
+            // DETAIL VIEW: Click non-selected object or empty space to go back
+            // =====================================================
+            if (state.isDetailView) {
+                raycaster.setFromCamera(mouse, camera);
+
+                // Check if clicking on any object in scene (including background models)
+                const allIntersects = raycaster.intersectObjects(scene.children, true);
+
+                if (allIntersects.length === 0) {
+                    // Clicked empty white space
+                    console.log('  → Clicked empty space in Detail View → Going back');
+                    goBackToOverview();
+                    return;
+                }
+
+                // Find the top-level clicked object
+                let clickedObject = allIntersects[0].object;
+                let topLevelObject = null;
+                let current = clickedObject;
+                let depth = 0;
+                const maxDepth = 20;
+
+                while (current && depth < maxDepth) {
+                    if (current.parent === scene) {
+                        topLevelObject = current;
+                        break;
+                    }
+                    current = current.parent;
+                    depth++;
+                }
+
+                // Check if clicked on the currently selected model
+                if (topLevelObject !== state.selectedModel) {
+                    console.log('  → Clicked different object in Detail View → Going back');
+                    goBackToOverview();
+                    return;
+                }
+
+                // If clicked on selected model itself, do nothing
+                return;
+            }
+
+            // =====================================================
+            // PROGRAM MODE: Only models 05-09 (interactive) can be clicked
+            // =====================================================
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(state.interactiveModels, true);
+
+            if (intersects.length > 0) {
+                const hitMesh = intersects[0].object;
+
+                // =====================================================
+                // USE HELPER: Find the interactive parent
+                // =====================================================
+
+                const interactiveParent = findInteractiveParent(hitMesh);
+
+                if (interactiveParent) {
+                    const modelId = interactiveParent.userData.id;
+                    const modelInfo = CONFIG.modelInfo[modelId];
+
+                    // ✅ DEBUG LOG: Print the detected model ID
+                    console.log(`Hit detected: Model ID ${modelId}`);
+
+                    if (modelInfo) {
+                        console.log(`  → Clicked interactive model (ID: ${modelId}, Title: ${modelInfo.title}) → Zooming in`);
+                        selectModel(interactiveParent);
+                        return;
+                    } else {
+                        console.warn(`⚠️ Invalid Model ID: ${modelId} - Not in CONFIG`);
+                    }
+                } else {
+                    console.warn(`⚠️ No interactive parent found for hit mesh`);
+                }
+            }
+
+            // Clicked on non-interactive model (01-04) or empty space - NO ACTION
+            console.log('  → Clicked non-interactive model or empty space (no action)');
+        }
+
+        function highlightModelOutline(model) {
+            // =====================================================
+            // ADVANCED FOCUS MODE: 60% fade out (0.4 opacity)
+            // Hovered model: 1.0 opacity
+            // ALL others (01-09): 0.4 opacity (60% fade out)
+            // =====================================================
+
+            // 1️⃣ Hovered model: Full opacity
+            model.traverse((child) => {
+                if (child.userData.outlineLines) {
+                    // ✅ Outline: Pure black at full opacity (1.5x visual thickness)
+                    child.userData.outlineLines.material.color.setHex(0x000000);
+                    child.userData.outlineLines.material.opacity = 1.0;
+                }
+
+                // ✅ Material: Full visibility
+                if (child.isMesh && child.material) {
+                    child.material.transparent = true;
+                    child.material.opacity = 1.0;
+                }
+            });
+
+            // 2️⃣ ALL other models: 40% opacity (60% fade out)
+            state.models.forEach((otherModel) => {
+                if (otherModel !== model) {
+                    otherModel.traverse((child) => {
+                        if (child.userData.outlineLines) {
+                            // 아웃라인도 함께 페이드
+                            child.userData.outlineLines.material.color.setHex(0x666666);
+                            child.userData.outlineLines.material.opacity = 0.2;
+                        }
+
+                        if (child.isMesh && child.material) {
+                            child.material.transparent = true;
+                            child.material.opacity = 0.4;  // ✅ 60% 페이드 아웃
+                        }
+                    });
+                }
+            });
+
+            // ✅ Update list item to show hover state
+            const listItem = document.getElementById(`model-list-item-${model.userData.id}`);
+            if (listItem) {
+                listItem.classList.add('hover-active');
+            }
+
+            console.log(`[FOCUS MODE ACTIVATED] Model ID: ${model.userData.id}, Others at 40% opacity`);
+        }
+
+        function restoreModelOutlineColor(model) {
+            // =====================================================
+            // RESTORE: Return to subtle outline + Full opacity for ALL models
+            // =====================================================
+
+            // 1️⃣ Restore the previously hovered model
+            model.traverse((child) => {
+                if (child.userData.outlineLines) {
+                    // ✅ Outline: Very faint (0.1 opacity)
+                    // The jump from 0.1 to 1.0 simulates 1.5x thickness increase
+                    child.userData.outlineLines.material.color.setHex(0x000000);
+                    child.userData.outlineLines.material.opacity = 0.1;
+                }
+
+                // ✅ Material: Full visibility
+                if (child.isMesh && child.material) {
+                    child.material.transparent = true;
+                    child.material.opacity = 1.0;
+                }
+            });
+
+            // 2️⃣ Restore ALL other models to full opacity
+            state.models.forEach((otherModel) => {
+                otherModel.traverse((child) => {
+                    if (child.userData.outlineLines) {
+                        // ✅ Outline: Also restore to faint
+                        child.userData.outlineLines.material.color.setHex(0x000000);
+                        child.userData.outlineLines.material.opacity = 0.1;
+                    }
+
+                    if (child.isMesh && child.material) {
+                        child.material.transparent = true;
+                        child.material.opacity = 1.0;  // ✅ 100% 복원
+                    }
+                });
+            });
+
+            // ✅ Remove hover state from list item
+            const listItem = document.getElementById(`model-list-item-${model.userData.id}`);
+            if (listItem) {
+                listItem.classList.remove('hover-active');
+            }
+
+            console.log(`[FOCUS MODE DEACTIVATED] All models restored to 100% opacity`);
+        }
+
+        // =====================================================
+        // SELECTION & DETAIL VIEW
+        // =====================================================
+
+        function selectModel(model) {
+            // =====================================================
+            // INTERACTION CONSTRAINT: Only in PROGRAM mode
+            // =====================================================
+
+            if (state.currentMode !== 'program') {
+                console.log('[SELECT] OVERVIEW mode - selection disabled');
+                return;
+            }
+
+            // =====================================================
+            // SMART LOGIC: Handle both initial selection and transitions
+            // =====================================================
+
+            const isTransitioning = state.isDetailView && state.selectedModel !== model;
+            const isFirstSelection = !state.isDetailView;
+
+            state.isDetailView = true;
+            state.selectedModel = model;
+            document.body.classList.add('detail-view');
+
+            // Update list active state
+            updateListActiveState(model.userData.id);
+
+            if (isFirstSelection) {
+                console.log(`\n[DETAIL VIEW ACTIVATED]`);
+            } else if (isTransitioning) {
+                console.log(`\n[DIRECT MODEL TRANSITION]`);
+            }
+
+            console.log(`  Model: ${model.userData.name} (ID: ${model.userData.id})`);
+
+            // =====================================================
+            // GET ABSOLUTE CAMERA CONFIGURATION
+            // Retrieve precise coordinates from CONFIG
+            // =====================================================
+
+            const info = CONFIG.modelInfo[model.userData.id];
+
+            if (!info || !info.viewConfig) {
+                console.warn(`⚠️ No viewConfig found for model ID ${model.userData.id}`);
+                return;
+            }
+
+            const cameraPos = info.viewConfig.camera;
+            const targetPos = info.viewConfig.target;
+
+            console.log(`  Absolute Camera Position: (${cameraPos.x.toFixed(4)}, ${cameraPos.y.toFixed(4)}, ${cameraPos.z.toFixed(4)})`);
+            console.log(`  Absolute Target Position: (${targetPos.x.toFixed(4)}, ${targetPos.y.toFixed(4)}, ${targetPos.z.toFixed(4)})`);
+
+            // =====================================================
+            // SELECTION VISUALS: Enhanced Focus Mode
+            // Special relationship: ID 10 (Cooling) with ID 07 (Datacore)
+            // =====================================================
+
+            console.log(`\n[FOCUS MODE ACTIVATED]`);
+            console.log(`  Primary: ${model.userData.name} (ID: ${model.userData.id})`);
+
+            // =====================================================
+            // SPECIAL HIGHLIGHT LOGIC: ID 10 (Cooling System)
+            // When Cooling System is selected:
+            // - ID 10: Dark Gray (Primary - Cooling System)
+            // - ID 07: Pure White (Secondary - Datacore companion)
+            // - All others: 50% opacity (Background fade)
+            // =====================================================
+
+            if (model.userData.id === 10) {
+                console.log(`  [SPECIAL LOGIC] Cooling System ↔ Datacore Functional Link`);
+
+                // ID 10 (Cooling System): Dark Gray (0x444444) - Primary
+                model.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        child.material.transparent = true;
+                        child.material.color.setHex(0x444444);
+                        child.material.opacity = 1.0;
+                    }
+                });
+                console.log(`  ✓ ID 10 (Cooling System): Dark Gray 100%`);
+
+                // ID 07 (Datacore): Pure White (0xffffff) - Secondary (Functional companion)
+                if (state.models[6]) {  // ID 7 is at index 6
+                    state.models[6].traverse(child => {
+                        if (child.isMesh && child.material) {
+                            child.material.transparent = true;
+                            child.material.color.setHex(0xffffff);
+                            child.material.opacity = 1.0;
+                        }
+                    });
+                    console.log(`  ✓ ID 07 (Datacore): Pure White 100% - Functional companion`);
+                }
+
+                // All other models: 50% opacity (Background)
+                state.models.forEach(otherModel => {
+                    if (otherModel !== model && otherModel.userData.id !== 7) {
+                        otherModel.traverse(child => {
+                            if (child.isMesh && child.material) {
+                                child.material.transparent = true;
+                                child.material.color.setHex(0xffffff);
+                                child.material.opacity = 0.5;
+                            }
+                        });
+                    }
+                });
+                console.log(`  ✓ All other models: White 50% opacity (Background)`);
+                console.log(`  ✓ Demonstrates direct functional integration between cooling and core`);
+            } else {
+                // Standard focus mode for all other models
+                // Primary Highlight: Change selected model to Dark Gray (0x444444)
+                model.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        child.material.transparent = true;
+                        child.material.color.setHex(0x444444);
+                        child.material.opacity = 1.0;
+                    }
+                });
+
+                // Isolation: Set ALL OTHER models (including background) to 50% opacity
+                state.models.forEach(otherModel => {
+                    if (otherModel !== model) {
+                        otherModel.traverse(child => {
+                            if (child.isMesh && child.material) {
+                                child.material.transparent = true;
+                                child.material.color.setHex(0xffffff);
+                                child.material.opacity = 0.5;
+                            }
+                        });
+                    }
+                });
+                console.log(`  ✓ Focus mode applied: Selected model highlighted, all others at 50% opacity`);
+            }
+
+            // =====================================================
+            // CAMERA TRANSITION: Smooth GSAP animation
+            // Animate camera to absolute coordinates
+            // =====================================================
+
+            gsap.to(camera.position, {
+                x: cameraPos.x,
+                y: cameraPos.y,
+                z: cameraPos.z,
+                duration: 1.2,
+                ease: 'power2.inOut',
+                overwrite: 'auto',
+                onUpdate: () => {
+                    camera.lookAt(targetPos.x, targetPos.y, targetPos.z);
+                }
+            });
+
+            // Animate controls target to absolute target coordinates
+            gsap.to(controls.target, {
+                x: targetPos.x,
+                y: targetPos.y,
+                z: targetPos.z,
+                duration: 1.2,
+                ease: 'power2.inOut',
+                overwrite: 'auto',
+                onUpdate: () => {
+                    controls.update();
+                }
+            });
+
+            // Show/update info panel with appropriate delay
+            const infoPanelDelay = isTransitioning ? 0 : 1.2 * 1000 * 0.5;
+
+            setTimeout(() => {
+                showInfoPanel(model);
+                showBackButton();
+            }, infoPanelDelay);
+
+            console.log(`\n✅ Selection complete`);
+            console.log(`   Camera & target animated to absolute coordinates`);
+            console.log(`   Enhanced selection visuals applied`);
+        }
+
+        function showInfoPanel(model) {
+            const modelId = model.userData.id;
+            const info = CONFIG.modelInfo[modelId];
+
+            if (info) {
+                document.getElementById('infoCategory').textContent = info.category;
+                document.getElementById('infoTitle').textContent = info.title;
+                document.getElementById('infoDescription').textContent = info.description;
+
+                const specsDiv = document.getElementById('infoSpecs');
+                specsDiv.innerHTML = '';
+                info.specs.forEach((spec) => {
+                    const specItem = document.createElement('div');
+                    specItem.className = 'spec-item';
+                    specItem.innerHTML = `
+                        <span class="spec-label">${spec.label}</span>
+                        <span class="spec-value">${spec.value}</span>
+                    `;
+                    specsDiv.appendChild(specItem);
+                });
+            }
+
+            const panel = document.getElementById('infoPanel');
+            panel.classList.add('active');
+        }
+
+        function showBackButton() {
+            const btn = document.getElementById('backButton');
+            btn.classList.add('active');
+            btn.addEventListener('click', goBackToOverview, { once: true });
+        }
+
+        function goBackToOverview() {
+            console.log(`\n[RETURNING TO OVERVIEW]`);
+
+            state.isDetailView = false;
+            state.selectedModel = null;
+            document.body.classList.remove('detail-view');
+
+            // Hide info panel and back button
+            document.getElementById('infoPanel').classList.remove('active');
+            document.getElementById('backButton').classList.remove('active');
+
+            // =====================================================
+            // RESET STATE: Restore original appearance with visual hierarchy
+            // Background (01-04): Dark Gray (0x444444)
+            // Proposal (05-09): Pure White (0xffffff)
+            // =====================================================
+
+            console.log('[VISUAL RESET] Restoring model appearance with color hierarchy');
+
+            state.models.forEach(model => {
+                // Determine if this is background (01-04) or proposal (05-09)
+                const isBgModel = model.userData.id <= 4;
+                const targetColor = isBgModel ? 0x444444 : 0xffffff;
+
+                model.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        child.material.transparent = true;
+
+                        // GSAP smooth color transition
+                        gsap.to(child.material.color, {
+                            r: (targetColor >> 16 & 255) / 255,
+                            g: (targetColor >> 8 & 255) / 255,
+                            b: (targetColor & 255) / 255,
+                            duration: 1.0,
+                            ease: 'power2.inOut'
+                        });
+
+                        // Full opacity
+                        child.material.opacity = 1.0;
+                    }
+                });
+            });
+
+            // =====================================================
+            // CLEAR ACTIVE STATE FROM ALL LIST ITEMS
+            // =====================================================
+            updateListActiveState(null);
+
+            // Restore original camera position
+            gsap.to(camera.position, {
+                x: state.initialCameraPos.x,
+                y: state.initialCameraPos.y,
+                z: state.initialCameraPos.z,
+                duration: 1.2,
+                ease: 'power2.inOut',
+                overwrite: 'auto',
+                onUpdate: () => {
+                    camera.lookAt(state.initialCameraTarget.x, state.initialCameraTarget.y, state.initialCameraTarget.z);
+                }
+            });
+
+            // Restore controls target
+            gsap.to(controls.target, {
+                x: state.initialCameraTarget.x,
+                y: state.initialCameraTarget.y,
+                z: state.initialCameraTarget.z,
+                duration: 1.2,
+                ease: 'power2.inOut',
+                overwrite: 'auto',
+                onUpdate: () => {
+                    controls.update();
+                }
+            });
+
+            console.log('  ✓ Back to Overview with visual hierarchy restored');
+        }
+
+        // =====================================================
+        // WINDOW RESIZE
+        // =====================================================
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // =====================================================
+        // ANIMATION LOOP
+        // =====================================================
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // =====================================================
+            // GRID RIPPLE ANIMATION
+            // =====================================================
+
+            if (gridPlane && gridGeometry) {
+                gridState.time += 0.005;
+                const positions = gridGeometry.getAttribute('position');
+                const originalPos = gridGeometry.userData.originalPositions;
+
+                for (let i = 0; i < originalPos.length; i += 3) {
+                    const x = originalPos[i];
+                    const z = originalPos[i + 2];
+
+                    // Idle wave animation - slow, gentle ripple
+                    const idleWave = Math.sin(gridState.time + x * 0.01 - z * 0.01) * 0.3;
+
+                    // Mouse interaction ripple
+                    let mouseRipple = 0;
+                    if (gridState.mouseActive) {
+                        // Cast ray from mouse to grid
+                        const raycaster = new THREE.Raycaster();
+                        const mouse = new THREE.Vector2(gridState.mouseX, gridState.mouseY);
+                        raycaster.setFromCamera(mouse, camera);
+
+                        // Simple distance-based ripple at mouse position
+                        const worldPos = new THREE.Vector3(x, 0, z);
+                        const distance = worldPos.distanceTo(camera.position.clone().setY(0));
+
+                        // Localized ripple effect - smaller wavelength, more pronounced
+                        mouseRipple = Math.exp(-distance * distance / 200) * Math.sin(gridState.time * 0.02 - distance * 0.1) * 1.5;
+                    }
+
+                    positions.array[i + 1] = idleWave + mouseRipple;
+                }
+
+                positions.needsUpdate = true;
+            }
+
+            // Update OrbitControls
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+
+        // =====================================================
+        // INITIALIZE
+        // =====================================================
+
+        console.log('Page loaded. Starting model loading process...');
+        loadGLBModels();
+    </script>
+</body>
+</html>
