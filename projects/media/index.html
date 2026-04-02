@@ -128,6 +128,84 @@
         }
         #clear-btn:hover { color: #fff; }
 
+        #left-panel {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        .side-btn {
+            background: transparent;
+            border: 1px solid #222;
+            color: #444;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            text-align: left;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .side-btn.active { color: #fff; border-color: #555; }
+        .side-btn:hover:not(.active):not(:disabled) { color: #aaa; }
+        .side-btn:disabled { opacity: 0.25; cursor: default; }
+
+        #game-info {
+            position: fixed;
+            bottom: 118px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #666;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+
+        #pattern-panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+        .pattern-label {
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            margin-bottom: 4px;
+        }
+        .pattern-btn {
+            background: transparent;
+            border: 1px solid #222;
+            color: #444;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            text-align: right;
+        }
+        .pattern-btn.active { color: #fff; border-color: #555; }
+        .pattern-btn:hover:not(.active) { color: #aaa; }
+
         #mode-btns {
             display: flex;
         }
@@ -154,6 +232,28 @@
     <div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; right-drag to pan</div>
 
     <div id="canvas-container"></div>
+
+    <div id="left-panel">
+        <div class="panel-label">games</div>
+        <button class="side-btn" id="snake-btn">snake</button>
+        <button class="side-btn" id="tetris-btn">tetris</button>
+        <div style="height:10px"></div>
+        <div class="panel-label">music</div>
+        <label class="side-btn" for="music-input">upload mp3</label>
+        <input type="file" id="music-input" accept="audio/*" style="display:none">
+        <button class="side-btn" id="music-play-btn" disabled>play</button>
+    </div>
+
+    <div id="game-info"></div>
+
+    <div id="pattern-panel">
+        <div class="pattern-label">patterns</div>
+        <button class="pattern-btn" data-pattern="0">checkerboard</button>
+        <button class="pattern-btn" data-pattern="1">wave</button>
+        <button class="pattern-btn" data-pattern="2">rain</button>
+        <button class="pattern-btn" data-pattern="3">pulse</button>
+        <button class="pattern-btn" data-pattern="4">stripes</button>
+    </div>
 
     <div id="text-panel">
         <div id="mode-btns">
@@ -246,6 +346,17 @@
             roughness: 0.1,
             metalness: 0.2,
             transparent: false,
+        });
+
+        // Snake food — bright green
+        const matFood = new THREE.MeshStandardMaterial({
+            color: 0x00ff88, emissive: new THREE.Color(0x00aa44),
+            emissiveIntensity: 3.0, roughness: 0.1,
+        });
+        // Snake head / active Tetris piece — white-blue
+        const matHead = new THREE.MeshStandardMaterial({
+            color: 0xffffff, emissive: new THREE.Color(0x88aaff),
+            emissiveIntensity: 4.0, roughness: 0.05,
         });
 
         // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
@@ -408,12 +519,7 @@
             const vx = variance('x'), vy = variance('y'), vz = variance('z');
             const colAxis = vx >= vz ? 'x' : 'z';
 
-            // Diagnostic: show real geometry ranges so we can verify clustering will work
-            const rangeOf = ax => {
-                const vals = items.map(it => it.center[ax]);
-                return (Math.max(...vals) - Math.min(...vals)).toFixed(4);
-            };
-            console.log(`%cFacade ${f.name}: ${items.length} meshes | X-range=${rangeOf('x')} Y-range=${rangeOf('y')} Z-range=${rangeOf('z')} | colAxis=${colAxis} varX=${vx.toFixed(4)} varZ=${vz.toFixed(4)}`, 'color:cyan');
+            console.log(`%cFacade ${f.name}: ${items.length} meshes | colAxis=${colAxis}`, 'color:cyan');
 
             const rowVals = items.map(it => it.center.y);
             const colVals = items.map(it => it.center[colAxis]);
@@ -422,6 +528,7 @@
             const colCenters = clusterCenters(colVals, numCols); // ascending
 
             let assigned = 0;
+            const assignedMeshes = new Set();
             for (const { mesh, center } of items) {
                 const ri = findNearest(rowCenters, center.y);
                 const ci = findNearest(colCenters, center[colAxis]);
@@ -437,13 +544,61 @@
                     gridCells[facadeIdx][gridRow][gridCol] === null
                 ) {
                     gridCells[facadeIdx][gridRow][gridCol] = mesh;
+                    assignedMeshes.add(mesh);
                     mesh.material = matUnlit;
                     mesh.castShadow = true;
                     mesh.receiveShadow = true;
                     assigned++;
                 }
             }
-            console.log(`%cFacade ${f.name}: assigned ${assigned} / ${numRows * numCols} cells`, assigned === numRows * numCols ? 'color:lime' : 'color:orange');
+            // Fallback pass 1: unassigned meshes get placed in nearest empty cell in column.
+            for (const { mesh, center } of items) {
+                if (assignedMeshes.has(mesh)) continue;
+                const ci = findNearest(colCenters, center[colAxis]);
+                const gridCol = f.flipCols ? (f.colMax - ci) : (f.colMin + ci);
+                let bestRow = -1, bestDist = Infinity;
+                for (let r = f.rowMin; r <= f.rowMax; r++) {
+                    if (gridCells[facadeIdx][r][gridCol] === null) {
+                        const dist = Math.abs(rowCenters[r - f.rowMin] - center.y);
+                        if (dist < bestDist) { bestDist = dist; bestRow = r; }
+                    }
+                }
+                if (bestRow >= 0) {
+                    gridCells[facadeIdx][bestRow][gridCol] = mesh;
+                    assignedMeshes.add(mesh);
+                    mesh.material = matUnlit;
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    assigned++;
+                }
+            }
+            // Fallback pass 2: column is completely full within declared range.
+            // Scan the entire GRID_ROWS space for any empty slot, preferring the
+            // row closest to rowMin (bottom). Extend f.rowMin / f.rowMax as needed.
+            for (const { mesh, center } of items) {
+                if (assignedMeshes.has(mesh)) continue;
+                const ci = findNearest(colCenters, center[colAxis]);
+                const gridCol = f.flipCols ? (f.colMax - ci) : (f.colMin + ci);
+                let bestRow = -1, bestDist = Infinity;
+                for (let r = 0; r < GRID_ROWS; r++) {
+                    if (gridCells[facadeIdx][r][gridCol] === null) {
+                        // prefer rows adjacent to the existing range
+                        const dist = Math.min(Math.abs(r - f.rowMin), Math.abs(r - f.rowMax));
+                        if (dist < bestDist) { bestDist = dist; bestRow = r; }
+                    }
+                }
+                if (bestRow >= 0) {
+                    if (bestRow < f.rowMin) f.rowMin = bestRow;
+                    if (bestRow > f.rowMax) f.rowMax = bestRow;
+                    gridCells[facadeIdx][bestRow][gridCol] = mesh;
+                    assignedMeshes.add(mesh);
+                    mesh.material = matUnlit;
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    assigned++;
+                }
+            }
+            console.log(`%cFacade ${f.name}: assigned ${assigned} / ${items.length}`, assigned === items.length ? 'color:lime' : 'color:orange');
         }
 
         // ─── Text rendering ───────────────────────────────────────────────────────
@@ -552,6 +707,374 @@
                 }
             }
         }
+
+        // ─── Patterns ─────────────────────────────────────────────────────────────
+        // Lookup: `${facadeIdx},${gridCol}` → position index in FLOW_SEQUENCE (0–67)
+        const FLOW_POS_MAP = new Map(
+            FLOW_SEQUENCE.map(({ facadeIdx, gridCol }, pos) => [`${facadeIdx},${gridCol}`, pos])
+        );
+
+        function iterateActiveCells(fn) {
+            for (let fi = 0; fi < 4; fi++) {
+                const f = FACADES[fi];
+                for (let r = f.rowMin; r <= f.rowMax; r++) {
+                    for (let c = f.colMin; c <= f.colMax; c++) {
+                        const m = gridCells[fi][r][c];
+                        if (m) fn(m, fi, r, c, f);
+                    }
+                }
+            }
+        }
+
+        // 0 — Checkerboard: alternating grid that flips every half-second
+        function patternCheckerboard(t) {
+            const shift = Math.floor(t * 2);
+            iterateActiveCells((m, fi, r, c) => {
+                m.material = (r + c + shift) % 2 === 0 ? matLit : matUnlit;
+            });
+        }
+
+        // 1 — Wave: sine wave travelling continuously around the building
+        function patternWave(t) {
+            iterateActiveCells((m, fi, r, c, f) => {
+                const pos     = FLOW_POS_MAP.get(`${fi},${c}`) ?? 0;
+                const relRow  = r - f.rowMin;
+                const numRows = f.rowMax - f.rowMin;
+                const center  = numRows / 2 + Math.sin(pos * 0.15 - t * 2.5) * (numRows * 0.38);
+                m.material = Math.abs(relRow - center) < 2.5 ? matLit : matUnlit;
+            });
+        }
+
+        // 2 — Rain: independent drops fall down each column, varying speed & timing
+        function patternRain(t) {
+            iterateActiveCells((m, fi, r, c, f) => {
+                const numRows    = f.rowMax - f.rowMin + 1;
+                const hash       = (fi * 100 + c) * 7919;
+                const period     = 1.4 + (hash % 19) / 10;       // 1.4 – 3.3 s
+                const phase      = (hash % 100) / 100;
+                const dropT      = (t / period + phase) % 1;
+                const dropRow    = f.rowMax - Math.floor(dropT * (numRows + 4));
+                const trailLen   = 2 + (hash % 3);                // 2 – 4 cells
+                const distFromDrop = dropRow - r;
+                m.material = (distFromDrop >= 0 && distFromDrop < trailLen) ? matLit : matUnlit;
+            });
+        }
+
+        // 3 — Pulse: a bright band orbits the building perimeter at a steady pace
+        function patternPulse(t) {
+            const total     = FLOW_SEQUENCE.length;  // 68
+            const speed     = 18;                    // columns / second
+            const bandWidth = 9;
+            const head      = (t * speed) % total;
+
+            iterateActiveCells((m, fi, r, c) => {
+                const pos  = FLOW_POS_MAP.get(`${fi},${c}`) ?? 0;
+                const dist = Math.min(Math.abs(pos - head), total - Math.abs(pos - head));
+                m.material = dist < bandWidth ? matLit : matUnlit;
+            });
+        }
+
+        // 4 — Stripes: diagonal bands scroll across the whole building
+        function patternStripes(t) {
+            iterateActiveCells((m, fi, r, c, f) => {
+                const pos    = FLOW_POS_MAP.get(`${fi},${c}`) ?? 0;
+                const relRow = r - f.rowMin;
+                const stripe = Math.floor((pos * 0.6 + relRow * 1.2 + t * 5)) % 8;
+                m.material = stripe < 4 ? matLit : matUnlit;
+            });
+        }
+
+        const PATTERNS = [patternCheckerboard, patternWave, patternRain, patternPulse, patternStripes];
+
+        let activePattern   = -1;
+        let patternTime     = 0;
+        let lastPatternTime = null;
+
+        function setPattern(idx) {
+            if (activePattern === idx) {
+                activePattern = -1;
+                lastPatternTime = null;
+                document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+                if (flowMode && currentText) lastFlowTime = null;
+                else renderText(currentText);
+            } else {
+                stopGame();  // patterns override games
+                activePattern = idx;
+                lastPatternTime = null;
+                patternTime = 0;
+                document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector(`.pattern-btn[data-pattern="${idx}"]`).classList.add('active');
+            }
+        }
+
+        // ─── Game grid ────────────────────────────────────────────────────────────
+        // The game world maps the 68-column building perimeter × 42 active rows into
+        // a single rectangular coordinate space that wraps horizontally.
+        const GAME_W = FLOW_SEQUENCE.length; // 68 columns
+        const GAME_H = 42;
+
+        function setCell(gx, gy, mat) {
+            gx = ((gx % GAME_W) + GAME_W) % GAME_W;
+            if (gy < 0 || gy >= GAME_H) return;
+            const { facadeIdx, gridCol } = FLOW_SEQUENCE[gx];
+            const f = FACADES[facadeIdx];
+            const gridRow = f.rowMax - gy;
+            const m = gridCells[facadeIdx]?.[gridRow]?.[gridCol];
+            if (m) m.material = mat;
+        }
+
+        let activeGame = null; // 'snake' | 'tetris' | null
+
+        function stopGame() {
+            if (activeGame === 'snake') clearInterval(sn.timer);
+            if (activeGame === 'tetris') clearInterval(tr.timer);
+            activeGame = null;
+            document.getElementById('snake-btn').classList.remove('active');
+            document.getElementById('tetris-btn').classList.remove('active');
+            const gi = document.getElementById('game-info');
+            gi.style.opacity = '0';
+        }
+
+        function gameInfo(msg) {
+            const gi = document.getElementById('game-info');
+            gi.textContent = msg;
+            gi.style.opacity = '1';
+        }
+
+        // ─── SNAKE ────────────────────────────────────────────────────────────────
+        const sn = {
+            body:[], dir:{dx:1,dy:0}, next:{dx:1,dy:0},
+            food:null, alive:false, score:0, timer:null, dirty:false
+        };
+
+        function snakeStart() {
+            clearInterval(sn.timer);
+            const cx = Math.floor(GAME_W/2), cy = Math.floor(GAME_H/2);
+            sn.body = [{x:cx,y:cy},{x:cx-1,y:cy},{x:cx-2,y:cy}];
+            sn.dir  = {dx:1,dy:0};
+            sn.next = {dx:1,dy:0};
+            sn.alive = true; sn.score = 0;
+            snakeSpawnFood();
+            sn.timer = setInterval(snakeTick, 130);
+            gameInfo('snake — score: 0');
+        }
+
+        function snakeSpawnFood() {
+            const occ = new Set(sn.body.map(c => `${c.x},${c.y}`));
+            let x, y;
+            do { x = Math.floor(Math.random()*GAME_W); y = Math.floor(Math.random()*GAME_H); }
+            while (occ.has(`${x},${y}`));
+            sn.food = {x, y};
+        }
+
+        function snakeTick() {
+            if (!sn.alive) return;
+            sn.dir = sn.next;
+            const h = sn.body[0];
+            const nx = ((h.x + sn.dir.dx) + GAME_W) % GAME_W;
+            const ny = ((h.y + sn.dir.dy) + GAME_H) % GAME_H;
+            if (sn.body.some(c => c.x === nx && c.y === ny)) {
+                sn.alive = false;
+                gameInfo(`snake — game over   score: ${sn.score}   (space to restart)`);
+                sn.dirty = true; return;
+            }
+            sn.body.unshift({x:nx, y:ny});
+            if (nx === sn.food.x && ny === sn.food.y) {
+                sn.score++;
+                snakeSpawnFood();
+                gameInfo(`snake — score: ${sn.score}`);
+            } else { sn.body.pop(); }
+            sn.dirty = true;
+        }
+
+        function renderSnake() {
+            clearGrid();
+            if (sn.food) setCell(sn.food.x, sn.food.y, matFood);
+            sn.body.forEach((c, i) => setCell(c.x, c.y, i === 0 ? matHead : matLit));
+        }
+
+        // ─── TETRIS ───────────────────────────────────────────────────────────────
+        // Tetris occupies the first TR_W columns of GAME_W (= the North facade, 20 cols × 42 rows)
+        const TR_W = 20, TR_H = GAME_H;
+
+        // Piece rotations: each entry is [[dx,dy],...] offsets from piece origin
+        const TETROS = [
+            [[[0,0],[1,0],[2,0],[3,0]], [[1,0],[1,1],[1,2],[1,3]]],                                   // I
+            [[[0,0],[1,0],[0,1],[1,1]]],                                                               // O
+            [[[1,0],[0,1],[1,1],[2,1]], [[0,0],[0,1],[1,1],[0,2]], [[0,0],[1,0],[2,0],[1,1]], [[1,0],[0,1],[1,1],[1,2]]], // T
+            [[[2,0],[0,1],[1,1],[2,1]], [[0,0],[0,1],[0,2],[1,2]], [[0,0],[1,0],[2,0],[0,1]], [[0,0],[1,0],[1,1],[1,2]]], // L
+            [[[0,0],[0,1],[1,1],[2,1]], [[0,0],[1,0],[0,1],[0,2]], [[0,0],[1,0],[2,0],[2,1]], [[1,0],[0,1],[1,1],[1,2]]], // J
+            [[[1,0],[2,0],[0,1],[1,1]], [[0,0],[0,1],[1,1],[1,2]]],                                   // S
+            [[[0,0],[1,0],[1,1],[2,1]], [[1,0],[0,1],[1,1],[0,2]]]                                    // Z
+        ];
+
+        const tr = {
+            board:[], type:0, rot:0, px:0, py:0,
+            alive:false, score:0, lines:0, speed:500, timer:null, dirty:false
+        };
+
+        function trCells(type, rot, px, py) {
+            return TETROS[type][rot % TETROS[type].length].map(([dx,dy]) => ({x:px+dx, y:py+dy}));
+        }
+
+        function trCanPlace(type, rot, px, py) {
+            return trCells(type, rot, px, py).every(({x, y}) => {
+                if (x < 0 || x >= TR_W || y >= TR_H) return false;
+                if (y < 0) return true; // above the ceiling is fine during spawn
+                return !tr.board[y][x];
+            });
+        }
+
+        function tetrisStart() {
+            clearInterval(tr.timer);
+            tr.board = Array.from({length:TR_H}, () => new Array(TR_W).fill(false));
+            tr.alive = true; tr.score = 0; tr.lines = 0; tr.speed = 500;
+            trSpawn();
+            tr.timer = setInterval(trTick, tr.speed);
+            gameInfo('tetris — score: 0');
+        }
+
+        function trSpawn() {
+            tr.type = Math.floor(Math.random() * TETROS.length);
+            tr.rot = 0; tr.py = -1; tr.px = Math.floor(TR_W/2) - 1;
+            if (!trCanPlace(tr.type, tr.rot, tr.px, tr.py)) {
+                tr.alive = false;
+                gameInfo(`tetris — game over   score: ${tr.score}   (space to restart)`);
+            }
+        }
+
+        function trTick() {
+            if (!tr.alive) return;
+            if (trCanPlace(tr.type, tr.rot, tr.px, tr.py + 1)) {
+                tr.py++;
+            } else {
+                trCells(tr.type, tr.rot, tr.px, tr.py).forEach(({x,y}) => { if (y >= 0) tr.board[y][x] = true; });
+                let cleared = 0;
+                for (let y = TR_H - 1; y >= 0; y--) {
+                    if (tr.board[y].every(Boolean)) {
+                        tr.board.splice(y, 1);
+                        tr.board.unshift(new Array(TR_W).fill(false));
+                        cleared++; y++;
+                    }
+                }
+                if (cleared) {
+                    tr.lines += cleared;
+                    tr.score += [0,100,300,500,800][cleared] ?? 800;
+                    tr.speed = Math.max(80, 500 - Math.floor(tr.lines / 10) * 50);
+                    clearInterval(tr.timer);
+                    tr.timer = setInterval(trTick, tr.speed);
+                    gameInfo(`tetris — score: ${tr.score}   lines: ${tr.lines}`);
+                }
+                trSpawn();
+            }
+            tr.dirty = true;
+        }
+
+        function renderTetris() {
+            clearGrid();
+            for (let y = 0; y < TR_H; y++)
+                for (let x = 0; x < TR_W; x++)
+                    if (tr.board[y][x]) setCell(x, y, matLit);
+            if (tr.alive)
+                trCells(tr.type, tr.rot, tr.px, tr.py).forEach(({x,y}) => { if (y >= 0) setCell(x, y, matHead); });
+        }
+
+        // ─── MUSIC ────────────────────────────────────────────────────────────────
+        let audioCtx = null, analyserNode = null, audioSrc = null, audioBuf = null;
+        let musicMode = false, freqData = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new AudioContext();
+            analyserNode = audioCtx.createAnalyser();
+            analyserNode.fftSize = 256;
+            analyserNode.smoothingTimeConstant = 0.75;
+            analyserNode.connect(audioCtx.destination);
+            freqData = new Uint8Array(analyserNode.frequencyBinCount); // 128 bins
+        }
+
+        async function loadAudioFile(file) {
+            initAudio();
+            const ab = await file.arrayBuffer();
+            audioBuf = await audioCtx.decodeAudioData(ab);
+            document.getElementById('music-play-btn').disabled = false;
+        }
+
+        function playAudio() {
+            if (!audioBuf) return;
+            if (audioSrc) { try { audioSrc.stop(); } catch(e) {} audioSrc = null; }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            audioSrc = audioCtx.createBufferSource();
+            audioSrc.buffer = audioBuf;
+            audioSrc.connect(analyserNode);
+            audioSrc.loop = true;
+            audioSrc.start();
+            musicMode = true;
+            document.getElementById('music-play-btn').textContent = 'stop';
+        }
+
+        function stopAudio() {
+            if (audioSrc) { try { audioSrc.stop(); } catch(e) {} audioSrc = null; }
+            musicMode = false;
+            document.getElementById('music-play-btn').textContent = 'play';
+            clearGrid();
+            if (flowMode && currentText) lastFlowTime = null;
+            else renderText(currentText);
+        }
+
+        function renderMusic() {
+            analyserNode.getByteFrequencyData(freqData);
+            // Single waveform stretches across all 68 columns of the building perimeter.
+            // pos=0 (first column of North) = bass; pos=67 (last column of East) = treble.
+            const total = FLOW_SEQUENCE.length;
+            for (let pos = 0; pos < total; pos++) {
+                const { facadeIdx, gridCol } = FLOW_SEQUENCE[pos];
+                const f = FACADES[facadeIdx];
+                const numRows = f.rowMax - f.rowMin + 1;
+                // Log-scale: bass/mids occupy more columns so the shape looks natural
+                const t = total > 1 ? pos / (total - 1) : 0;
+                const binIdx = Math.floor(Math.pow(t, 0.6) * freqData.length * 0.8);
+                const amp = freqData[Math.min(binIdx, freqData.length - 1)] / 255;
+                const litH = Math.ceil(amp * numRows);
+                for (let r = f.rowMin; r <= f.rowMax; r++) {
+                    const fromBottom = r - f.rowMin;
+                    const m = gridCells[facadeIdx]?.[r]?.[gridCol];
+                    if (m) m.material = fromBottom < litH ? matLit : matUnlit;
+                }
+            }
+        }
+
+        // ─── Keyboard controls (games only) ───────────────────────────────────────
+        document.addEventListener('keydown', e => {
+            if (document.activeElement === document.getElementById('display-input')) return;
+
+            if (activeGame === 'snake') {
+                const {dx,dy} = sn.dir;
+                if (e.key==='ArrowLeft'  && dx !== 1)  { sn.next={dx:-1,dy:0}; e.preventDefault(); }
+                if (e.key==='ArrowRight' && dx !== -1) { sn.next={dx:1,dy:0};  e.preventDefault(); }
+                if (e.key==='ArrowUp'    && dy !== 1)  { sn.next={dx:0,dy:-1}; e.preventDefault(); }
+                if (e.key==='ArrowDown'  && dy !== -1) { sn.next={dx:0,dy:1};  e.preventDefault(); }
+                if (e.key===' ' && !sn.alive) { snakeStart(); e.preventDefault(); }
+            }
+
+            if (activeGame === 'tetris') {
+                if (!tr.alive) {
+                    if (e.key === ' ') { tetrisStart(); e.preventDefault(); } return;
+                }
+                if (e.key==='ArrowLeft'  && trCanPlace(tr.type,tr.rot,tr.px-1,tr.py)) { tr.px--; tr.dirty=true; e.preventDefault(); }
+                if (e.key==='ArrowRight' && trCanPlace(tr.type,tr.rot,tr.px+1,tr.py)) { tr.px++; tr.dirty=true; e.preventDefault(); }
+                if (e.key==='ArrowDown'  && trCanPlace(tr.type,tr.rot,tr.px,tr.py+1)) { tr.py++; tr.dirty=true; e.preventDefault(); }
+                if (e.key==='ArrowUp') {
+                    const nr = (tr.rot+1) % TETROS[tr.type].length;
+                    if (trCanPlace(tr.type,nr,tr.px,tr.py)) { tr.rot=nr; tr.dirty=true; }
+                    e.preventDefault();
+                }
+                if (e.key===' ') {
+                    while (trCanPlace(tr.type,tr.rot,tr.px,tr.py+1)) tr.py++;
+                    trTick(); e.preventDefault();
+                }
+            }
+        });
 
         // ─── Scene setup ──────────────────────────────────────────────────────────
         const scene = new THREE.Scene();
@@ -721,7 +1244,19 @@
         function animate(now) {
             requestAnimationFrame(animate);
 
-            if (flowMode && currentText) {
+            if (activeGame === 'snake') {
+                if (sn.dirty) { renderSnake(); sn.dirty = false; }
+            } else if (activeGame === 'tetris') {
+                if (tr.dirty) { renderTetris(); tr.dirty = false; }
+            } else if (musicMode && analyserNode) {
+                renderMusic();
+            } else if (activePattern >= 0) {
+                if (lastPatternTime !== null) {
+                    patternTime += (now - lastPatternTime) / 1000;
+                }
+                lastPatternTime = now;
+                PATTERNS[activePattern](patternTime);
+            } else if (flowMode && currentText) {
                 if (lastFlowTime !== null) {
                     const dt = now - lastFlowTime;
                     flowOffset += FLOW_SPEED * dt / 1000;
@@ -735,6 +1270,33 @@
             renderer.render(scene, camera);
         }
         animate(0);
+
+        document.querySelectorAll('.pattern-btn').forEach(btn => {
+            btn.addEventListener('click', () => setPattern(Number(btn.dataset.pattern)));
+        });
+
+        document.getElementById('snake-btn').addEventListener('click', () => {
+            if (activeGame === 'snake') { stopGame(); return; }
+            snakeStart();
+        });
+
+        document.getElementById('tetris-btn').addEventListener('click', () => {
+            if (activeGame === 'tetris') { stopGame(); return; }
+            tetrisStart();
+        });
+
+        document.getElementById('music-input').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) loadAudioFile(file);
+        });
+
+        document.getElementById('music-play-btn').addEventListener('click', () => {
+            if (musicMode) {
+                stopAudio();
+            } else {
+                playAudio();
+            }
+        });
     </script>
 </body>
 </html>
