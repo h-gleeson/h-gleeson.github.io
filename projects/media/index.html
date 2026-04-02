@@ -862,6 +862,13 @@
             document.getElementById('tetris-btn').classList.remove('active');
             const gi = document.getElementById('game-info');
             gi.style.opacity = '0';
+
+            clearGrid();
+            if (flowMode && currentText) {
+                lastFlowTime = null;
+            } else {
+                renderText(currentText);
+            }
         }
 
         function gameInfo(msg) {
@@ -877,6 +884,11 @@
         };
 
         function snakeStart() {
+            activeGame = 'snake';
+            setPattern(-1);
+            if (musicMode) stopAudio();
+            document.getElementById('snake-btn').classList.add('active');
+
             clearInterval(sn.timer);
             const cx = Math.floor(GAME_W/2), cy = Math.floor(GAME_H/2);
             sn.body = [{x:cx,y:cy},{x:cx-1,y:cy},{x:cx-2,y:cy}];
@@ -885,6 +897,7 @@
             sn.alive = true; sn.score = 0;
             snakeSpawnFood();
             sn.timer = setInterval(snakeTick, 130);
+            sn.dirty = true;
             gameInfo('snake — score: 0');
         }
 
@@ -918,8 +931,8 @@
 
         function renderSnake() {
             clearGrid();
-            if (sn.food) setCell(sn.food.x, sn.food.y, matFood);
-            sn.body.forEach((c, i) => setCell(c.x, c.y, i === 0 ? matHead : matLit));
+            if (sn.food) setCell(sn.food.x, sn.food.y, matLit);
+            sn.body.forEach((c, i) => setCell(c.x, c.y, matLit));
         }
 
         // ─── TETRIS ───────────────────────────────────────────────────────────────
@@ -955,11 +968,17 @@
         }
 
         function tetrisStart() {
+            activeGame = 'tetris';
+            setPattern(-1);
+            if (musicMode) stopAudio();
+            document.getElementById('tetris-btn').classList.add('active');
+
             clearInterval(tr.timer);
             tr.board = Array.from({length:TR_H}, () => new Array(TR_W).fill(false));
             tr.alive = true; tr.score = 0; tr.lines = 0; tr.speed = 500;
             trSpawn();
             tr.timer = setInterval(trTick, tr.speed);
+            tr.dirty = true;
             gameInfo('tetris — score: 0');
         }
 
@@ -1005,7 +1024,7 @@
                 for (let x = 0; x < TR_W; x++)
                     if (tr.board[y][x]) setCell(x, y, matLit);
             if (tr.alive)
-                trCells(tr.type, tr.rot, tr.px, tr.py).forEach(({x,y}) => { if (y >= 0) setCell(x, y, matHead); });
+                trCells(tr.type, tr.rot, tr.px, tr.py).forEach(({x,y}) => { if (y >= 0) setCell(x, y, matLit); });
         }
 
         // ─── MUSIC ────────────────────────────────────────────────────────────────
