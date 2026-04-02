@@ -248,6 +248,18 @@
             transparent: false,
         });
 
+        const matSilver = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa,
+            metalness: 0.9,
+            roughness: 0.2,
+        });
+
+        const matMarble = new THREE.MeshStandardMaterial({
+            color: 0xeeeeee,
+            metalness: 0.05,
+            roughness: 0.1,
+        });
+
         // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
         // Each character: array of 7 row bitmasks (bit 4 = leftmost pixel, bit 0 = rightmost)
         const FONT = {};
@@ -595,6 +607,8 @@
             { file: 'models/AlgaeGrid2.glb',  isGrid: true,  facadeIdx: 1 },
             { file: 'models/AlgaeGrid3.glb',  isGrid: true,  facadeIdx: 2 },
             { file: 'models/AlgaeGrid4.glb',  isGrid: true,  facadeIdx: 3 },
+            { file: 'models/StructuralRail.glb', isGrid: false, materialName: 'matSilver' },
+            { file: 'models/FacadePanels.glb', isGrid: false, materialName: 'matMarble' },
         ];
 
         const loader = new GLTFLoader();
@@ -626,7 +640,12 @@
             document.getElementById('text-panel').classList.add('ready');
         }
 
-        models.forEach(({ file, isGrid, facadeIdx }) => {
+        const materialMap = {
+            'matSilver': matSilver,
+            'matMarble': matMarble
+        };
+
+        models.forEach(({ file, isGrid, facadeIdx, materialName }) => {
             loader.load(
                 file,
                 (gltf) => {
@@ -640,6 +659,9 @@
                             if (child.isMesh) {
                                 child.castShadow = true;
                                 child.receiveShadow = true;
+                                if (materialName && materialMap[materialName]) {
+                                    child.material = materialMap[materialName];
+                                }
                                 if (child.material) {
                                     const mats = Array.isArray(child.material) ? child.material : [child.material];
                                     mats.forEach(m => { m.needsUpdate = true; });
