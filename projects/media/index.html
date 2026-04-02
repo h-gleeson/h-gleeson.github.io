@@ -62,13 +62,89 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            color: #444;
+            color: #333;
             font-size: 0.75rem;
             letter-spacing: 0.08em;
             z-index: 10;
             line-height: 1.7;
             text-align: right;
         }
+
+        #text-panel {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 16px;
+            border: 1px solid #222;
+            background: rgba(0, 0, 0, 0.8);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+        #text-panel.ready {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #display-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #444;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            width: 300px;
+            outline: none;
+            padding: 2px 4px;
+            transition: border-bottom-color 0.2s;
+        }
+        #display-input::placeholder { color: #333; }
+        #display-input:focus { border-bottom-color: #0088ff; }
+
+        #char-count {
+            color: #333;
+            font-size: 0.75rem;
+            letter-spacing: 0.06em;
+            min-width: 50px;
+            white-space: nowrap;
+        }
+
+        #clear-btn {
+            background: transparent;
+            border: none;
+            color: #444;
+            font-size: 1rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 2px;
+            transition: color 0.2s;
+            font-family: 'Courier New', monospace;
+        }
+        #clear-btn:hover { color: #fff; }
+
+        #mode-btns {
+            display: flex;
+        }
+        .mode-btn {
+            background: transparent;
+            border: 1px solid #222;
+            color: #444;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            padding: 3px 10px;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .mode-btn + .mode-btn { border-left: none; }
+        .mode-btn.active { color: #fff; border-color: #555; }
+        .mode-btn:hover:not(.active) { color: #aaa; }
     </style>
 </head>
 <body>
@@ -78,6 +154,16 @@
     <div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; right-drag to pan</div>
 
     <div id="canvas-container"></div>
+
+    <div id="text-panel">
+        <div id="mode-btns">
+            <button class="mode-btn active" id="static-btn">static</button>
+            <button class="mode-btn" id="flow-btn">flow</button>
+        </div>
+        <input id="display-input" type="text" placeholder="type to display on facade..." autocomplete="off" spellcheck="false">
+        <span id="char-count">0 / 40</span>
+        <button id="clear-btn" title="clear">×</button>
+    </div>
 
     <script type="importmap">
     {
@@ -93,15 +179,387 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // Scene
+        // ─── Grid constants ───────────────────────────────────────────────────────
+        const GRID_COLS = 20, GRID_ROWS = 50;
+        const CHAR_W = 5, CHAR_H = 7;
+        const SLOT_W = 6; // 5 px + 1 spacing
+        const SLOT_H = 8; // 7 px + 1 spacing
+
+        // Active regions for each facade within the shared 20×50 grid.
+        // Columns: 0 = left edge of active region; Rows: 0 = bottom of building.
+        // Text renders top-down, so rowMax is the "top" of each facade's active area.
+        // flipCols: true reverses column direction so text reads left→right when viewed from outside.
+        // If text still appears mirrored on a facade after this fix, set its flipCols to false.
+        const FACADES = [
+            { name: 'East',  colMin: 0, colMax: 13, rowMin: 8,  rowMax: 49, flipCols: true  }, // 14 × 42
+            { name: 'North', colMin: 0, colMax: 19, rowMin: 8,  rowMax: 49, flipCols: true  }, // 20 × 42
+            { name: 'West',  colMin: 0, colMax: 19, rowMin: 0,  rowMax: 41, flipCols: false }, // 20 × 42
+            { name: 'South', colMin: 0, colMax: 13, rowMin: 0,  rowMax: 41, flipCols: false }, // 14 × 42
+        ];
+
+        // ─── Text layout ──────────────────────────────────────────────────────────
+        // Text flows as a single continuous row across all 4 facades (East→North→West→South),
+        // then wraps to the next row down — same as a ticker tape around the building.
+        //
+        // All facades share the same vertical start row so text sits at the same height
+        // on every face. Row 41 (0-indexed from bottom) is the top of West/South's
+        // active area and comfortably inside East/North's range.
+        const TEXT_START_ROW = 41;
+
+        // How many full character rows fit above rowMin for the most constrained facade
+        // (East/North, rowMin=8): floor((41−8+1) / 8) = 4 rows.
+        const CHAR_ROWS = Math.min(...FACADES.map(f =>
+            Math.floor((TEXT_START_ROW - f.rowMin + 1) / SLOT_H)
+        ));
+
+        // Sequential column map: COL_MAP[n] → which facade and local char-column that slot is.
+        // Order: East (2 slots) → North (3 slots) → West (3 slots) → South (2 slots) = 10/row.
+        const COL_MAP = [];
+        for (let fi = 0; fi < FACADES.length; fi++) {
+            const f = FACADES[fi];
+            const charsWide = Math.floor((f.colMax - f.colMin + 1) / SLOT_W);
+            for (let cc = 0; cc < charsWide; cc++) {
+                COL_MAP.push({ facadeIdx: fi, localCol: cc });
+            }
+        }
+        const CHARS_PER_ROW = COL_MAP.length; // 10
+        const MAX_CHARS = CHARS_PER_ROW * CHAR_ROWS; // 10 × 4 = 40
+
+        // gridCells[facadeIdx][gridRow][gridCol] = THREE.Mesh | null
+        const gridCells = Array.from({ length: 4 }, () =>
+            Array.from({ length: GRID_ROWS }, () => new Array(GRID_COLS).fill(null))
+        );
+
+        // ─── Materials ────────────────────────────────────────────────────────────
+        const matUnlit = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.35,
+            roughness: 1.0,
+            metalness: 0.0,
+        });
+
+        const matLit = new THREE.MeshStandardMaterial({
+            color: 0x00aaff,
+            emissive: new THREE.Color(0x005599),
+            emissiveIntensity: 3.0,
+            roughness: 0.1,
+            metalness: 0.2,
+            transparent: false,
+        });
+
+        // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
+        // Each character: array of 7 row bitmasks (bit 4 = leftmost pixel, bit 0 = rightmost)
+        const FONT = {};
+        const F = (ch, ...rows) => { FONT[ch] = rows; };
+
+        F(' ', 0,0,0,0,0,0,0);
+        // Digits
+        F('0', 0b01110,0b10001,0b10011,0b10101,0b11001,0b10001,0b01110);
+        F('1', 0b00100,0b01100,0b00100,0b00100,0b00100,0b00100,0b01110);
+        F('2', 0b01110,0b10001,0b00001,0b00110,0b01000,0b10000,0b11111);
+        F('3', 0b11111,0b00010,0b00100,0b00110,0b00001,0b10001,0b01110);
+        F('4', 0b00010,0b00110,0b01010,0b10010,0b11111,0b00010,0b00010);
+        F('5', 0b11111,0b10000,0b11110,0b00001,0b00001,0b10001,0b01110);
+        F('6', 0b00110,0b01000,0b10000,0b11110,0b10001,0b10001,0b01110);
+        F('7', 0b11111,0b00001,0b00010,0b00100,0b01000,0b01000,0b01000);
+        F('8', 0b01110,0b10001,0b10001,0b01110,0b10001,0b10001,0b01110);
+        F('9', 0b01110,0b10001,0b10001,0b01111,0b00001,0b00010,0b01100);
+        // Uppercase
+        F('A', 0b01110,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001);
+        F('B', 0b11110,0b10001,0b10001,0b11110,0b10001,0b10001,0b11110);
+        F('C', 0b01110,0b10001,0b10000,0b10000,0b10000,0b10001,0b01110);
+        F('D', 0b11110,0b10001,0b10001,0b10001,0b10001,0b10001,0b11110);
+        F('E', 0b11111,0b10000,0b10000,0b11110,0b10000,0b10000,0b11111);
+        F('F', 0b11111,0b10000,0b10000,0b11110,0b10000,0b10000,0b10000);
+        F('G', 0b01110,0b10001,0b10000,0b10111,0b10001,0b10001,0b01111);
+        F('H', 0b10001,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001);
+        F('I', 0b01110,0b00100,0b00100,0b00100,0b00100,0b00100,0b01110);
+        F('J', 0b00111,0b00010,0b00010,0b00010,0b00010,0b10010,0b01100);
+        F('K', 0b10001,0b10010,0b10100,0b11000,0b10100,0b10010,0b10001);
+        F('L', 0b10000,0b10000,0b10000,0b10000,0b10000,0b10000,0b11111);
+        F('M', 0b10001,0b11011,0b10101,0b10001,0b10001,0b10001,0b10001);
+        F('N', 0b10001,0b11001,0b10101,0b10011,0b10001,0b10001,0b10001);
+        F('O', 0b01110,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110);
+        F('P', 0b11110,0b10001,0b10001,0b11110,0b10000,0b10000,0b10000);
+        F('Q', 0b01110,0b10001,0b10001,0b10001,0b10101,0b10010,0b01101);
+        F('R', 0b11110,0b10001,0b10001,0b11110,0b10100,0b10010,0b10001);
+        F('S', 0b01110,0b10001,0b10000,0b01110,0b00001,0b10001,0b01110);
+        F('T', 0b11111,0b00100,0b00100,0b00100,0b00100,0b00100,0b00100);
+        F('U', 0b10001,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110);
+        F('V', 0b10001,0b10001,0b10001,0b10001,0b10001,0b01010,0b00100);
+        F('W', 0b10001,0b10001,0b10001,0b10101,0b10101,0b11011,0b10001);
+        F('X', 0b10001,0b10001,0b01010,0b00100,0b01010,0b10001,0b10001);
+        F('Y', 0b10001,0b10001,0b01010,0b00100,0b00100,0b00100,0b00100);
+        F('Z', 0b11111,0b00001,0b00010,0b00100,0b01000,0b10000,0b11111);
+        // Lowercase
+        F('a', 0,0,0b01110,0b00001,0b01111,0b10001,0b01111);
+        F('b', 0b10000,0b10000,0b11110,0b10001,0b10001,0b10001,0b11110);
+        F('c', 0,0,0b01110,0b10001,0b10000,0b10001,0b01110);
+        F('d', 0b00001,0b00001,0b01111,0b10001,0b10001,0b10001,0b01111);
+        F('e', 0,0,0b01110,0b10001,0b11111,0b10000,0b01110);
+        F('f', 0b00110,0b01000,0b11110,0b01000,0b01000,0b01000,0b01000);
+        F('g', 0,0,0b01111,0b10001,0b01111,0b00001,0b01110);
+        F('h', 0b10000,0b10000,0b11110,0b10001,0b10001,0b10001,0b10001);
+        F('i', 0b00100,0,0b01100,0b00100,0b00100,0b00100,0b01110);
+        F('j', 0b00010,0,0b00110,0b00010,0b00010,0b10010,0b01100);
+        F('k', 0b10000,0b10010,0b10100,0b11000,0b10100,0b10010,0b10001);
+        F('l', 0b01100,0b00100,0b00100,0b00100,0b00100,0b00100,0b01110);
+        F('m', 0,0,0b11010,0b10101,0b10101,0b10001,0b10001);
+        F('n', 0,0,0b11110,0b10001,0b10001,0b10001,0b10001);
+        F('o', 0,0,0b01110,0b10001,0b10001,0b10001,0b01110);
+        F('p', 0,0,0b11110,0b10001,0b11110,0b10000,0b10000);
+        F('q', 0,0,0b01111,0b10001,0b01111,0b00001,0b00001);
+        F('r', 0,0,0b10110,0b11001,0b10000,0b10000,0b10000);
+        F('s', 0,0,0b01111,0b10000,0b01110,0b00001,0b11110);
+        F('t', 0b01000,0b01000,0b11110,0b01000,0b01000,0b01001,0b00110);
+        F('u', 0,0,0b10001,0b10001,0b10001,0b10011,0b01101);
+        F('v', 0,0,0b10001,0b10001,0b10001,0b01010,0b00100);
+        F('w', 0,0,0b10001,0b10101,0b10101,0b10101,0b01010);
+        F('x', 0,0,0b10001,0b01010,0b00100,0b01010,0b10001);
+        F('y', 0,0,0b10001,0b10001,0b01111,0b00001,0b01110);
+        F('z', 0,0,0b11111,0b00010,0b00100,0b01000,0b11111);
+        // Punctuation
+        F('!', 0b00100,0b00100,0b00100,0b00100,0b00100,0,0b00100);
+        F('?', 0b01110,0b10001,0b00001,0b00110,0b00100,0,0b00100);
+        F('.', 0,0,0,0,0,0b01100,0b01100);
+        F(',', 0,0,0,0,0b01100,0b01000,0b10000);
+        F(':', 0,0b01100,0b01100,0,0b01100,0b01100,0);
+        F(';', 0,0b01100,0b01100,0,0b01100,0b01000,0b10000);
+        F('-', 0,0,0,0b11111,0,0,0);
+        F('_', 0,0,0,0,0,0,0b11111);
+        F("'", 0b00100,0b00100,0b01000,0,0,0,0);
+        F('"', 0b01010,0b01010,0b01010,0,0,0,0);
+        F('/', 0b00001,0b00010,0b00100,0b01000,0b10000,0,0);
+        F('\\',0b10000,0b01000,0b00100,0b00010,0b00001,0,0);
+        F('+', 0,0b00100,0b00100,0b11111,0b00100,0b00100,0);
+        F('*', 0,0b00100,0b10101,0b01110,0b01110,0b10101,0b00100);
+        F('@', 0b01110,0b10001,0b10101,0b10111,0b10110,0b10000,0b01110);
+        F('#', 0b01010,0b11111,0b01010,0b01010,0b11111,0b01010,0);
+        F('(', 0b00010,0b00100,0b01000,0b01000,0b01000,0b00100,0b00010);
+        F(')', 0b01000,0b00100,0b00010,0b00010,0b00010,0b00100,0b01000);
+        F('[', 0b01110,0b01000,0b01000,0b01000,0b01000,0b01000,0b01110);
+        F(']', 0b01110,0b00010,0b00010,0b00010,0b00010,0b00010,0b01110);
+        F('<', 0b00010,0b00100,0b01000,0b10000,0b01000,0b00100,0b00010);
+        F('>', 0b01000,0b00100,0b00010,0b00001,0b00010,0b00100,0b01000);
+        F('=', 0,0b11111,0,0b11111,0,0,0);
+        F('%', 0b11000,0b11001,0b00010,0b00100,0b01000,0b10011,0b00011);
+        F('&', 0b01100,0b10010,0b10100,0b01000,0b10101,0b10010,0b01101);
+
+        // ─── Grid helpers ─────────────────────────────────────────────────────────
+        function clusterCenters(values, k) {
+            if (k <= 1) return [values.reduce((a, b) => a + b, 0) / values.length];
+            const min = Math.min(...values), max = Math.max(...values);
+            // Initialise k evenly-spaced centers
+            let centers = Array.from({ length: k }, (_, i) => min + (i / (k - 1)) * (max - min));
+            // Refine with 6 k-means iterations
+            for (let iter = 0; iter < 6; iter++) {
+                const sums = new Array(k).fill(0);
+                const counts = new Array(k).fill(0);
+                for (const v of values) {
+                    const idx = findNearest(centers, v);
+                    sums[idx] += v;
+                    counts[idx]++;
+                }
+                for (let i = 0; i < k; i++) {
+                    if (counts[i] > 0) centers[i] = sums[i] / counts[i];
+                }
+            }
+            return centers.sort((a, b) => a - b);
+        }
+
+        function findNearest(arr, val) {
+            let best = 0, bestDist = Infinity;
+            for (let i = 0; i < arr.length; i++) {
+                const d = Math.abs(arr[i] - val);
+                if (d < bestDist) { bestDist = d; best = i; }
+            }
+            return best;
+        }
+
+        function buildFacadeGrid(facadeIdx, sceneRoot) {
+            const f = FACADES[facadeIdx];
+            const numCols = f.colMax - f.colMin + 1;
+            const numRows = f.rowMax - f.rowMin + 1;
+
+            // Force world-matrix computation on the entire subtree
+            sceneRoot.updateWorldMatrix(true, true);
+
+            // Collect all leaf meshes and their world-space bounding-box centres
+            const items = [];
+            sceneRoot.traverse(child => {
+                if (!child.isMesh) return;
+                child.geometry.computeBoundingBox();
+                const center = new THREE.Vector3();
+                child.geometry.boundingBox.getCenter(center);
+                center.applyMatrix4(child.matrixWorld);
+                items.push({ mesh: child, center });
+            });
+
+            if (items.length === 0) return;
+
+            // Determine the column axis: whichever of X / Z has more positional variance.
+            // Y is always the row (height) axis.
+            const variance = ax => {
+                const vals = items.map(it => it.center[ax]);
+                const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+                return vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length;
+            };
+            const vx = variance('x'), vy = variance('y'), vz = variance('z');
+            const colAxis = vx >= vz ? 'x' : 'z';
+
+            // Diagnostic: show real geometry ranges so we can verify clustering will work
+            const rangeOf = ax => {
+                const vals = items.map(it => it.center[ax]);
+                return (Math.max(...vals) - Math.min(...vals)).toFixed(4);
+            };
+            console.log(`%cFacade ${f.name}: ${items.length} meshes | X-range=${rangeOf('x')} Y-range=${rangeOf('y')} Z-range=${rangeOf('z')} | colAxis=${colAxis} varX=${vx.toFixed(4)} varZ=${vz.toFixed(4)}`, 'color:cyan');
+
+            const rowVals = items.map(it => it.center.y);
+            const colVals = items.map(it => it.center[colAxis]);
+
+            const rowCenters = clusterCenters(rowVals, numRows); // ascending = bottom→top
+            const colCenters = clusterCenters(colVals, numCols); // ascending
+
+            let assigned = 0;
+            for (const { mesh, center } of items) {
+                const ri = findNearest(rowCenters, center.y);
+                const ci = findNearest(colCenters, center[colAxis]);
+
+                const gridRow = f.rowMin + ri;
+                // flipCols: ci=0 (smallest physical) → colMax (rightmost text column),
+                // so leftmost text column maps to the largest physical position = left side from outside.
+                const gridCol = f.flipCols ? (f.colMax - ci) : (f.colMin + ci);
+
+                if (
+                    gridRow >= 0 && gridRow < GRID_ROWS &&
+                    gridCol >= 0 && gridCol < GRID_COLS &&
+                    gridCells[facadeIdx][gridRow][gridCol] === null
+                ) {
+                    gridCells[facadeIdx][gridRow][gridCol] = mesh;
+                    mesh.material = matUnlit;
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    assigned++;
+                }
+            }
+            console.log(`%cFacade ${f.name}: assigned ${assigned} / ${numRows * numCols} cells`, assigned === numRows * numCols ? 'color:lime' : 'color:orange');
+        }
+
+        // ─── Text rendering ───────────────────────────────────────────────────────
+        function clearGrid() {
+            for (let fi = 0; fi < 4; fi++) {
+                const f = FACADES[fi];
+                for (let r = f.rowMin; r <= f.rowMax; r++) {
+                    for (let c = f.colMin; c <= f.colMax; c++) {
+                        const m = gridCells[fi][r][c];
+                        if (m) m.material = matUnlit;
+                    }
+                }
+            }
+        }
+
+        function renderText(text) {
+            clearGrid();
+            if (!text) return;
+
+            const limit = Math.min(text.length, MAX_CHARS);
+            for (let i = 0; i < limit; i++) {
+                const bitmap = FONT[text[i]] ?? FONT[' '];
+
+                // Which horizontal character row and column slot this character occupies
+                const charRowIdx = Math.floor(i / CHARS_PER_ROW); // 0 = top row
+                const charColIdx = i % CHARS_PER_ROW;
+
+                const { facadeIdx, localCol } = COL_MAP[charColIdx];
+                const f = FACADES[facadeIdx];
+
+                for (let fr = 0; fr < CHAR_H; fr++) {
+                    const rowBits = bitmap[fr] ?? 0;
+                    for (let fc = 0; fc < CHAR_W; fc++) {
+                        if (!((rowBits >> (CHAR_W - 1 - fc)) & 1)) continue;
+
+                        const gridRow = TEXT_START_ROW - (charRowIdx * SLOT_H + fr);
+                        const gridCol = f.colMin + localCol * SLOT_W + fc;
+
+                        if (gridRow < f.rowMin || gridRow > f.rowMax) continue;
+                        if (gridCol < f.colMin || gridCol > f.colMax) continue;
+
+                        const m = gridCells[facadeIdx]?.[gridRow]?.[gridCol];
+                        if (m) m.material = matLit;
+                    }
+                }
+            }
+        }
+
+        // ─── Flow mode ────────────────────────────────────────────────────────────
+        // Column sequence for the scrolling ticker: South → West → North → East.
+        // Each entry maps a sequential pixel-column position to a specific grid cell column.
+        const FLOW_SEQUENCE = (() => {
+            const seq = [];
+            for (const fi of [1, 2, 3, 0]) {          // North, West, South, East
+                const f = FACADES[fi];
+                const numCols = f.colMax - f.colMin + 1;
+                for (let ci = 0; ci < numCols; ci++) {
+                    seq.push({ facadeIdx: fi, gridCol: f.colMin + ci });
+                }
+            }
+            return seq;
+        })();
+        // Total columns around the building: 14 + 20 + 20 + 14 = 68
+
+        // Scroll speed in pixel-columns per second
+        const FLOW_SPEED = 8;
+
+        let flowMode    = false;
+        let flowOffset  = 0;          // fractional pixel-column offset
+        let lastFlowTime = null;      // for delta-time tracking
+        let currentText = '';
+
+        function renderFlow(text, offset) {
+            clearGrid();
+            if (!text) return;
+
+            // Strip is exactly one full perimeter wide so the text appears once per loop.
+            // Columns beyond the text length are left unlit (handled by charIdx >= text.length check).
+            const stripWidth = FLOW_SEQUENCE.length;
+
+            for (let pos = 0; pos < FLOW_SEQUENCE.length; pos++) {
+                const { facadeIdx, gridCol } = FLOW_SEQUENCE[pos];
+                const f = FACADES[facadeIdx];
+
+                // Which pixel column of the text strip falls on this facade column?
+                const pixelX = ((pos + Math.floor(offset)) % stripWidth + stripWidth) % stripWidth;
+                const charIdx = Math.floor(pixelX / SLOT_W);
+                const fontCol = pixelX % SLOT_W;
+
+                // In the spacing column or past the text → leave unlit
+                if (charIdx >= text.length || fontCol >= CHAR_W) continue;
+
+                const bitmap = FONT[text[charIdx]] ?? FONT[' '];
+
+                // Single horizontal band — no vertical repetition
+                for (let fr = 0; fr < CHAR_H; fr++) {
+                    const rowBits = bitmap[fr] ?? 0;
+                    const bit = (rowBits >> (CHAR_W - 1 - fontCol)) & 1;
+
+                    const gridRow = TEXT_START_ROW - fr;
+                    if (gridRow < f.rowMin || gridRow > f.rowMax) continue;
+                    if (gridCol < f.colMin || gridCol > f.colMax) continue;
+
+                    const m = gridCells[facadeIdx]?.[gridRow]?.[gridCol];
+                    if (m) m.material = bit ? matLit : matUnlit;
+                }
+            }
+        }
+
+        // ─── Scene setup ──────────────────────────────────────────────────────────
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x000000);
 
-        // Camera
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
         camera.position.set(0, 4, 12);
 
-        // Renderer
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -109,16 +567,14 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // Controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.06;
         controls.minDistance = 1;
         controls.maxDistance = 500;
 
-        // Lighting — white/grey tones to match site aesthetic
-        const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambient);
+        // Lighting
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
         const key = new THREE.DirectionalLight(0xffffff, 2.0);
         key.position.set(5, 10, 7);
@@ -130,27 +586,24 @@
         fill.position.set(-6, 4, -4);
         scene.add(fill);
 
-        const rim = new THREE.DirectionalLight(0xcccccc, 0.3);
-        rim.position.set(0, -3, -8);
-        scene.add(rim);
+        scene.add(new THREE.DirectionalLight(0xcccccc, 0.3)).position.set(0, -3, -8);
 
-        // Models to load — Base first so it's centred, grids around it
+        // ─── Model loading ────────────────────────────────────────────────────────
         const models = [
-            { file: 'models/Base.glb',       position: new THREE.Vector3(0, 0, 0) },
-            { file: 'models/AlgaeGrid1.glb',  position: new THREE.Vector3(0, 0, 0) },
-            { file: 'models/AlgaeGrid2.glb',  position: new THREE.Vector3(0, 0, 0) },
-            { file: 'models/AlgaeGrid3.glb',  position: new THREE.Vector3(0, 0, 0) },
-            { file: 'models/AlgaeGrid4.glb',  position: new THREE.Vector3(0, 0, 0) },
+            { file: 'models/Base.glb',        isGrid: false },
+            { file: 'models/AlgaeGrid1.glb',  isGrid: true,  facadeIdx: 0 },
+            { file: 'models/AlgaeGrid2.glb',  isGrid: true,  facadeIdx: 1 },
+            { file: 'models/AlgaeGrid3.glb',  isGrid: true,  facadeIdx: 2 },
+            { file: 'models/AlgaeGrid4.glb',  isGrid: true,  facadeIdx: 3 },
         ];
 
         const loader = new GLTFLoader();
         const loadingEl = document.getElementById('loading');
-        let loaded = 0;
         const group = new THREE.Group();
         scene.add(group);
+        let loaded = 0;
 
         function onAllLoaded() {
-            // Auto-frame: fit camera to bounding box of the whole group
             const box = new THREE.Box3().setFromObject(group);
             const center = new THREE.Vector3();
             const size = new THREE.Vector3();
@@ -168,28 +621,36 @@
 
             loadingEl.style.opacity = '0';
             setTimeout(() => loadingEl.style.display = 'none', 500);
+
+            // Show the input panel
+            document.getElementById('text-panel').classList.add('ready');
         }
 
-        models.forEach(({ file, position }) => {
+        models.forEach(({ file, isGrid, facadeIdx }) => {
             loader.load(
                 file,
                 (gltf) => {
-                    const mesh = gltf.scene;
-                    mesh.position.copy(position);
-                    mesh.traverse(child => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                            // Preserve original materials but ensure they look good on black
-                            if (child.material) {
-                                const mats = Array.isArray(child.material) ? child.material : [child.material];
-                                mats.forEach(m => { m.needsUpdate = true; });
+                    const root = gltf.scene;
+                    root.position.set(0, 0, 0);
+
+                    if (isGrid) {
+                        buildFacadeGrid(facadeIdx, root);
+                    } else {
+                        root.traverse(child => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                                if (child.material) {
+                                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                                    mats.forEach(m => { m.needsUpdate = true; });
+                                }
                             }
-                        }
-                    });
-                    group.add(mesh);
+                        });
+                    }
+
+                    group.add(root);
                     loaded++;
-                    loadingEl.textContent = `loading models... ${loaded}/${models.length}`;
+                    loadingEl.textContent = `loading models... ${loaded} / ${models.length}`;
                     if (loaded === models.length) onAllLoaded();
                 },
                 undefined,
@@ -201,20 +662,79 @@
             );
         });
 
-        // Resize
+        // ─── UI ───────────────────────────────────────────────────────────────────
+        const input      = document.getElementById('display-input');
+        const charCount  = document.getElementById('char-count');
+        const clearBtn   = document.getElementById('clear-btn');
+        const staticBtn  = document.getElementById('static-btn');
+        const flowBtn    = document.getElementById('flow-btn');
+
+        function setMode(mode) {
+            flowMode = (mode === 'flow');
+            staticBtn.classList.toggle('active', !flowMode);
+            flowBtn.classList.toggle('active', flowMode);
+
+            if (flowMode) {
+                // Reset scroll so it starts fresh when switching to flow
+                flowOffset  = 0;
+                lastFlowTime = null;
+                charCount.textContent = `${currentText.length} chars`;
+            } else {
+                lastFlowTime = null;
+                charCount.textContent = `${currentText.length} / ${MAX_CHARS}`;
+                renderText(currentText);
+            }
+        }
+
+        staticBtn.addEventListener('click', () => setMode('static'));
+        flowBtn.addEventListener('click',   () => setMode('flow'));
+
+        input.addEventListener('input', () => {
+            currentText = input.value;
+            if (flowMode) {
+                flowOffset = 0;           // restart scroll on new text
+                lastFlowTime = null;
+                charCount.textContent = `${currentText.length} chars`;
+            } else {
+                charCount.textContent = `${currentText.length} / ${MAX_CHARS}`;
+                renderText(currentText);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            currentText = '';
+            flowOffset  = 0;
+            lastFlowTime = null;
+            charCount.textContent = flowMode ? '0 chars' : `0 / ${MAX_CHARS}`;
+            clearGrid();
+            input.focus();
+        });
+
+        // ─── Resize & render loop ─────────────────────────────────────────────────
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Animate
-        function animate() {
+        function animate(now) {
             requestAnimationFrame(animate);
+
+            if (flowMode && currentText) {
+                if (lastFlowTime !== null) {
+                    const dt = now - lastFlowTime;
+                    flowOffset += FLOW_SPEED * dt / 1000;
+                    flowOffset = flowOffset % FLOW_SEQUENCE.length;
+                    renderFlow(currentText, flowOffset);
+                }
+                lastFlowTime = now;
+            }
+
             controls.update();
             renderer.render(scene, camera);
         }
-        animate();
+        animate(0);
     </script>
 </body>
 </html>
