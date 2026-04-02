@@ -348,15 +348,16 @@
             transparent: false,
         });
 
-        // Snake food — bright green
-        const matFood = new THREE.MeshStandardMaterial({
-            color: 0x00ff88, emissive: new THREE.Color(0x00aa44),
-            emissiveIntensity: 3.0, roughness: 0.1,
+        const matSilver = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa,
+            metalness: 0.9,
+            roughness: 0.2,
         });
-        // Snake head / active Tetris piece — white-blue
-        const matHead = new THREE.MeshStandardMaterial({
-            color: 0xffffff, emissive: new THREE.Color(0x88aaff),
-            emissiveIntensity: 4.0, roughness: 0.05,
+
+        const matMarble = new THREE.MeshStandardMaterial({
+            color: 0xeeeeee,
+            metalness: 0.05,
+            roughness: 0.1,
         });
 
         // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
@@ -602,6 +603,28 @@
         }
 
         // ─── Text rendering ───────────────────────────────────────────────────────
+        // Word-wrap text into rows of CHARS_PER_ROW. Words that don't fit on the
+        // current row are moved to the next row; each completed row is padded to
+        // CHARS_PER_ROW with spaces so character indices align correctly.
+        function wrapText(text) {
+            if (!text) return text;
+            const words = text.split(' ');
+            const rows = [];
+            let current = '';
+            for (const word of words) {
+                if (current === '') {
+                    current = word;
+                } else if (current.length + 1 + word.length <= CHARS_PER_ROW) {
+                    current += ' ' + word;
+                } else {
+                    rows.push(current.padEnd(CHARS_PER_ROW, ' '));
+                    current = word;
+                }
+            }
+            if (current !== '') rows.push(current);
+            return rows.join('');
+        }
+
         function clearGrid() {
             for (let fi = 0; fi < 4; fi++) {
                 const f = FACADES[fi];
@@ -617,6 +640,7 @@
         function renderText(text) {
             clearGrid();
             if (!text) return;
+            text = wrapText(text);
 
             const limit = Math.min(text.length, MAX_CHARS);
             for (let i = 0; i < limit; i++) {
@@ -674,10 +698,12 @@
         function renderFlow(text, offset) {
             clearGrid();
             if (!text) return;
+            text = wrapText(text);
 
-            // Strip is exactly one full perimeter wide so the text appears once per loop.
-            // Columns beyond the text length are left unlit (handled by charIdx >= text.length check).
-            const stripWidth = FLOW_SEQUENCE.length;
+            // Strip width = one row's worth of char slots (matches static mode's CHARS_PER_ROW).
+            // Text wraps into multiple rows just like static mode; all rows scroll together.
+            const stripWidth = CHARS_PER_ROW * SLOT_W; // 60
+            const numRows = Math.min(Math.ceil(text.length / CHARS_PER_ROW), CHAR_ROWS);
 
             for (let pos = 0; pos < FLOW_SEQUENCE.length; pos++) {
                 const { facadeIdx, gridCol } = FLOW_SEQUENCE[pos];
@@ -685,25 +711,28 @@
 
                 // Which pixel column of the text strip falls on this facade column?
                 const pixelX = ((pos + Math.floor(offset)) % stripWidth + stripWidth) % stripWidth;
-                const charIdx = Math.floor(pixelX / SLOT_W);
-                const fontCol = pixelX % SLOT_W;
+                const charColIdx = Math.floor(pixelX / SLOT_W); // 0..CHARS_PER_ROW-1
+                const fontCol    = pixelX % SLOT_W;
 
-                // In the spacing column or past the text → leave unlit
-                if (charIdx >= text.length || fontCol >= CHAR_W) continue;
+                if (fontCol >= CHAR_W) continue; // spacing column
 
-                const bitmap = FONT[text[charIdx]] ?? FONT[' '];
+                for (let charRowIdx = 0; charRowIdx < numRows; charRowIdx++) {
+                    const charIdx = charRowIdx * CHARS_PER_ROW + charColIdx;
+                    if (charIdx >= text.length) continue;
 
-                // Single horizontal band — no vertical repetition
-                for (let fr = 0; fr < CHAR_H; fr++) {
-                    const rowBits = bitmap[fr] ?? 0;
-                    const bit = (rowBits >> (CHAR_W - 1 - fontCol)) & 1;
+                    const bitmap = FONT[text[charIdx]] ?? FONT[' '];
 
-                    const gridRow = TEXT_START_ROW - fr;
-                    if (gridRow < f.rowMin || gridRow > f.rowMax) continue;
-                    if (gridCol < f.colMin || gridCol > f.colMax) continue;
+                    for (let fr = 0; fr < CHAR_H; fr++) {
+                        const rowBits = bitmap[fr] ?? 0;
+                        const bit = (rowBits >> (CHAR_W - 1 - fontCol)) & 1;
 
-                    const m = gridCells[facadeIdx]?.[gridRow]?.[gridCol];
-                    if (m) m.material = bit ? matLit : matUnlit;
+                        const gridRow = TEXT_START_ROW - (charRowIdx * SLOT_H + fr);
+                        if (gridRow < f.rowMin || gridRow > f.rowMax) continue;
+                        if (gridCol < f.colMin || gridCol > f.colMax) continue;
+
+                        const m = gridCells[facadeIdx]?.[gridRow]?.[gridCol];
+                        if (m) m.material = bit ? matLit : matUnlit;
+                    }
                 }
             }
         }
@@ -1118,6 +1147,8 @@
             { file: 'models/AlgaeGrid2.glb',  isGrid: true,  facadeIdx: 1 },
             { file: 'models/AlgaeGrid3.glb',  isGrid: true,  facadeIdx: 2 },
             { file: 'models/AlgaeGrid4.glb',  isGrid: true,  facadeIdx: 3 },
+            { file: 'models/StructuralRail.glb', isGrid: false, materialName: 'matSilver' },
+            { file: 'models/FacadePanels.glb', isGrid: false, materialName: 'matMarble' },
         ];
 
         const loader = new GLTFLoader();
@@ -1149,7 +1180,12 @@
             document.getElementById('text-panel').classList.add('ready');
         }
 
-        models.forEach(({ file, isGrid, facadeIdx }) => {
+        const materialMap = {
+            'matSilver': matSilver,
+            'matMarble': matMarble
+        };
+
+        models.forEach(({ file, isGrid, facadeIdx, materialName }) => {
             loader.load(
                 file,
                 (gltf) => {
@@ -1163,6 +1199,9 @@
                             if (child.isMesh) {
                                 child.castShadow = true;
                                 child.receiveShadow = true;
+                                if (materialName && materialMap[materialName]) {
+                                    child.material = materialMap[materialName];
+                                }
                                 if (child.material) {
                                     const mats = Array.isArray(child.material) ? child.material : [child.material];
                                     mats.forEach(m => { m.needsUpdate = true; });
@@ -1260,7 +1299,7 @@
                 if (lastFlowTime !== null) {
                     const dt = now - lastFlowTime;
                     flowOffset += FLOW_SPEED * dt / 1000;
-                    flowOffset = flowOffset % FLOW_SEQUENCE.length;
+                    flowOffset = flowOffset % (CHARS_PER_ROW * SLOT_W);
                     renderFlow(currentText, flowOffset);
                 }
                 lastFlowTime = now;
