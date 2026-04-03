@@ -171,6 +171,18 @@
             opacity: 0;
             transition: opacity 0.3s;
             white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #game-controls {
+            color: #444;
+            font-size: 0.65rem;
+            letter-spacing: 0.06em;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
         #pattern-panel {
@@ -244,7 +256,10 @@
         <button class="side-btn" id="music-play-btn" disabled>play</button>
     </div>
 
-    <div id="game-info"></div>
+    <div id="game-info">
+        <span id="game-score"></span>
+        <span id="game-controls"></span>
+    </div>
 
     <div id="pattern-panel">
         <div class="pattern-label">patterns</div>
@@ -837,15 +852,26 @@
         }
 
         // ─── Game grid ────────────────────────────────────────────────────────────
-        // The game world maps the 68-column building perimeter × 42 active rows into
-        // a single rectangular coordinate space that wraps horizontally.
-        const GAME_W = FLOW_SEQUENCE.length; // 68 columns
+        // The game world maps exclusively to AlgaeGrid3.glb (facadeIdx: 2, West facade),
+        // which has 20 columns × 42 active rows, wrapping horizontally.
+        const GAME_SEQUENCE = (() => {
+            const seq = [];
+            const fi = 2; // West facade (AlgaeGrid3.glb)
+            const f = FACADES[fi];
+            const numCols = f.colMax - f.colMin + 1;
+            for (let ci = 0; ci < numCols; ci++) {
+                seq.push({ facadeIdx: fi, gridCol: f.colMin + ci });
+            }
+            return seq;
+        })();
+
+        const GAME_W = GAME_SEQUENCE.length; // 20 columns
         const GAME_H = 42;
 
         function setCell(gx, gy, mat) {
             gx = ((gx % GAME_W) + GAME_W) % GAME_W;
             if (gy < 0 || gy >= GAME_H) return;
-            const { facadeIdx, gridCol } = FLOW_SEQUENCE[gx];
+            const { facadeIdx, gridCol } = GAME_SEQUENCE[gx];
             const f = FACADES[facadeIdx];
             const gridRow = f.rowMax - gy;
             const m = gridCells[facadeIdx]?.[gridRow]?.[gridCol];
@@ -862,6 +888,8 @@
             document.getElementById('tetris-btn').classList.remove('active');
             const gi = document.getElementById('game-info');
             gi.style.opacity = '0';
+            const gc = document.getElementById('game-controls');
+            gc.style.opacity = '0';
 
             clearGrid();
             if (flowMode && currentText) {
@@ -873,8 +901,15 @@
 
         function gameInfo(msg) {
             const gi = document.getElementById('game-info');
-            gi.textContent = msg;
+            const gs = document.getElementById('game-score');
+            gs.textContent = msg;
             gi.style.opacity = '1';
+        }
+
+        function gameControls(msg) {
+            const gc = document.getElementById('game-controls');
+            gc.textContent = msg;
+            gc.style.opacity = '1';
         }
 
         // ─── SNAKE ────────────────────────────────────────────────────────────────
@@ -899,6 +934,7 @@
             sn.timer = setInterval(snakeTick, 130);
             sn.dirty = true;
             gameInfo('snake — score: 0');
+            gameControls('controls: arrows to move');
         }
 
         function snakeSpawnFood() {
@@ -936,7 +972,7 @@
         }
 
         // ─── TETRIS ───────────────────────────────────────────────────────────────
-        // Tetris occupies the first TR_W columns of GAME_W (= the North facade, 20 cols × 42 rows)
+        // Tetris occupies the first TR_W columns of GAME_W (= the West facade, 20 cols × 42 rows)
         const TR_W = 20, TR_H = GAME_H;
 
         // Piece rotations: each entry is [[dx,dy],...] offsets from piece origin
@@ -980,6 +1016,7 @@
             tr.timer = setInterval(trTick, tr.speed);
             tr.dirty = true;
             gameInfo('tetris — score: 0');
+            gameControls('controls: arrows to move/rotate · space to drop');
         }
 
         function trSpawn() {
