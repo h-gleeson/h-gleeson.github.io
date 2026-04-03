@@ -253,7 +253,11 @@
         <div class="panel-label">music</div>
         <label class="side-btn" for="music-input">upload mp3</label>
         <input type="file" id="music-input" accept="audio/*" style="display:none">
-        <button class="side-btn" id="music-play-btn" disabled>play</button>
+        <button class="side-btn" id="music-play-btn" disabled>play uploaded</button>
+        <div style="height:5px"></div>
+        <button class="side-btn music-track-btn" data-url="mp3s/Blinding%20Lights.mp3">Blinding Lights</button>
+        <button class="side-btn music-track-btn" data-url="mp3s/Gangnam%20Style.mp3">Gangnam Style</button>
+        <button class="side-btn music-track-btn" data-url="mp3s/The%20Macarena.mp3">The Macarena</button>
     </div>
 
     <div id="game-info">
@@ -1082,7 +1086,7 @@
         }
 
         // ─── MUSIC ────────────────────────────────────────────────────────────────
-        let audioCtx = null, analyserNode = null, audioSrc = null, audioBuf = null;
+        let audioCtx = null, analyserNode = null, audioSrc = null, audioBuf = null, urlAudioBuf = null;
         let musicMode = false, freqData = null;
 
         function initAudio() {
@@ -1097,28 +1101,66 @@
 
         async function loadAudioFile(file) {
             initAudio();
+            document.querySelectorAll('.music-track-btn').forEach(b => b.classList.remove('active'));
             const ab = await file.arrayBuffer();
             audioBuf = await audioCtx.decodeAudioData(ab);
             document.getElementById('music-play-btn').disabled = false;
         }
 
-        function playAudio() {
-            if (!audioBuf) return;
+        async function loadAudioUrl(url, btn) {
+            stopAudio(); // Stop any currently playing audio
+            initAudio();
+
+            const originalText = btn.textContent;
+            btn.textContent = 'loading...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(url);
+                const ab = await response.arrayBuffer();
+                urlAudioBuf = await audioCtx.decodeAudioData(ab);
+
+                // Clear the 'active' state from all buttons, set it on this one
+                document.querySelectorAll('.music-track-btn').forEach(b => {
+                    b.classList.remove('active');
+                    if (b !== btn) {
+                        b.textContent = b.dataset.originalText || b.textContent;
+                    }
+                });
+                btn.classList.add('active');
+
+                playAudio(true);
+            } catch (err) {
+                console.error("Failed to load audio from url", url, err);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function playAudio(isUrl = false) {
+            const bufferToPlay = isUrl ? urlAudioBuf : audioBuf;
+            if (!bufferToPlay) return;
             if (audioSrc) { try { audioSrc.stop(); } catch(e) {} audioSrc = null; }
             if (audioCtx.state === 'suspended') audioCtx.resume();
             audioSrc = audioCtx.createBufferSource();
-            audioSrc.buffer = audioBuf;
+            audioSrc.buffer = bufferToPlay;
             audioSrc.connect(analyserNode);
             audioSrc.loop = true;
             audioSrc.start();
             musicMode = true;
-            document.getElementById('music-play-btn').textContent = 'stop';
+
+            // if an active track is playing, don't change 'play uploaded' text to stop, unless 'play uploaded' was clicked
+            if (!isUrl) {
+                document.getElementById('music-play-btn').textContent = 'stop';
+            }
         }
 
         function stopAudio() {
             if (audioSrc) { try { audioSrc.stop(); } catch(e) {} audioSrc = null; }
             musicMode = false;
-            document.getElementById('music-play-btn').textContent = 'play';
+            document.getElementById('music-play-btn').textContent = 'play uploaded';
+            document.querySelectorAll('.music-track-btn').forEach(b => b.classList.remove('active'));
             clearGrid();
             if (flowMode && currentText) lastFlowTime = null;
             else renderText(currentText);
@@ -1485,11 +1527,30 @@
         });
 
         document.getElementById('music-play-btn').addEventListener('click', () => {
-            if (musicMode) {
+            if (musicMode && !document.querySelector('.music-track-btn.active')) {
                 stopAudio();
             } else {
+                // If a track was playing and we clicked play uploaded, stop the track first
+                if (document.querySelector('.music-track-btn.active')) {
+                    stopAudio();
+                }
                 playAudio();
             }
+        });
+
+        document.querySelectorAll('.music-track-btn').forEach(btn => {
+            // Store original text so we can restore it after 'loading...'
+            btn.dataset.originalText = btn.textContent;
+            btn.addEventListener('click', () => {
+                if (btn.classList.contains('active')) {
+                    // Clicked an active track button -> stop the audio
+                    stopAudio();
+                } else {
+                    // Clicked a new track button -> load and play it
+                    const url = btn.dataset.url;
+                    loadAudioUrl(url, btn);
+                }
+            });
         });
     </script>
 </body>
