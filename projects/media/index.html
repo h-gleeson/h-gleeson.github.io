@@ -375,6 +375,22 @@
             roughness: 0.1,
         });
 
+        const matTranslucentWhite = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.6,
+            roughness: 0.2,
+            metalness: 0.1,
+        });
+
+        const matWater = new THREE.MeshStandardMaterial({
+            color: 0x1ca3ec,
+            transparent: true,
+            opacity: 0.85,
+            roughness: 0.1,
+            metalness: 0.8,
+        });
+
         // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
         // Each character: array of 7 row bitmasks (bit 4 = leftmost pixel, bit 0 = rightmost)
         const FONT = {};
@@ -865,6 +881,7 @@
             return seq;
         })();
 
+
         const GAME_W = GAME_SEQUENCE.length; // 20 columns
         const GAME_H = 42;
 
@@ -1205,6 +1222,10 @@
             { file: 'models/AlgaeGrid4.glb',  isGrid: true,  facadeIdx: 3 },
             { file: 'models/StructuralRail.glb', isGrid: false, materialName: 'matSilver' },
             { file: 'models/FacadePanels.glb', isGrid: false, materialName: 'matMarble' },
+            { file: 'models/HudsonBuildings.glb', isGrid: false, materialName: 'matTranslucentWhite' },
+            { file: 'models/HudsonSite.glb', isGrid: false },
+            { file: 'models/ProceduralSite.glb', isGrid: false },
+            { file: 'models/River.glb', isGrid: false, materialName: 'matWater' },
         ];
 
         const loader = new GLTFLoader();
@@ -1238,7 +1259,9 @@
 
         const materialMap = {
             'matSilver': matSilver,
-            'matMarble': matMarble
+            'matMarble': matMarble,
+            'matTranslucentWhite': matTranslucentWhite,
+            'matWater': matWater
         };
 
         models.forEach(({ file, isGrid, facadeIdx, materialName }) => {
