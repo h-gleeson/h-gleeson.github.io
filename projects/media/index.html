@@ -171,6 +171,18 @@
             opacity: 0;
             transition: opacity 0.3s;
             white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #game-controls {
+            color: #444;
+            font-size: 0.65rem;
+            letter-spacing: 0.06em;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
         #pattern-panel {
@@ -244,7 +256,10 @@
         <button class="side-btn" id="music-play-btn" disabled>play</button>
     </div>
 
-    <div id="game-info"></div>
+    <div id="game-info">
+        <span id="game-score"></span>
+        <span id="game-controls"></span>
+    </div>
 
     <div id="pattern-panel">
         <div class="pattern-label">patterns</div>
@@ -873,6 +888,8 @@
             document.getElementById('tetris-btn').classList.remove('active');
             const gi = document.getElementById('game-info');
             gi.style.opacity = '0';
+            const gc = document.getElementById('game-controls');
+            gc.style.opacity = '0';
 
             clearGrid();
             if (flowMode && currentText) {
@@ -884,8 +901,15 @@
 
         function gameInfo(msg) {
             const gi = document.getElementById('game-info');
-            gi.textContent = msg;
+            const gs = document.getElementById('game-score');
+            gs.textContent = msg;
             gi.style.opacity = '1';
+        }
+
+        function gameControls(msg) {
+            const gc = document.getElementById('game-controls');
+            gc.textContent = msg;
+            gc.style.opacity = '1';
         }
 
         // ─── SNAKE ────────────────────────────────────────────────────────────────
@@ -910,6 +934,7 @@
             sn.timer = setInterval(snakeTick, 130);
             sn.dirty = true;
             gameInfo('snake — score: 0');
+            gameControls('controls: arrows to move');
         }
 
         function snakeSpawnFood() {
@@ -991,6 +1016,7 @@
             tr.timer = setInterval(trTick, tr.speed);
             tr.dirty = true;
             gameInfo('tetris — score: 0');
+            gameControls('controls: arrows to move/rotate · space to drop');
         }
 
         function trSpawn() {
