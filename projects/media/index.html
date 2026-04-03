@@ -251,6 +251,9 @@
         <button class="side-btn" id="tetris-btn">tetris</button>
         <div style="height:10px"></div>
         <div class="panel-label">music</div>
+        <button class="side-btn track-btn" data-file="mp3s/Blinding Lights.mp3">blinding lights</button>
+        <button class="side-btn track-btn" data-file="mp3s/Gangnam Style.mp3">gangnam style</button>
+        <button class="side-btn track-btn" data-file="mp3s/The Macarena.mp3">the macarena</button>
         <label class="side-btn" for="music-input">upload mp3</label>
         <input type="file" id="music-input" accept="audio/*" style="display:none">
         <button class="side-btn" id="music-play-btn" disabled>play</button>
@@ -882,6 +885,7 @@
         })();
 
 
+
         const GAME_W = GAME_SEQUENCE.length; // 20 columns
         const GAME_H = 42;
 
@@ -1102,6 +1106,16 @@
             document.getElementById('music-play-btn').disabled = false;
         }
 
+        async function loadAudioUrl(url) {
+            initAudio();
+            const response = await fetch(url);
+            const ab = await response.arrayBuffer();
+            audioBuf = await audioCtx.decodeAudioData(ab);
+            document.getElementById('music-play-btn').disabled = false;
+            // Provide a visual cue that it loaded successfully
+            document.getElementById('music-play-btn').textContent = 'play (ready)';
+        }
+
         function playAudio() {
             if (!audioBuf) return;
             if (audioSrc) { try { audioSrc.stop(); } catch(e) {} audioSrc = null; }
@@ -1245,7 +1259,6 @@
             box.getSize(size);
 
             // Set up a grid inside the bounding box
-            const spacing = 1.2; // space between instances
             // Put a sensible upper bound to prevent infinite loops/hangs if the site mesh is huge
             // Increase spacing so it doesn't take forever / crash browser with too many boxes
             const spacingX = size.x / 50;
@@ -1266,6 +1279,7 @@
             const downDir = new THREE.Vector3(0, -1, 0);
             const dummy = new THREE.Object3D();
 
+
             // Site mesh to intersect against
             const meshes = [];
             siteRoot.traverse(c => { if (c.isMesh) meshes.push(c); });
@@ -1284,6 +1298,7 @@
                     if (intersects.length > 0) {
                         // We hit the procedural surface! Put a building here.
                         const hitY = intersects[0].point.y;
+
 
                         // Randomize height a bit, mimicking small blocks
                         // Scale height based on spacing so they look proportional
@@ -1479,9 +1494,24 @@
             tetrisStart();
         });
 
+        document.querySelectorAll('.track-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (musicMode) stopAudio();
+                document.getElementById('music-play-btn').textContent = 'loading...';
+                document.getElementById('music-play-btn').disabled = true;
+                loadAudioUrl(btn.dataset.file);
+            });
+        });
+
         document.getElementById('music-input').addEventListener('change', e => {
             const file = e.target.files[0];
-            if (file) loadAudioFile(file);
+            if (file) {
+                document.getElementById('music-play-btn').textContent = 'loading...';
+                document.getElementById('music-play-btn').disabled = true;
+                loadAudioFile(file).then(() => {
+                    document.getElementById('music-play-btn').textContent = 'play (ready)';
+                });
+            }
         });
 
         document.getElementById('music-play-btn').addEventListener('click', () => {
