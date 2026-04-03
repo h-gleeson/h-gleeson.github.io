@@ -837,15 +837,26 @@
         }
 
         // ─── Game grid ────────────────────────────────────────────────────────────
-        // The game world maps the 68-column building perimeter × 42 active rows into
-        // a single rectangular coordinate space that wraps horizontally.
-        const GAME_W = FLOW_SEQUENCE.length; // 68 columns
+        // The game world maps exclusively to AlgaeGrid3.glb (facadeIdx: 2, West facade),
+        // which has 20 columns × 42 active rows, wrapping horizontally.
+        const GAME_SEQUENCE = (() => {
+            const seq = [];
+            const fi = 2; // West facade (AlgaeGrid3.glb)
+            const f = FACADES[fi];
+            const numCols = f.colMax - f.colMin + 1;
+            for (let ci = 0; ci < numCols; ci++) {
+                seq.push({ facadeIdx: fi, gridCol: f.colMin + ci });
+            }
+            return seq;
+        })();
+
+        const GAME_W = GAME_SEQUENCE.length; // 20 columns
         const GAME_H = 42;
 
         function setCell(gx, gy, mat) {
             gx = ((gx % GAME_W) + GAME_W) % GAME_W;
             if (gy < 0 || gy >= GAME_H) return;
-            const { facadeIdx, gridCol } = FLOW_SEQUENCE[gx];
+            const { facadeIdx, gridCol } = GAME_SEQUENCE[gx];
             const f = FACADES[facadeIdx];
             const gridRow = f.rowMax - gy;
             const m = gridCells[facadeIdx]?.[gridRow]?.[gridCol];
@@ -936,7 +947,7 @@
         }
 
         // ─── TETRIS ───────────────────────────────────────────────────────────────
-        // Tetris occupies the first TR_W columns of GAME_W (= the North facade, 20 cols × 42 rows)
+        // Tetris occupies the first TR_W columns of GAME_W (= the West facade, 20 cols × 42 rows)
         const TR_W = 20, TR_H = GAME_H;
 
         // Piece rotations: each entry is [[dx,dy],...] offsets from piece origin
