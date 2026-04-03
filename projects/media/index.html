@@ -1215,7 +1215,7 @@
 
         // ─── Model loading ────────────────────────────────────────────────────────
         const models = [
-            { file: 'models/Base.glb',        isGrid: false },
+            { file: 'models/Base.glb',        isGrid: false, isBase: true },
             { file: 'models/AlgaeGrid1.glb',  isGrid: true,  facadeIdx: 0 },
             { file: 'models/AlgaeGrid2.glb',  isGrid: true,  facadeIdx: 1 },
             { file: 'models/AlgaeGrid3.glb',  isGrid: true,  facadeIdx: 2 },
@@ -1224,7 +1224,7 @@
             { file: 'models/FacadePanels.glb', isGrid: false, materialName: 'matMarble' },
             { file: 'models/HudsonBuildings.glb', isGrid: false, materialName: 'matTranslucentWhite' },
             { file: 'models/HudsonSite.glb', isGrid: false },
-            { file: 'models/ProceduralSite.glb', isGrid: false },
+            { file: 'models/ProceduralSite.glb', isGrid: false, isProcedural: true },
             { file: 'models/River.glb', isGrid: false, materialName: 'matWater' },
         ];
 
@@ -1233,9 +1233,79 @@
         const group = new THREE.Group();
         scene.add(group);
         let loaded = 0;
+        let baseMesh = null;
+
+        function generateProceduralCityscape(siteRoot) {
+            // Force world matrix update so bounding box is correct
+            siteRoot.updateMatrixWorld(true);
+
+            // Compute bounding box to know the procedural area bounds
+            const box = new THREE.Box3().setFromObject(siteRoot);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+
+            // Set up a grid inside the bounding box
+            const spacing = 1.2; // space between instances
+            // Put a sensible upper bound to prevent infinite loops/hangs if the site mesh is huge
+            // Increase spacing so it doesn't take forever / crash browser with too many boxes
+            const spacingX = size.x / 50;
+            const spacingZ = size.z / 50;
+            const cols = 50;
+            const rows = 50;
+
+            // Create a single instanced mesh for performance
+            // Make the boxes scale relative to the spacing so they fit the grid nicely
+            const geometry = new THREE.BoxGeometry(spacingX * 0.8, 1, spacingZ * 0.8);
+            geometry.translate(0, 0.5, 0); // shift origin to bottom
+            const count = cols * rows;
+            const instancedMesh = new THREE.InstancedMesh(geometry, matTranslucentWhite, count);
+            instancedMesh.castShadow = true;
+            instancedMesh.receiveShadow = true;
+
+            const raycaster = new THREE.Raycaster();
+            const downDir = new THREE.Vector3(0, -1, 0);
+            const dummy = new THREE.Object3D();
+
+            // Site mesh to intersect against
+            const meshes = [];
+            siteRoot.traverse(c => { if (c.isMesh) meshes.push(c); });
+
+            let instanceIdx = 0;
+            const yRayStart = box.max.y + 10;
+
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    const px = box.min.x + (i + 0.5) * spacingX;
+                    const pz = box.min.z + (j + 0.5) * spacingZ;
+
+                    raycaster.set(new THREE.Vector3(px, yRayStart, pz), downDir);
+                    const intersects = raycaster.intersectObjects(meshes, false);
+
+                    if (intersects.length > 0) {
+                        // We hit the procedural surface! Put a building here.
+                        const hitY = intersects[0].point.y;
+
+                        // Randomize height a bit, mimicking small blocks
+                        // Scale height based on spacing so they look proportional
+                        const height = (0.5 + Math.random() * 2.5) * spacingX;
+
+                        dummy.position.set(px, hitY, pz);
+                        dummy.scale.set(1, height, 1);
+                        dummy.updateMatrix();
+
+                        instancedMesh.setMatrixAt(instanceIdx, dummy.matrix);
+                        instanceIdx++;
+                    }
+                }
+            }
+
+            instancedMesh.count = instanceIdx; // only render the populated ones
+            group.add(instancedMesh);
+        }
 
         function onAllLoaded() {
-            const box = new THREE.Box3().setFromObject(group);
+            const targetObject = baseMesh || group;
+            const box = new THREE.Box3().setFromObject(targetObject);
             const center = new THREE.Vector3();
             const size = new THREE.Vector3();
             box.getCenter(center);
@@ -1264,12 +1334,14 @@
             'matWater': matWater
         };
 
-        models.forEach(({ file, isGrid, facadeIdx, materialName }) => {
+        models.forEach(({ file, isGrid, isBase, isProcedural, facadeIdx, materialName }) => {
             loader.load(
                 file,
                 (gltf) => {
                     const root = gltf.scene;
                     root.position.set(0, 0, 0);
+
+                    if (isBase) baseMesh = root;
 
                     if (isGrid) {
                         buildFacadeGrid(facadeIdx, root);
@@ -1287,6 +1359,10 @@
                                 }
                             }
                         });
+                    }
+
+                    if (isProcedural) {
+                        generateProceduralCityscape(root);
                     }
 
                     group.add(root);
