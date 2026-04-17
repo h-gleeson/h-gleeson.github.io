@@ -296,6 +296,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         // ─── Grid constants ───────────────────────────────────────────────────────
@@ -1279,6 +1280,11 @@
         ];
 
         const loader = new GLTFLoader();
+
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath( 'https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/libs/draco/' );
+        loader.setDRACOLoader( dracoLoader );
+
         const loadingEl = document.getElementById('loading');
         const group = new THREE.Group();
         scene.add(group);
