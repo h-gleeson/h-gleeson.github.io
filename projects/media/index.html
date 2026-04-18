@@ -402,6 +402,7 @@
             color: 0x33aa33,
             roughness: 0.8,
             metalness: 0.1,
+            side: THREE.DoubleSide,
         });
 
         // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
@@ -1306,9 +1307,9 @@
             const size = new THREE.Vector3();
             box.getSize(size);
 
-            const bladeCount = 5000;
-            // Create a simple low-poly blade of grass
-            const geometry = new THREE.ConeGeometry(0.05, 0.4, 3);
+            const bladeCount = 10000;
+            // Create a simple low-poly blade of grass using a plane
+            const geometry = new THREE.PlaneGeometry(0.08, 0.4);
             geometry.translate(0, 0.2, 0); // shift origin to bottom
 
             // Create a custom material that includes a time uniform for vertex displacement
@@ -1316,6 +1317,7 @@
                 color: 0x33aa33,
                 roughness: 0.8,
                 metalness: 0.1,
+                side: THREE.DoubleSide,
             });
 
             grassMaterial.onBeforeCompile = (shader) => {
