@@ -70,31 +70,37 @@
             text-align: right;
         }
 
-        #text-panel {
+        #controls-container {
             position: fixed;
-            bottom: 60px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            align-items: flex-end;
             z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        #controls-container.ready {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #text-panel {
             display: flex;
             align-items: center;
             gap: 14px;
             padding: 10px 16px;
             border: 1px solid #222;
             background: rgba(0, 0, 0, 0.8);
-            opacity: 0;
-            transition: opacity 0.5s;
-            pointer-events: none;
-        }
-        #text-panel.ready {
-            opacity: 1;
-            pointer-events: all;
         }
 
         #display-input {
             background: transparent;
             border: none;
-            border-bottom: 1px solid #444;
+            border-bottom: 1px solid #fff;
             color: #fff;
             font-family: 'Courier New', monospace;
             font-size: 0.85rem;
@@ -104,11 +110,11 @@
             padding: 2px 4px;
             transition: border-bottom-color 0.2s;
         }
-        #display-input::placeholder { color: #333; }
+        #display-input::placeholder { color: #aaa; }
         #display-input:focus { border-bottom-color: #0088ff; }
 
         #char-count {
-            color: #333;
+            color: #fff;
             font-size: 0.75rem;
             letter-spacing: 0.06em;
             min-width: 50px;
@@ -118,44 +124,46 @@
         #clear-btn {
             background: transparent;
             border: none;
-            color: #444;
+            color: #fff;
             font-size: 1rem;
             cursor: pointer;
             line-height: 1;
             padding: 0 2px;
-            transition: color 0.2s;
+            transition: color 0.2s, background 0.2s;
             font-family: 'Courier New', monospace;
         }
-        #clear-btn:hover { color: #fff; }
+        #clear-btn:hover { background: #333; color: #fff; }
 
         #left-panel {
-            position: fixed;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 10;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             gap: 4px;
         }
+        .panel-label {
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            margin-bottom: 4px;
+        }
         .side-btn {
-            background: transparent;
-            border: 1px solid #222;
-            color: #444;
+            background: #000;
+            border: 1px solid #fff;
+            color: #fff;
             font-family: 'Courier New', monospace;
             font-size: 0.75rem;
             letter-spacing: 0.08em;
             padding: 4px 10px;
             cursor: pointer;
-            transition: color 0.2s, border-color 0.2s;
+            transition: color 0.2s, background 0.2s, border-color 0.2s;
             text-align: left;
             display: block;
             width: 100%;
             box-sizing: border-box;
         }
-        .side-btn.active { color: #fff; border-color: #555; }
-        .side-btn:hover:not(.active):not(:disabled) { color: #aaa; }
+        .side-btn.active { background: #fff; color: #000; border-color: #fff; }
+        .side-btn:hover:not(.active):not(:disabled) { background: #333; color: #fff; }
         .side-btn:disabled { opacity: 0.25; cursor: default; }
 
         #game-info {
@@ -186,55 +194,50 @@
         }
 
         #pattern-panel {
-            position: fixed;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 10;
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
+            align-items: flex-start;
             gap: 4px;
         }
         .pattern-label {
-            color: #333;
+            color: #fff;
             font-family: 'Courier New', monospace;
             font-size: 0.7rem;
             letter-spacing: 0.12em;
             margin-bottom: 4px;
         }
         .pattern-btn {
-            background: transparent;
-            border: 1px solid #222;
-            color: #444;
+            background: #000;
+            border: 1px solid #fff;
+            color: #fff;
             font-family: 'Courier New', monospace;
             font-size: 0.75rem;
             letter-spacing: 0.08em;
             padding: 4px 10px;
             cursor: pointer;
-            transition: color 0.2s, border-color 0.2s;
-            text-align: right;
+            transition: color 0.2s, background 0.2s, border-color 0.2s;
+            text-align: left;
         }
-        .pattern-btn.active { color: #fff; border-color: #555; }
-        .pattern-btn:hover:not(.active) { color: #aaa; }
+        .pattern-btn.active { background: #fff; color: #000; border-color: #fff; }
+        .pattern-btn:hover:not(.active) { background: #333; color: #fff; }
 
         #mode-btns {
             display: flex;
         }
         .mode-btn {
-            background: transparent;
-            border: 1px solid #222;
-            color: #444;
+            background: #000;
+            border: 1px solid #fff;
+            color: #fff;
             font-family: 'Courier New', monospace;
             font-size: 0.75rem;
             letter-spacing: 0.08em;
             padding: 3px 10px;
             cursor: pointer;
-            transition: color 0.2s, border-color 0.2s;
+            transition: color 0.2s, background 0.2s, border-color 0.2s;
         }
         .mode-btn + .mode-btn { border-left: none; }
-        .mode-btn.active { color: #fff; border-color: #555; }
-        .mode-btn:hover:not(.active) { color: #aaa; }
+        .mode-btn.active { background: #fff; color: #000; border-color: #fff; }
+        .mode-btn:hover:not(.active) { background: #333; color: #fff; }
     </style>
 </head>
 <body>
@@ -245,43 +248,45 @@
 
     <div id="canvas-container"></div>
 
-    <div id="left-panel">
-        <div class="panel-label">games</div>
-        <button class="side-btn" id="snake-btn">snake</button>
-        <button class="side-btn" id="tetris-btn">tetris</button>
-        <div style="height:10px"></div>
-        <div class="panel-label">music</div>
-        <label class="side-btn" for="music-input">upload mp3</label>
-        <input type="file" id="music-input" accept="audio/*" style="display:none">
-        <button class="side-btn" id="music-play-btn" disabled>play uploaded</button>
-        <div style="height:5px"></div>
-        <button class="side-btn music-track-btn" data-url="mp3s/Blinding%20Lights.mp3">Blinding Lights</button>
-        <button class="side-btn music-track-btn" data-url="mp3s/Gangnam%20Style.mp3">Gangnam Style</button>
-        <button class="side-btn music-track-btn" data-url="mp3s/The%20Macarena.mp3">The Macarena</button>
+    <div id="controls-container">
+        <div id="left-panel">
+            <div class="panel-label">games</div>
+            <button class="side-btn" id="snake-btn">snake</button>
+            <button class="side-btn" id="tetris-btn">tetris</button>
+            <div style="height:10px"></div>
+            <div class="panel-label">music</div>
+            <label class="side-btn" for="music-input">upload mp3</label>
+            <input type="file" id="music-input" accept="audio/*" style="display:none">
+            <button class="side-btn" id="music-play-btn" disabled>play uploaded</button>
+            <div style="height:5px"></div>
+            <button class="side-btn music-track-btn" data-url="mp3s/Blinding%20Lights.mp3">Blinding Lights</button>
+            <button class="side-btn music-track-btn" data-url="mp3s/Gangnam%20Style.mp3">Gangnam Style</button>
+            <button class="side-btn music-track-btn" data-url="mp3s/The%20Macarena.mp3">The Macarena</button>
+        </div>
+
+        <div id="pattern-panel">
+            <div class="pattern-label">patterns</div>
+            <button class="pattern-btn" data-pattern="0">checkerboard</button>
+            <button class="pattern-btn" data-pattern="1">wave</button>
+            <button class="pattern-btn" data-pattern="2">rain</button>
+            <button class="pattern-btn" data-pattern="3">pulse</button>
+            <button class="pattern-btn" data-pattern="4">stripes</button>
+        </div>
+
+        <div id="text-panel">
+            <div id="mode-btns">
+                <button class="mode-btn active" id="static-btn">static</button>
+                <button class="mode-btn" id="flow-btn">flow</button>
+            </div>
+            <input id="display-input" type="text" placeholder="type to display on facade..." autocomplete="off" spellcheck="false">
+            <span id="char-count">0 / 40</span>
+            <button id="clear-btn" title="clear">×</button>
+        </div>
     </div>
 
     <div id="game-info">
         <span id="game-score"></span>
         <span id="game-controls"></span>
-    </div>
-
-    <div id="pattern-panel">
-        <div class="pattern-label">patterns</div>
-        <button class="pattern-btn" data-pattern="0">checkerboard</button>
-        <button class="pattern-btn" data-pattern="1">wave</button>
-        <button class="pattern-btn" data-pattern="2">rain</button>
-        <button class="pattern-btn" data-pattern="3">pulse</button>
-        <button class="pattern-btn" data-pattern="4">stripes</button>
-    </div>
-
-    <div id="text-panel">
-        <div id="mode-btns">
-            <button class="mode-btn active" id="static-btn">static</button>
-            <button class="mode-btn" id="flow-btn">flow</button>
-        </div>
-        <input id="display-input" type="text" placeholder="type to display on facade..." autocomplete="off" spellcheck="false">
-        <span id="char-count">0 / 40</span>
-        <button id="clear-btn" title="clear">×</button>
     </div>
 
     <script type="importmap">
@@ -1473,7 +1478,7 @@
             setTimeout(() => loadingEl.style.display = 'none', 500);
 
             // Show the input panel
-            document.getElementById('text-panel').classList.add('ready');
+            document.getElementById('controls-container').classList.add('ready');
         }
 
         const materialMap = {
