@@ -410,6 +410,18 @@
             side: THREE.DoubleSide,
         });
 
+        const matBrick = new THREE.MeshStandardMaterial({
+            color: 0x8b3a3a,
+            roughness: 0.9,
+            metalness: 0.1,
+        });
+
+        const matStone = new THREE.MeshStandardMaterial({
+            color: 0xcbcbc1,
+            roughness: 0.8,
+            metalness: 0.1,
+        });
+
         // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
         // Each character: array of 7 row bitmasks (bit 4 = leftmost pixel, bit 0 = rightmost)
         const FONT = {};
@@ -1285,8 +1297,8 @@
             { file: 'models/River.glb', isGrid: false, materialName: 'matWater' },
             { file: 'models/SiteBase.glb', isGrid: false },
             { file: 'models/StationTubes.glb', isGrid: false },
-            { file: 'models/Tile1.glb', isGrid: false },
-            { file: 'models/Tile2.glb', isGrid: false },
+            { file: 'models/Tile1.glb', isGrid: false, materialName: 'matBrick' },
+            { file: 'models/Tile2.glb', isGrid: false, materialName: 'matStone' },
             { file: 'models/Grass.glb', isGrid: false, materialName: 'matGrass', isProceduralGrass: true },
             { file: 'models/Ponds.glb', isGrid: false },
         ];
@@ -1486,7 +1498,9 @@
             'matMarble': matMarble,
             'matTranslucentWhite': matTranslucentWhite,
             'matWater': matWater,
-            'matGrass': matGrass
+            'matGrass': matGrass,
+            'matBrick': matBrick,
+            'matStone': matStone
         };
 
         models.forEach(({ file, isGrid, isBase, isProcedural, isProceduralGrass, facadeIdx, materialName }) => {
