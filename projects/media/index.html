@@ -395,6 +395,12 @@
             metalness: 0.1,
         });
 
+        const matSite = new THREE.MeshStandardMaterial({
+            color: 0x444444,
+            roughness: 0.8,
+            metalness: 0.1,
+        });
+
         const matWater = new THREE.MeshStandardMaterial({
             color: 0x1ca3ec,
             transparent: true,
@@ -417,9 +423,15 @@
         });
 
         const matStone = new THREE.MeshStandardMaterial({
-            color: 0xcbcbc1,
+            color: 0x888888,
             roughness: 0.8,
             metalness: 0.1,
+        });
+
+        const matDarkMetallic = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            roughness: 0.3,
+            metalness: 0.8,
         });
 
         // ─── 5×7 Pixel Font ───────────────────────────────────────────────────────
@@ -1292,15 +1304,18 @@
             { file: 'models/StructuralRail.glb', isGrid: false, materialName: 'matSilver' },
             { file: 'models/FacadePanels.glb', isGrid: false, materialName: 'matMarble' },
             { file: 'models/HudsonBuildings.glb', isGrid: false, materialName: 'matTranslucentWhite' },
-            { file: 'models/HudsonSite.glb', isGrid: false },
+            { file: 'models/HudsonSite.glb', isGrid: false, materialName: 'matSite' },
             { file: 'models/ProceduralSite.glb', isGrid: false, isProcedural: true },
             { file: 'models/River.glb', isGrid: false, materialName: 'matWater' },
-            { file: 'models/SiteBase.glb', isGrid: false },
+            { file: 'models/SiteBase.glb', isGrid: false, materialName: 'matSite' },
             { file: 'models/StationTubes.glb', isGrid: false },
             { file: 'models/Tile1.glb', isGrid: false, materialName: 'matBrick' },
             { file: 'models/Tile2.glb', isGrid: false, materialName: 'matStone' },
             { file: 'models/Grass.glb', isGrid: false, materialName: 'matGrass', isProceduralGrass: true },
             { file: 'models/Ponds.glb', isGrid: false },
+            { file: 'models/Highline.glb', isGrid: false, materialName: 'matDarkMetallic' },
+            { file: 'models/Parking.glb', isGrid: false },
+            { file: 'models/Platform.glb', isGrid: false, materialName: 'matDarkMetallic' },
         ];
 
         const loader = new GLTFLoader();
@@ -1500,7 +1515,9 @@
             'matWater': matWater,
             'matGrass': matGrass,
             'matBrick': matBrick,
-            'matStone': matStone
+            'matStone': matStone,
+            'matDarkMetallic': matDarkMetallic,
+            'matSite': matSite
         };
 
         models.forEach(({ file, isGrid, isBase, isProcedural, isProceduralGrass, facadeIdx, materialName }) => {
