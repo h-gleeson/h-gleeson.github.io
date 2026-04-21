@@ -238,6 +238,82 @@
         .mode-btn + .mode-btn { border-left: none; }
         .mode-btn.active { background: #fff; color: #000; border-color: #fff; }
         .mode-btn:hover:not(.active) { background: #333; color: #fff; }
+
+        #how-it-works-btn {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: #000;
+            border: 1px solid #fff;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            padding: 4px 10px;
+            cursor: pointer;
+            z-index: 20;
+            transition: color 0.2s, background 0.2s, border-color 0.2s;
+        }
+        #how-it-works-btn:hover { background: #333; color: #fff; }
+
+        #how-it-works-menu {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #fff;
+            padding: 10px;
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start;
+            min-width: 150px;
+        }
+
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .menu-title {
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+        }
+        .menu-close-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            line-height: 1;
+            padding: 0 2px;
+            transition: color 0.2s;
+        }
+        .menu-close-btn:hover { color: #888; }
+
+        .menu-btn {
+            background: #000;
+            border: 1px solid #fff;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s, border-color 0.2s;
+            text-align: left;
+            width: 100%;
+        }
+        .menu-btn.active { background: #fff; color: #000; border-color: #fff; }
+        .menu-btn:hover:not(.active) { background: #333; color: #fff; }
+
+
     </style>
 </head>
 <body>
@@ -247,6 +323,16 @@
     <div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; right-drag to pan</div>
 
     <div id="canvas-container"></div>
+
+
+    <button id="how-it-works-btn">how does it work?</button>
+    <div id="how-it-works-menu">
+        <div class="menu-header">
+            <span class="menu-title">systems</span>
+            <button id="close-menu-btn" class="menu-close-btn" title="close">×</button>
+        </div>
+        <button id="water-filtration-btn" class="menu-btn">water filtration</button>
+    </div>
 
     <div id="controls-container">
         <div id="left-panel">
@@ -395,10 +481,30 @@
             metalness: 0.1,
         });
 
-        const matSite = new THREE.MeshStandardMaterial({
+                const matSite = new THREE.MeshStandardMaterial({
             color: 0x444444,
-            roughness: 0.8,
+            roughness: 0.9,
             metalness: 0.1,
+        });
+
+        const matWaterExhaust = new THREE.MeshStandardMaterial({
+            color: 0x00ff00,
+            roughness: 0.3,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 1.0,
+            emissive: 0x00ff00,
+            emissiveIntensity: 0.5
+        });
+
+        const matWaterIntake = new THREE.MeshStandardMaterial({
+            color: 0x1e90ff,
+            roughness: 0.3,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 1.0,
+            emissive: 0x1e90ff,
+            emissiveIntensity: 0.5
         });
 
         const matWater = new THREE.MeshStandardMaterial({
@@ -1316,7 +1422,9 @@
             { file: 'models/Highline.glb', isGrid: false, materialName: 'matDarkMetallic' },
             { file: 'models/Parking.glb', isGrid: false },
             { file: 'models/Platform.glb', isGrid: false, materialName: 'matDarkMetallic' },
-            { file: 'models/Support.glb', isGrid: false, materialName: 'matSilver' },
+                        { file: 'models/Support.glb', isGrid: false, materialName: 'matSilver' },
+            { file: 'models/WaterExhaust.glb', isGrid: false, materialName: 'matWaterExhaust', isSystem: true },
+            { file: 'models/WaterIntake.glb', isGrid: false, materialName: 'matWaterIntake', isSystem: true }
         ];
 
         const loader = new GLTFLoader();
@@ -1517,16 +1625,30 @@
             'matGrass': matGrass,
             'matBrick': matBrick,
             'matStone': matStone,
-            'matDarkMetallic': matDarkMetallic,
-            'matSite': matSite
+                        'matDarkMetallic': matDarkMetallic,
+            'matSite': matSite,
+            'matWaterExhaust': matWaterExhaust,
+            'matWaterIntake': matWaterIntake
         };
 
-        models.forEach(({ file, isGrid, isBase, isProcedural, isProceduralGrass, facadeIdx, materialName }) => {
+
+        const systemRoots = {};
+        models.forEach(({ file, isGrid, isBase, isProcedural, isProceduralGrass, facadeIdx, materialName, isSystem }) => {
             loader.load(
                 file,
                 (gltf) => {
                     const root = gltf.scene;
                     root.position.set(0, 0, 0);
+
+                    if (file === 'models/HudsonBuildings.glb' || file === 'models/HudsonSite.glb') {
+                        root.traverse(child => { if (child.isMesh) child.userData.isExcluded = true; });
+                    }
+
+                    if (isSystem) {
+                        root.visible = false;
+                        root.traverse(child => { if (child.isMesh) child.userData.isSystem = true; });
+                        systemRoots[file] = root;
+                    }
 
                     if (isBase) baseMesh = root;
 
@@ -1569,6 +1691,58 @@
                 }
             );
         });
+
+
+        // ─── Water filtration system logic ────────────────────────────────────────
+        let isWaterFiltrationActive = false;
+        const halvedMaterials = new Map();
+
+        function toggleWaterFiltration() {
+            isWaterFiltrationActive = !isWaterFiltrationActive;
+
+            const btn = document.getElementById('water-filtration-btn');
+            if (isWaterFiltrationActive) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+
+            if (systemRoots['models/WaterExhaust.glb']) {
+                systemRoots['models/WaterExhaust.glb'].visible = isWaterFiltrationActive;
+            }
+            if (systemRoots['models/WaterIntake.glb']) {
+                systemRoots['models/WaterIntake.glb'].visible = isWaterFiltrationActive;
+            }
+
+            group.traverse(child => {
+                if (child.isMesh) {
+                    if (child.userData.isExcluded) return;
+                    if (child.userData.isSystem) return;
+
+                    if (isWaterFiltrationActive) {
+                        if (!child.userData.originalMaterial) {
+                            child.userData.originalMaterial = child.material;
+                        }
+                        const origMats = Array.isArray(child.material) ? child.material : [child.material];
+                        const newMats = origMats.map(m => {
+                            if (!halvedMaterials.has(m)) {
+                                const clone = m.clone();
+                                clone.transparent = true;
+                                const originalOpacity = clone.opacity !== undefined ? clone.opacity : 1.0;
+                                clone.opacity = originalOpacity * 0.5;
+                                halvedMaterials.set(m, clone);
+                            }
+                            return halvedMaterials.get(m);
+                        });
+                        child.material = Array.isArray(child.material) ? newMats : newMats[0];
+                    } else {
+                        if (child.userData.originalMaterial) {
+                            child.material = child.userData.originalMaterial;
+                        }
+                    }
+                }
+            });
+        }
 
         // ─── UI ───────────────────────────────────────────────────────────────────
         const input      = document.getElementById('display-input');
@@ -1705,6 +1879,26 @@
                 }
             });
         });
+
+        document.getElementById('how-it-works-btn').addEventListener('click', () => {
+            const menu = document.getElementById('how-it-works-menu');
+            if (menu.style.display === 'flex') {
+                menu.style.display = 'none';
+                if (isWaterFiltrationActive) toggleWaterFiltration();
+            } else {
+                menu.style.display = 'flex';
+            }
+        });
+
+        document.getElementById('close-menu-btn').addEventListener('click', () => {
+            document.getElementById('how-it-works-menu').style.display = 'none';
+            if (isWaterFiltrationActive) toggleWaterFiltration();
+        });
+
+        document.getElementById('water-filtration-btn').addEventListener('click', () => {
+            toggleWaterFiltration();
+        });
+
     </script>
 </body>
 </html>
