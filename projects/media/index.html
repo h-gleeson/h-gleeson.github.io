@@ -1640,7 +1640,7 @@
                     const root = gltf.scene;
                     root.position.set(0, 0, 0);
 
-                    if (file === 'models/HudsonBuildings.glb' || file === 'models/HudsonSite.glb') {
+                    if (file === 'models/HudsonBuildings.glb') {
                         root.traverse(child => { if (child.isMesh) child.userData.isExcluded = true; });
                     }
 
@@ -1729,7 +1729,7 @@
                                 const clone = m.clone();
                                 clone.transparent = true;
                                 const originalOpacity = clone.opacity !== undefined ? clone.opacity : 1.0;
-                                clone.opacity = originalOpacity * 0.5;
+                                clone.opacity = originalOpacity * 0.35;
                                 halvedMaterials.set(m, clone);
                             }
                             return halvedMaterials.get(m);
