@@ -494,7 +494,9 @@
             transparent: true,
             opacity: 1.0,
             emissive: 0x00ff00,
-            emissiveIntensity: 0.5
+            emissiveIntensity: 0.5,
+            depthTest: false,
+            depthWrite: false
         });
 
         const matWaterIntake = new THREE.MeshStandardMaterial({
@@ -504,7 +506,9 @@
             transparent: true,
             opacity: 1.0,
             emissive: 0x1e90ff,
-            emissiveIntensity: 0.5
+            emissiveIntensity: 0.5,
+            depthTest: false,
+            depthWrite: false
         });
 
         const matWater = new THREE.MeshStandardMaterial({
@@ -1646,7 +1650,12 @@
 
                     if (isSystem) {
                         root.visible = false;
-                        root.traverse(child => { if (child.isMesh) child.userData.isSystem = true; });
+                        root.traverse(child => {
+                            if (child.isMesh) {
+                                child.userData.isSystem = true;
+                                child.renderOrder = 999;
+                            }
+                        });
                         systemRoots[file] = root;
                     }
 
