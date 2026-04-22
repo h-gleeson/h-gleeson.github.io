@@ -332,6 +332,10 @@
             <button id="close-menu-btn" class="menu-close-btn" title="close">×</button>
         </div>
         <button id="water-filtration-btn" class="menu-btn">water filtration</button>
+        <button id="floor-assembly-btn" class="menu-btn">floor assembly</button>
+        <div id="floor-assembly-submenu" style="display:none; flex-direction:column; gap:5px; margin-top:5px; padding-left:10px; border-left: 1px solid #555;">
+            <!-- Buttons will be generated dynamically -->
+        </div>
     </div>
 
     <div id="controls-container">
@@ -494,6 +498,18 @@
             transparent: true,
             opacity: 1.0,
             emissive: 0x00ff00,
+            emissiveIntensity: 0.5,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const matMockFloor = new THREE.MeshStandardMaterial({
+            color: 0xff0000,
+            roughness: 0.3,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 1.0,
+            emissive: 0xff0000,
             emissiveIntensity: 0.5,
             depthTest: false,
             depthWrite: false
@@ -1428,7 +1444,20 @@
             { file: 'models/Platform.glb', isGrid: false, materialName: 'matDarkMetallic' },
                         { file: 'models/Support.glb', isGrid: false, materialName: 'matSilver' },
             { file: 'models/WaterExhaust.glb', isGrid: false, materialName: 'matWaterExhaust', isSystem: true },
-            { file: 'models/WaterIntake.glb', isGrid: false, materialName: 'matWaterIntake', isSystem: true }
+            { file: 'models/WaterIntake.glb', isGrid: false, materialName: 'matWaterIntake', isSystem: true },
+            { file: 'models/MockFloor.glb', isGrid: false, materialName: 'matMockFloor', isSystem: true },
+            { file: 'models/floordiagram/ColumnCovers.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Elevators.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Exhaust.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/FireStairs.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Floorplate.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Glass.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Intake.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Mullions.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Servers.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Sheathing.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/StructureHorizontal.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/StructureVertical.glb', isGrid: false, isSystem: true, isFloorDiagram: true }
         ];
 
         const loader = new GLTFLoader();
@@ -1632,17 +1661,23 @@
                         'matDarkMetallic': matDarkMetallic,
             'matSite': matSite,
             'matWaterExhaust': matWaterExhaust,
-            'matWaterIntake': matWaterIntake
+            'matWaterIntake': matWaterIntake,
+            'matMockFloor': matMockFloor
         };
 
 
         const systemRoots = {};
-        models.forEach(({ file, isGrid, isBase, isProcedural, isProceduralGrass, facadeIdx, materialName, isSystem }) => {
+        models.forEach(({ file, isGrid, isBase, isProcedural, isProceduralGrass, facadeIdx, materialName, isSystem, isFloorDiagram }) => {
             loader.load(
                 file,
                 (gltf) => {
                     const root = gltf.scene;
-                    root.position.set(0, 0, 0);
+
+                    if (isFloorDiagram) {
+                        root.position.set(40, 0, 0);
+                    } else {
+                        root.position.set(0, 0, 0);
+                    }
 
                     if (file === 'models/HudsonBuildings.glb') {
                         root.traverse(child => { if (child.isMesh) child.userData.isExcluded = true; });
@@ -1702,33 +1737,19 @@
         });
 
 
-        // ─── Water filtration system logic ────────────────────────────────────────
+        // ─── Systems logic ────────────────────────────────────────
         let isWaterFiltrationActive = false;
+        let isFloorAssemblyActive = false;
         const halvedMaterials = new Map();
 
-        function toggleWaterFiltration() {
-            isWaterFiltrationActive = !isWaterFiltrationActive;
-
-            const btn = document.getElementById('water-filtration-btn');
-            if (isWaterFiltrationActive) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-
-            if (systemRoots['models/WaterExhaust.glb']) {
-                systemRoots['models/WaterExhaust.glb'].visible = isWaterFiltrationActive;
-            }
-            if (systemRoots['models/WaterIntake.glb']) {
-                systemRoots['models/WaterIntake.glb'].visible = isWaterFiltrationActive;
-            }
-
+        function updateTransparency() {
+            const needsTransparency = isWaterFiltrationActive || isFloorAssemblyActive;
             group.traverse(child => {
                 if (child.isMesh) {
                     if (child.userData.isExcluded) return;
                     if (child.userData.isSystem) return;
 
-                    if (isWaterFiltrationActive) {
+                    if (needsTransparency) {
                         if (!child.userData.originalMaterial) {
                             child.userData.originalMaterial = child.material;
                         }
@@ -1751,6 +1772,91 @@
                     }
                 }
             });
+        }
+
+        function toggleWaterFiltration() {
+            isWaterFiltrationActive = !isWaterFiltrationActive;
+
+            const btn = document.getElementById('water-filtration-btn');
+            if (isWaterFiltrationActive) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+
+            if (systemRoots['models/WaterExhaust.glb']) {
+                systemRoots['models/WaterExhaust.glb'].visible = isWaterFiltrationActive;
+            }
+            if (systemRoots['models/WaterIntake.glb']) {
+                systemRoots['models/WaterIntake.glb'].visible = isWaterFiltrationActive;
+            }
+
+            updateTransparency();
+        }
+
+        const floorDiagramParts = [
+            'models/floordiagram/ColumnCovers.glb',
+            'models/floordiagram/Elevators.glb',
+            'models/floordiagram/Exhaust.glb',
+            'models/floordiagram/FireStairs.glb',
+            'models/floordiagram/Floorplate.glb',
+            'models/floordiagram/Glass.glb',
+            'models/floordiagram/Intake.glb',
+            'models/floordiagram/Mullions.glb',
+            'models/floordiagram/Servers.glb',
+            'models/floordiagram/Sheathing.glb',
+            'models/floordiagram/StructureHorizontal.glb',
+            'models/floordiagram/StructureVertical.glb'
+        ];
+
+        function toggleFloorAssembly() {
+            isFloorAssemblyActive = !isFloorAssemblyActive;
+
+            const btn = document.getElementById('floor-assembly-btn');
+            const submenu = document.getElementById('floor-assembly-submenu');
+
+            if (isFloorAssemblyActive) {
+                btn.classList.add('active');
+                submenu.style.display = 'flex';
+                // Initialize submenu buttons if empty
+                if (submenu.children.length === 0) {
+                    floorDiagramParts.forEach(part => {
+                        const name = part.replace('models/floordiagram/', '').replace('.glb', '');
+                        const subBtn = document.createElement('button');
+                        subBtn.className = 'menu-btn active';
+                        subBtn.style.fontSize = '0.65rem';
+                        subBtn.style.padding = '2px 5px';
+                        subBtn.textContent = name;
+                        subBtn.onclick = () => {
+                            const isVisible = !subBtn.classList.contains('active');
+                            subBtn.classList.toggle('active');
+                            if (systemRoots[part]) {
+                                systemRoots[part].visible = isVisible;
+                            }
+                        };
+                        submenu.appendChild(subBtn);
+                    });
+                } else {
+                    // Reset all sub-buttons to active
+                    Array.from(submenu.children).forEach(subBtn => {
+                        subBtn.classList.add('active');
+                    });
+                }
+            } else {
+                btn.classList.remove('active');
+                submenu.style.display = 'none';
+            }
+
+            if (systemRoots['models/MockFloor.glb']) {
+                systemRoots['models/MockFloor.glb'].visible = isFloorAssemblyActive;
+            }
+            floorDiagramParts.forEach(part => {
+                if (systemRoots[part]) {
+                    systemRoots[part].visible = isFloorAssemblyActive;
+                }
+            });
+
+            updateTransparency();
         }
 
         // ─── UI ───────────────────────────────────────────────────────────────────
@@ -1894,6 +2000,7 @@
             if (menu.style.display === 'flex') {
                 menu.style.display = 'none';
                 if (isWaterFiltrationActive) toggleWaterFiltration();
+                if (isFloorAssemblyActive) toggleFloorAssembly();
             } else {
                 menu.style.display = 'flex';
             }
@@ -1902,10 +2009,15 @@
         document.getElementById('close-menu-btn').addEventListener('click', () => {
             document.getElementById('how-it-works-menu').style.display = 'none';
             if (isWaterFiltrationActive) toggleWaterFiltration();
+            if (isFloorAssemblyActive) toggleFloorAssembly();
         });
 
         document.getElementById('water-filtration-btn').addEventListener('click', () => {
             toggleWaterFiltration();
+        });
+
+        document.getElementById('floor-assembly-btn').addEventListener('click', () => {
+            toggleFloorAssembly();
         });
 
     </script>
