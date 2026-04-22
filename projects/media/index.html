@@ -1426,6 +1426,24 @@
         controls.minDistance = 1;
         controls.maxDistance = 500;
 
+        const rightZone = document.createElement('div');
+        rightZone.id = 'right-zone';
+        rightZone.style.position = 'absolute';
+        rightZone.style.right = '0';
+        rightZone.style.top = '0';
+        rightZone.style.width = '40%';
+        rightZone.style.height = '100%';
+        rightZone.style.zIndex = '5';
+        rightZone.style.display = 'none';
+        document.getElementById('canvas-container').appendChild(rightZone);
+
+        const controlsDiagram = new OrbitControls(cameraDiagram, rightZone);
+        controlsDiagram.enableDamping = true;
+        controlsDiagram.dampingFactor = 0.06;
+        controlsDiagram.minDistance = 1;
+        controlsDiagram.maxDistance = 500;
+
+
         // Lighting
         scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
@@ -1672,6 +1690,9 @@
                 diagBox.getSize(diagSize);
                 const diagMaxDim = Math.max(diagSize.x, diagSize.y, diagSize.z) || 10;
                 diagramDist = (diagMaxDim / 2) / Math.tan(fov / 2) * 1.6;
+                controlsDiagram.target.copy(diagramCenter);
+                cameraDiagram.position.set(diagramCenter.x, diagramCenter.y + diagMaxDim * 0.25, diagramCenter.z + diagramDist);
+                controlsDiagram.update();
             }
 
             loadingEl.style.opacity = '0';
@@ -1786,6 +1807,7 @@
                             if (!halvedMaterials.has(m)) {
                                 const clone = m.clone();
                                 clone.transparent = true;
+                                clone.depthWrite = false;
                                 const originalOpacity = clone.opacity !== undefined ? clone.opacity : 1.0;
                                 clone.opacity = originalOpacity * 0.35;
                                 halvedMaterials.set(m, clone);
@@ -1846,6 +1868,7 @@
             if (isFloorAssemblyActive) {
                 btn.classList.add('active');
                 submenu.style.display = 'flex';
+                document.getElementById('right-zone').style.display = 'block';
                 // Initialize submenu buttons if empty
                 if (submenu.children.length === 0) {
                     floorDiagramParts.forEach(part => {
@@ -1873,6 +1896,7 @@
             } else {
                 btn.classList.remove('active');
                 submenu.style.display = 'none';
+                document.getElementById('right-zone').style.display = 'none';
             }
 
             if (systemRoots['models/MockFloor.glb']) {
@@ -1974,47 +1998,35 @@
 
             controls.update();
 
-            // Sync cameras
-            cameraDiagram.quaternion.copy(camera.quaternion);
-            // Distance from main camera to its target to give a zoom effect, scaled to diagram size
-            const mainDist = camera.position.distanceTo(controls.target);
-            const distRatio = Math.max(0.5, Math.min(2.0, mainDist / 200)); // Assume ~200 is default distance
-            const currentDiagDist = diagramDist * distRatio;
+            controlsDiagram.update();
+            const w = window.innerWidth;
+            const h = window.innerHeight;
 
-            const offset = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
-            cameraDiagram.position.copy(diagramCenter).add(offset.multiplyScalar(currentDiagDist));
-
-            // Render main scene full screen
-            renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-            renderer.setScissorTest(false);
-            renderer.clear();
-            renderer.render(scene, camera);
-
-            // Render secondary scene on the right side if Floor Assembly is active
             if (isFloorAssemblyActive) {
-                const w = window.innerWidth;
-                const h = window.innerHeight;
-                // e.g. render on the right 40% of the screen
+                const mainW = w * 0.6;
+                renderer.setViewport(0, 0, mainW, h);
+                renderer.setScissorTest(true);
+                renderer.setScissor(0, 0, mainW, h);
+                renderer.clear();
+                camera.aspect = mainW / h;
+                camera.updateProjectionMatrix();
+                renderer.render(scene, camera);
+
                 const overlayW = w * 0.4;
                 const overlayX = w - overlayW;
-
-                renderer.setScissorTest(true);
-                renderer.setScissor(overlayX, 0, overlayW, h);
                 renderer.setViewport(overlayX, 0, overlayW, h);
-
-                // Clear the depth buffer for the overlay so it draws on top!
+                renderer.setScissor(overlayX, 0, overlayW, h);
                 renderer.clear();
-                // Optionally render a subtle background or clear color for the split screen
-                // renderer.clearColor(); // we could do this if we wanted a distinct background
-
-                // Keep the aspect ratio correct for the secondary camera
                 cameraDiagram.aspect = overlayW / h;
                 cameraDiagram.updateProjectionMatrix();
-
                 renderer.render(sceneDiagram, cameraDiagram);
-
-                // Reset aspect ratio of main camera for the next frame
-                cameraDiagram.aspect = w / h;
+            } else {
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setViewport(0, 0, w, h);
+                renderer.setScissorTest(false);
+                renderer.clear();
+                renderer.render(scene, camera);
             }
 
         }
@@ -2084,10 +2096,12 @@
         });
 
         document.getElementById('water-filtration-btn').addEventListener('click', () => {
+            if (isFloorAssemblyActive) toggleFloorAssembly();
             toggleWaterFiltration();
         });
 
         document.getElementById('floor-assembly-btn').addEventListener('click', () => {
+            if (isWaterFiltrationActive) toggleWaterFiltration();
             toggleFloorAssembly();
         });
 
