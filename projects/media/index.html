@@ -501,6 +501,16 @@
             metalness: 0.1,
         });
 
+        const matGlass = new THREE.MeshStandardMaterial({
+            color: 0x88bbff,
+            transparent: true,
+            opacity: 0.3,
+            roughness: 0.1,
+            metalness: 0.8,
+            envMapIntensity: 1.0,
+            depthWrite: false, // Prevents glass from hiding objects behind it
+        });
+
                 const matSite = new THREE.MeshStandardMaterial({
             color: 0x444444,
             roughness: 0.9,
@@ -1489,7 +1499,9 @@
             { file: 'models/floordiagram/Exhaust.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/floordiagram/FireStairs.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/floordiagram/Floorplate.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
-            { file: 'models/floordiagram/Glass.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/Glass.glb', isGrid: false, isSystem: true, isFloorDiagram: true, materialName: 'matGlass' },
+            { file: 'models/floordiagram/AlgaeCaps.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/floordiagram/AlgaeGlass.glb', isGrid: false, isSystem: true, isFloorDiagram: true, materialName: 'matGlass' },
             { file: 'models/floordiagram/Intake.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/floordiagram/Mullions.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/floordiagram/Servers.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
@@ -1710,6 +1722,7 @@
             'matSilver': matSilver,
             'matMarble': matMarble,
             'matTranslucentWhite': matTranslucentWhite,
+            'matGlass': matGlass,
             'matWater': matWater,
             'matGrass': matGrass,
             'matBrick': matBrick,
@@ -1729,6 +1742,7 @@
                 (gltf) => {
                     const root = gltf.scene;
                     root.position.set(0, 0, 0);
+                    root.userData.modelUrl = file;
 
                     if (file === 'models/HudsonBuildings.glb') {
                         root.traverse(child => { if (child.isMesh) child.userData.isExcluded = true; });
@@ -1822,7 +1836,7 @@
 
                     // Strict Floor Assembly Visibility Check
                     if (isFloorAssemblyActive) {
-                        if (belongsToModel && !allowedFloorAssemblyModels.includes(belongsToModel) && !child.userData.isSystem) {
+                        if (!allowedFloorAssemblyModels.includes(belongsToModel) && !child.userData.isSystem) {
                             child.visible = false;
                             return; // Skip material updates, it's hidden anyway
                         } else {
@@ -1892,6 +1906,8 @@
             'models/floordiagram/FireStairs.glb',
             'models/floordiagram/Floorplate.glb',
             'models/floordiagram/Glass.glb',
+            'models/floordiagram/AlgaeCaps.glb',
+            'models/floordiagram/AlgaeGlass.glb',
             'models/floordiagram/Intake.glb',
             'models/floordiagram/Mullions.glb',
             'models/floordiagram/Servers.glb',
