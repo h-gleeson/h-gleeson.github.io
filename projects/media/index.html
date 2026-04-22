@@ -1392,7 +1392,28 @@
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 4, 12);
 
+        const sceneDiagram = new THREE.Scene();
+        // Match the background of the split screen nicely
+        sceneDiagram.background = new THREE.Color(0x111111);
+
+        // Add lighting to sceneDiagram so the split screen models are visible!
+        const diagAmbient = new THREE.AmbientLight(0xffffff, 1.5);
+        sceneDiagram.add(diagAmbient);
+        const diagDir = new THREE.DirectionalLight(0xffffff, 2.0);
+        diagDir.position.set(5, 10, 7);
+        sceneDiagram.add(diagDir);
+        const diagDir2 = new THREE.DirectionalLight(0xffffff, 1.0);
+        diagDir2.position.set(-5, 5, -7);
+        sceneDiagram.add(diagDir2);
+
+        const cameraDiagram = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        cameraDiagram.position.set(0, 4, 12);
+
+        let diagramCenter = new THREE.Vector3(0, 0, 0);
+        let diagramDist = 20;
+
         const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        renderer.autoClear = false; // Important for multiple viewports
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
@@ -1643,6 +1664,16 @@
             controls.target.copy(center);
             controls.update();
 
+            // Calculate diagram bounding box and center
+            const diagBox = new THREE.Box3().setFromObject(sceneDiagram);
+            if (!diagBox.isEmpty()) {
+                diagBox.getCenter(diagramCenter);
+                const diagSize = new THREE.Vector3();
+                diagBox.getSize(diagSize);
+                const diagMaxDim = Math.max(diagSize.x, diagSize.y, diagSize.z) || 10;
+                diagramDist = (diagMaxDim / 2) / Math.tan(fov / 2) * 1.6;
+            }
+
             loadingEl.style.opacity = '0';
             setTimeout(() => loadingEl.style.display = 'none', 500);
 
@@ -1672,19 +1703,16 @@
                 file,
                 (gltf) => {
                     const root = gltf.scene;
-
-                    if (isFloorDiagram) {
-                        root.position.set(40, 0, 0);
-                    } else {
-                        root.position.set(0, 0, 0);
-                    }
+                    root.position.set(0, 0, 0);
 
                     if (file === 'models/HudsonBuildings.glb') {
                         root.traverse(child => { if (child.isMesh) child.userData.isExcluded = true; });
                     }
 
                     if (isSystem) {
-                        root.visible = false;
+                        if (!isFloorDiagram) {
+                            root.visible = false;
+                        }
                         root.traverse(child => {
                             if (child.isMesh) {
                                 child.userData.isSystem = true;
@@ -1722,7 +1750,7 @@
                         generateProceduralGrass(root);
                     }
 
-                    group.add(root);
+                    if (isFloorDiagram) { sceneDiagram.add(root); } else { group.add(root); }
                     loaded++;
                     loadingEl.textContent = `loading models... ${loaded} / ${models.length}`;
                     if (loaded === models.length) onAllLoaded();
@@ -1945,7 +1973,50 @@
             }
 
             controls.update();
+
+            // Sync cameras
+            cameraDiagram.quaternion.copy(camera.quaternion);
+            // Distance from main camera to its target to give a zoom effect, scaled to diagram size
+            const mainDist = camera.position.distanceTo(controls.target);
+            const distRatio = Math.max(0.5, Math.min(2.0, mainDist / 200)); // Assume ~200 is default distance
+            const currentDiagDist = diagramDist * distRatio;
+
+            const offset = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+            cameraDiagram.position.copy(diagramCenter).add(offset.multiplyScalar(currentDiagDist));
+
+            // Render main scene full screen
+            renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+            renderer.setScissorTest(false);
+            renderer.clear();
             renderer.render(scene, camera);
+
+            // Render secondary scene on the right side if Floor Assembly is active
+            if (isFloorAssemblyActive) {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                // e.g. render on the right 40% of the screen
+                const overlayW = w * 0.4;
+                const overlayX = w - overlayW;
+
+                renderer.setScissorTest(true);
+                renderer.setScissor(overlayX, 0, overlayW, h);
+                renderer.setViewport(overlayX, 0, overlayW, h);
+
+                // Clear the depth buffer for the overlay so it draws on top!
+                renderer.clear();
+                // Optionally render a subtle background or clear color for the split screen
+                // renderer.clearColor(); // we could do this if we wanted a distinct background
+
+                // Keep the aspect ratio correct for the secondary camera
+                cameraDiagram.aspect = overlayW / h;
+                cameraDiagram.updateProjectionMatrix();
+
+                renderer.render(sceneDiagram, cameraDiagram);
+
+                // Reset aspect ratio of main camera for the next frame
+                cameraDiagram.aspect = w / h;
+            }
+
         }
         animate(0);
 
