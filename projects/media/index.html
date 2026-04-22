@@ -1729,6 +1729,7 @@
                 (gltf) => {
                     const root = gltf.scene;
                     root.position.set(0, 0, 0);
+                    root.userData.modelUrl = file;
 
                     if (file === 'models/HudsonBuildings.glb') {
                         root.traverse(child => { if (child.isMesh) child.userData.isExcluded = true; });
@@ -1822,7 +1823,7 @@
 
                     // Strict Floor Assembly Visibility Check
                     if (isFloorAssemblyActive) {
-                        if (belongsToModel && !allowedFloorAssemblyModels.includes(belongsToModel) && !child.userData.isSystem) {
+                        if (!allowedFloorAssemblyModels.includes(belongsToModel) && !child.userData.isSystem) {
                             child.visible = false;
                             return; // Skip material updates, it's hidden anyway
                         } else {
