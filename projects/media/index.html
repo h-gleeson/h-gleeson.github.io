@@ -1954,7 +1954,7 @@
                         root.traverse(child => { if (child.isMesh) child.renderOrder = 500; });
                     }
 
-                    const screenOccluders = ['models/Platform.glb', 'models/Highline.glb', 'models/StationTubes.glb'];
+                    const screenOccluders = ['models/Platform.glb', 'models/Highline.glb', 'models/StationTubes.glb', 'models/Base.glb'];
                     if (screenOccluders.includes(file)) {
                         root.traverse(child => { if (child.isMesh) child.renderOrder = 600; });
                     }
