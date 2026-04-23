@@ -1763,6 +1763,11 @@
                         systemRoots[file] = root;
                     }
 
+                    root.userData.modelUrl = file;
+                    root.traverse(child => {
+                        child.userData.modelUrl = file;
+                    });
+
                     if (isBase) baseMesh = root;
 
                     if (isGrid) {
@@ -1812,7 +1817,7 @@
         const halvedMaterials = new Map();
 
         function updateTransparency() {
-            const needsTransparency = isWaterFiltrationActive || isFloorAssemblyActive;
+            const needsTransparency = isWaterFiltrationActive;
 
             // The user explicitly requested to ONLY render these models when floor assembly is active
             const allowedFloorAssemblyModels = [
