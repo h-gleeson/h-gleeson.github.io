@@ -12,6 +12,26 @@
             overflow: hidden;
             font-family: 'Courier New', Courier, monospace;
         }
+        #right-zone {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 40%;
+            height: 100%;
+            z-index: 5;
+            display: none;
+        }
+        #right-zone {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 40%;
+            height: 100%;
+            z-index: 5;
+            display: none;
+        }
+
+
 
         #canvas-container {
             width: 100vw;
@@ -339,6 +359,8 @@
     <div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; right-drag to pan</div>
 
     <div id="canvas-container"></div>
+    <div id="right-zone"></div>
+    <div id="right-zone"></div>
 
 
     <button id="how-it-works-btn">how does it work?</button>
@@ -1520,6 +1542,20 @@
         controls.minDistance = 1;
         controls.maxDistance = 500;
 
+        const controlsDiagram = new OrbitControls(cameraDiagram, document.getElementById('right-zone'));
+        controlsDiagram.enableDamping = true;
+        controlsDiagram.dampingFactor = 0.06;
+        controlsDiagram.minDistance = 1;
+        controlsDiagram.maxDistance = 500;
+        window.controlsDiagram = controlsDiagram;
+
+        const controlsDiagram = new OrbitControls(cameraDiagram, document.getElementById('right-zone'));
+        controlsDiagram.enableDamping = true;
+        controlsDiagram.dampingFactor = 0.06;
+        controlsDiagram.minDistance = 1;
+        controlsDiagram.maxDistance = 500;
+        window.controlsDiagram = controlsDiagram;
+
         // Lighting
         scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
@@ -1779,6 +1815,18 @@
                 diagBox.getSize(diagSize);
                 const diagMaxDim = Math.max(diagSize.x, diagSize.y, diagSize.z) || 10;
                 diagramDist = (diagMaxDim / 2) / Math.tan(fov / 2) * 1.6;
+                cameraDiagram.position.set(diagramCenter.x, diagramCenter.y + diagMaxDim * 0.25, diagramCenter.z + diagramDist);
+                cameraDiagram.lookAt(diagramCenter);
+                if (window.controlsDiagram) {
+                    window.controlsDiagram.target.copy(diagramCenter);
+                    window.controlsDiagram.update();
+                }
+                cameraDiagram.position.set(diagramCenter.x, diagramCenter.y + diagMaxDim * 0.25, diagramCenter.z + diagramDist);
+                cameraDiagram.lookAt(diagramCenter);
+                if (window.controlsDiagram) {
+                    window.controlsDiagram.target.copy(diagramCenter);
+                    window.controlsDiagram.update();
+                }
             }
 
             loadingEl.style.opacity = '0';
@@ -2053,13 +2101,17 @@
         function updateExplodedPositions() {
             for (const [part, data] of Object.entries(explodeGroups)) {
                 if (systemRoots[part]) {
-                    systemRoots[part].position.y = isExploded ? data.layer * 15 : 0;
+                    systemRoots[part].userData.targetY = isExploded ? data.layer * 6 : 0;
                 }
             }
         }
 
         function toggleFloorAssembly() {
             isFloorAssemblyActive = !isFloorAssemblyActive;
+            const rightZone = document.getElementById('right-zone');
+            if (rightZone) rightZone.style.display = isFloorAssemblyActive ? 'block' : 'none';
+            const rightZone = document.getElementById('right-zone');
+            if (rightZone) rightZone.style.display = isFloorAssemblyActive ? 'block' : 'none';
 
             if (isFloorAssemblyActive) {
                 if (isWaterFiltrationActive) toggleWaterFiltration();
@@ -2298,15 +2350,17 @@
 
             controls.update();
 
-            // Sync cameras
-            cameraDiagram.quaternion.copy(camera.quaternion);
-            // Distance from main camera to its target to give a zoom effect, scaled to diagram size
-            const mainDist = camera.position.distanceTo(controls.target);
-            const distRatio = Math.max(0.5, Math.min(2.0, mainDist / 200)); // Assume ~200 is default distance
-            const currentDiagDist = diagramDist * distRatio;
-
-            const offset = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
-            cameraDiagram.position.copy(diagramCenter).add(offset.multiplyScalar(currentDiagDist));
+            // Sync cameras removed for independent controlsDiagram
+            if (isFloorAssemblyActive && window.controlsDiagram) {
+                window.controlsDiagram.update();
+            }
+            // Lerp exploded parts
+            for (const part of Object.keys(explodeGroups)) {
+                const root = systemRoots[part];
+                if (root && root.userData.targetY !== undefined) {
+                    root.position.y += (root.userData.targetY - root.position.y) * 0.1;
+                }
+            }
 
             // Render main scene full screen
             renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
