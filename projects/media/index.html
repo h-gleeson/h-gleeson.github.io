@@ -21,15 +21,6 @@
             z-index: 5;
             display: none;
         }
-        #right-zone {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 40%;
-            height: 100%;
-            z-index: 5;
-            display: none;
-        }
 
 
 
@@ -88,6 +79,19 @@
             z-index: 10;
             line-height: 1.7;
             text-align: right;
+        }
+
+        #diagram-tooltip {
+            position: fixed;
+            pointer-events: none;
+            z-index: 20;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.15s;
+            white-space: nowrap;
         }
 
         #controls-container {
@@ -360,6 +364,7 @@
 
     <div id="canvas-container"></div>
     <div id="right-zone"></div>
+    <div id="diagram-tooltip"></div>
     <div id="right-zone"></div>
 
 
@@ -1549,13 +1554,6 @@
         controlsDiagram.maxDistance = 500;
         window.controlsDiagram = controlsDiagram;
 
-        const controlsDiagram = new OrbitControls(cameraDiagram, document.getElementById('right-zone'));
-        controlsDiagram.enableDamping = true;
-        controlsDiagram.dampingFactor = 0.06;
-        controlsDiagram.minDistance = 1;
-        controlsDiagram.maxDistance = 500;
-        window.controlsDiagram = controlsDiagram;
-
         // Lighting
         scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
@@ -1813,15 +1811,15 @@
                 diagBox.getCenter(diagramCenter);
                 const diagSize = new THREE.Vector3();
                 diagBox.getSize(diagSize);
-                const diagMaxDim = Math.max(diagSize.x, diagSize.y, diagSize.z) || 10;
-                diagramDist = (diagMaxDim / 2) / Math.tan(fov / 2) * 1.6;
-                cameraDiagram.position.set(diagramCenter.x, diagramCenter.y + diagMaxDim * 0.25, diagramCenter.z + diagramDist);
-                cameraDiagram.lookAt(diagramCenter);
-                if (window.controlsDiagram) {
-                    window.controlsDiagram.target.copy(diagramCenter);
-                    window.controlsDiagram.update();
-                }
-                cameraDiagram.position.set(diagramCenter.x, diagramCenter.y + diagMaxDim * 0.25, diagramCenter.z + diagramDist);
+                const panelAspect = (window.innerWidth * 0.4) / window.innerHeight;
+                const halfVFov = fov / 2;
+                const halfHFov = Math.atan(Math.tan(halfVFov) * panelAspect);
+                diagramDist = Math.max(
+                    (diagSize.y / 2) / Math.tan(halfVFov),
+                    (diagSize.x / 2) / Math.tan(halfHFov),
+                    (diagSize.z / 2) / Math.tan(halfVFov)
+                ) * 1.6;
+                cameraDiagram.position.set(diagramCenter.x, diagramCenter.y + diagSize.y * 0.25, diagramCenter.z + diagramDist);
                 cameraDiagram.lookAt(diagramCenter);
                 if (window.controlsDiagram) {
                     window.controlsDiagram.target.copy(diagramCenter);
@@ -2101,15 +2099,13 @@
         function updateExplodedPositions() {
             for (const [part, data] of Object.entries(explodeGroups)) {
                 if (systemRoots[part]) {
-                    systemRoots[part].userData.targetY = isExploded ? data.layer * 6 : 0;
+                    systemRoots[part].userData.targetY = isExploded ? data.layer * 5.5 : 0;
                 }
             }
         }
 
         function toggleFloorAssembly() {
             isFloorAssemblyActive = !isFloorAssemblyActive;
-            const rightZone = document.getElementById('right-zone');
-            if (rightZone) rightZone.style.display = isFloorAssemblyActive ? 'block' : 'none';
             const rightZone = document.getElementById('right-zone');
             if (rightZone) rightZone.style.display = isFloorAssemblyActive ? 'block' : 'none';
 
@@ -2214,8 +2210,14 @@
         let mouseDiag = new THREE.Vector2(-9999, -9999);
         const raycasterDiag = new THREE.Raycaster();
         let currentHoveredName = null;
+        let currentHoveredColor = null;
+        let mouseClientX = 0;
+        let mouseClientY = 0;
+        const diagramTooltip = document.getElementById('diagram-tooltip');
 
         window.addEventListener('mousemove', (e) => {
+            mouseClientX = e.clientX;
+            mouseClientY = e.clientY;
             if (!isFloorAssemblyActive) return;
             const w = window.innerWidth;
             const h = window.innerHeight;
@@ -2233,11 +2235,12 @@
 
         function handleDiagramHover() {
             if (!isFloorAssemblyActive) {
-                // If turned off, reset highlight if any
                 if (currentHoveredName) {
                     restoreDiagramHover();
                     currentHoveredName = null;
+                    currentHoveredColor = null;
                 }
+                diagramTooltip.style.opacity = '0';
                 return;
             }
 
@@ -2270,6 +2273,7 @@
                 }
 
                 currentHoveredName = hitName;
+                currentHoveredColor = hitColor;
 
                 if (currentHoveredName) {
                     const hoverMat = new THREE.MeshStandardMaterial({ color: hitColor });
@@ -2288,6 +2292,17 @@
                         }
                     });
                 }
+            }
+
+            if (currentHoveredName && currentHoveredColor !== null) {
+                const hex = '#' + currentHoveredColor.toString(16).padStart(6, '0');
+                diagramTooltip.textContent = currentHoveredName;
+                diagramTooltip.style.color = hex;
+                diagramTooltip.style.left = (mouseClientX + 14) + 'px';
+                diagramTooltip.style.top  = (mouseClientY - 8) + 'px';
+                diagramTooltip.style.opacity = '1';
+            } else {
+                diagramTooltip.style.opacity = '0';
             }
         }
 
@@ -2390,9 +2405,6 @@
                 cameraDiagram.updateProjectionMatrix();
 
                 renderer.render(sceneDiagram, cameraDiagram);
-
-                // Reset aspect ratio of main camera for the next frame
-                cameraDiagram.aspect = w / h;
             }
 
         }
