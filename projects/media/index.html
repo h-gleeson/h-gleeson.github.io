@@ -349,6 +349,7 @@
         </div>
         <button id="water-filtration-btn" class="menu-btn">water filtration</button>
         <button id="floor-assembly-btn" class="menu-btn">floor assembly</button>
+        <button id="media-archive-btn" class="menu-btn">media archive</button>
         <div id="floor-assembly-submenu" style="display:none; flex-direction:column; gap:5px; margin-top:5px; padding-left:10px; border-left: 1px solid #555;">
             <!-- Buttons will be generated dynamically -->
         </div>
@@ -577,6 +578,28 @@
             color: 0x888888,
             roughness: 0.8,
             metalness: 0.1,
+        });
+
+        const matDataGlow = new THREE.MeshStandardMaterial({
+            color: 0xd800ff,
+            emissive: 0xd800ff,
+            emissiveIntensity: 1.5,
+            roughness: 0.2,
+            metalness: 0.8,
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: false
+        });
+
+        const matDataFlow = new THREE.MeshStandardMaterial({
+            color: 0xd800ff,
+            emissive: 0xd800ff,
+            emissiveIntensity: 1.0,
+            roughness: 0.4,
+            metalness: 0.5,
+            transparent: true,
+            opacity: 0.7,
+            depthWrite: false
         });
 
         const matDarkMetallic = new THREE.MeshStandardMaterial({
@@ -1507,7 +1530,9 @@
             { file: 'models/floordiagram/Servers.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/floordiagram/Sheathing.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/floordiagram/StructureHorizontal.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
-            { file: 'models/floordiagram/StructureVertical.glb', isGrid: false, isSystem: true, isFloorDiagram: true }
+            { file: 'models/floordiagram/StructureVertical.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
+            { file: 'models/MediaNexus.glb', isGrid: false, materialName: 'matDataGlow', isSystem: true },
+            { file: 'models/NexusFlow.glb', isGrid: false, materialName: 'matDataFlow', isSystem: true }
         ];
 
         const loader = new GLTFLoader();
@@ -1731,7 +1756,9 @@
             'matSite': matSite,
             'matWaterExhaust': matWaterExhaust,
             'matWaterIntake': matWaterIntake,
-            'matMockFloor': matMockFloor
+            'matMockFloor': matMockFloor,
+            'matDataGlow': matDataGlow,
+            'matDataFlow': matDataFlow
         };
 
 
@@ -1817,10 +1844,11 @@
         // ─── Systems logic ────────────────────────────────────────
         let isWaterFiltrationActive = false;
         let isFloorAssemblyActive = false;
+        let isMediaArchiveActive = false;
         const halvedMaterials = new Map();
 
         function updateTransparency() {
-            const needsTransparency = isWaterFiltrationActive;
+            const needsTransparency = isWaterFiltrationActive || isMediaArchiveActive;
 
             // The user explicitly requested to ONLY render these models when floor assembly is active
             const allowedFloorAssemblyModels = [
@@ -1892,6 +1920,11 @@
         function toggleWaterFiltration() {
             isWaterFiltrationActive = !isWaterFiltrationActive;
 
+            if (isWaterFiltrationActive) {
+                if (isFloorAssemblyActive) toggleFloorAssembly();
+                if (isMediaArchiveActive) toggleMediaArchive();
+            }
+
             const btn = document.getElementById('water-filtration-btn');
             if (isWaterFiltrationActive) {
                 btn.classList.add('active');
@@ -1904,6 +1937,31 @@
             }
             if (systemRoots['models/WaterIntake.glb']) {
                 systemRoots['models/WaterIntake.glb'].visible = isWaterFiltrationActive;
+            }
+
+            updateTransparency();
+        }
+
+        function toggleMediaArchive() {
+            isMediaArchiveActive = !isMediaArchiveActive;
+
+            if (isMediaArchiveActive) {
+                if (isFloorAssemblyActive) toggleFloorAssembly();
+                if (isWaterFiltrationActive) toggleWaterFiltration();
+            }
+
+            const btn = document.getElementById('media-archive-btn');
+            if (isMediaArchiveActive) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+
+            if (systemRoots['models/MediaNexus.glb']) {
+                systemRoots['models/MediaNexus.glb'].visible = isMediaArchiveActive;
+            }
+            if (systemRoots['models/NexusFlow.glb']) {
+                systemRoots['models/NexusFlow.glb'].visible = isMediaArchiveActive;
             }
 
             updateTransparency();
@@ -1929,6 +1987,11 @@
 
         function toggleFloorAssembly() {
             isFloorAssemblyActive = !isFloorAssemblyActive;
+
+            if (isFloorAssemblyActive) {
+                if (isWaterFiltrationActive) toggleWaterFiltration();
+                if (isMediaArchiveActive) toggleMediaArchive();
+            }
 
             const btn = document.getElementById('floor-assembly-btn');
             const submenu = document.getElementById('floor-assembly-submenu');
@@ -2162,6 +2225,7 @@
                 menu.style.display = 'none';
                 if (isWaterFiltrationActive) toggleWaterFiltration();
                 if (isFloorAssemblyActive) toggleFloorAssembly();
+                if (isMediaArchiveActive) toggleMediaArchive();
             } else {
                 menu.style.display = 'flex';
             }
@@ -2171,6 +2235,7 @@
             document.getElementById('how-it-works-menu').style.display = 'none';
             if (isWaterFiltrationActive) toggleWaterFiltration();
             if (isFloorAssemblyActive) toggleFloorAssembly();
+            if (isMediaArchiveActive) toggleMediaArchive();
         });
 
         document.getElementById('water-filtration-btn').addEventListener('click', () => {
@@ -2179,6 +2244,10 @@
 
         document.getElementById('floor-assembly-btn').addEventListener('click', () => {
             toggleFloorAssembly();
+        });
+
+        document.getElementById('media-archive-btn').addEventListener('click', () => {
+            toggleMediaArchive();
         });
 
     </script>
