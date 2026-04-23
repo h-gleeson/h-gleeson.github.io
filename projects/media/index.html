@@ -349,10 +349,10 @@
         </div>
         <button id="water-filtration-btn" class="menu-btn">water filtration</button>
         <button id="floor-assembly-btn" class="menu-btn">floor assembly</button>
-        <button id="media-archive-btn" class="menu-btn">media archive</button>
-        <div id="floor-assembly-submenu" style="display:none; flex-direction:column; gap:5px; margin-top:5px; padding-left:10px; border-left: 1px solid #555;">
+        <div id="floor-assembly-submenu" style="display:none; flex-direction:column; gap:5px; margin-top:5px; margin-bottom: 5px; padding-left:10px; border-left: 1px solid #555;">
             <!-- Buttons will be generated dynamically -->
         </div>
+        <button id="media-archive-btn" class="menu-btn">media archive</button>
     </div>
 
     <div id="controls-container">
@@ -605,10 +605,14 @@
                 vec3 nexusCenter = vec3(15.0, 75.0, -15.0);
                 float dist = distance(vWorldPosition, nexusCenter);
 
-                // Normalize distance for color mix. NexusFlow extends ~400 units out.
-                float normalizedDist = clamp(dist / 200.0, 0.0, 1.0);
+                // Tighter gradient: base distance drops off much faster.
+                // The white center itself pulses by dynamically changing the gradient threshold.
+                float radiusPulse = sin(time * 4.0) * 0.5 + 0.5; // 0.0 to 1.0
+                float gradientThreshold = 10.0 + 20.0 * radiusPulse; // radius pulses between 10 and 30
 
-                // Create a pulse effect moving towards the center
+                float normalizedDist = clamp(dist / gradientThreshold, 0.0, 1.0);
+
+                // Create a pulse effect moving towards the center along the paths
                 // As time increases, dist must decrease to keep phase constant -> moves inward
                 float pulsePhase = (dist / 15.0) + (time * 5.0);
                 float pulse = sin(pulsePhase) * 0.5 + 0.5;
@@ -621,10 +625,10 @@
 
                 vec3 baseColor = mix(white, pink, colorMix);
 
-                // Modulate brightness with the pulse
+                // Modulate brightness with the path pulse
                 vec3 finalColor = baseColor + (baseColor * pulse * 0.8);
 
-                gl_FragColor = vec4(finalColor, 0.85); // slight transparency
+                gl_FragColor = vec4(finalColor, 0.75); // 75% opacity as requested
             }
         `;
 
@@ -634,6 +638,7 @@
             fragmentShader: dataShaderFragment,
             transparent: true,
             depthWrite: false,
+            depthTest: false,
             side: THREE.DoubleSide
         });
 
@@ -1472,7 +1477,7 @@
         });
 
         // ─── Scene setup ──────────────────────────────────────────────────────────
-        window.scene = new THREE.Scene(); const scene = window.scene;
+        const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x000000);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
