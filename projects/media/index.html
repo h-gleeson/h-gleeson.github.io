@@ -2030,6 +2030,34 @@
             'models/floordiagram/StructureVertical.glb'
         ];
 
+
+        let isExploded = false;
+        const explodeGroups = {
+            'models/floordiagram/Sheathing.glb': { layer: 12, color: 0xff0000, name: 'Sheathing' },
+            'models/floordiagram/StructureHorizontal.glb': { layer: 11, color: 0xff7f00, name: 'StructureHorizontal' },
+            'models/floordiagram/StructureVertical.glb': { layer: 10, color: 0xffff00, name: 'StructureVertical' },
+            'models/floordiagram/ColumnCovers.glb': { layer: 9, color: 0x00ff00, name: 'Column Covers' },
+            'models/floordiagram/AlgaeCaps.glb': { layer: 8, color: 0x00ff7f, name: 'Algae Facade' },
+            'models/floordiagram/AlgaeGlass.glb': { layer: 8, color: 0x00ff7f, name: 'Algae Facade' },
+            'models/floordiagram/Flashing.glb': { layer: 7, color: 0x00ffff, name: 'Flashing' },
+            'models/floordiagram/Mullions.glb': { layer: 6, color: 0x007fff, name: 'Mullions and Glass' },
+            'models/floordiagram/Glass.glb': { layer: 6, color: 0x007fff, name: 'Mullions and Glass' },
+            'models/floordiagram/Intake.glb': { layer: 5, color: 0x0000ff, name: 'Intake' },
+            'models/floordiagram/Servers.glb': { layer: 4, color: 0x7f00ff, name: 'Servers' },
+            'models/floordiagram/Exhaust.glb': { layer: 3, color: 0xff00ff, name: 'Exhaust' },
+            'models/floordiagram/FireStairs.glb': { layer: 2, color: 0xff007f, name: 'FireStairs' },
+            'models/floordiagram/Elevators.glb': { layer: 1, color: 0xffffff, name: 'Elevator' },
+            'models/floordiagram/Floorplate.glb': { layer: 0, color: 0x888888, name: 'Floorplate' }
+        };
+
+        function updateExplodedPositions() {
+            for (const [part, data] of Object.entries(explodeGroups)) {
+                if (systemRoots[part]) {
+                    systemRoots[part].position.y = isExploded ? data.layer * 15 : 0;
+                }
+            }
+        }
+
         function toggleFloorAssembly() {
             isFloorAssemblyActive = !isFloorAssemblyActive;
 
@@ -2044,29 +2072,24 @@
             if (isFloorAssemblyActive) {
                 btn.classList.add('active');
                 submenu.style.display = 'flex';
-                // Initialize submenu buttons if empty
+                // Initialize explode button if empty
                 if (submenu.children.length === 0) {
-                    floorDiagramParts.forEach(part => {
-                        const name = part.replace('models/floordiagram/', '').replace('.glb', '');
-                        const subBtn = document.createElement('button');
-                        subBtn.className = 'menu-btn active';
-                        subBtn.style.fontSize = '0.65rem';
-                        subBtn.style.padding = '2px 5px';
-                        subBtn.textContent = name;
-                        subBtn.onclick = () => {
-                            const isVisible = !subBtn.classList.contains('active');
-                            subBtn.classList.toggle('active');
-                            if (systemRoots[part]) {
-                                systemRoots[part].visible = isVisible;
-                            }
-                        };
-                        submenu.appendChild(subBtn);
-                    });
+                    const subBtn = document.createElement('button');
+                    subBtn.className = 'menu-btn'; // Not active initially
+                    subBtn.style.fontSize = '0.65rem';
+                    subBtn.style.padding = '2px 5px';
+                    subBtn.textContent = 'explode';
+                    subBtn.onclick = () => {
+                        isExploded = !isExploded;
+                        subBtn.classList.toggle('active', isExploded);
+                        updateExplodedPositions();
+                    };
+                    submenu.appendChild(subBtn);
                 } else {
-                    // Reset all sub-buttons to active
-                    Array.from(submenu.children).forEach(subBtn => {
-                        subBtn.classList.add('active');
-                    });
+                    // Reset explode to false when re-entering
+                    isExploded = false;
+                    submenu.children[0].classList.remove('active');
+                    updateExplodedPositions();
                 }
             } else {
                 btn.classList.remove('active');
@@ -2134,6 +2157,105 @@
             input.focus();
         });
 
+
+        // ─── Raycast for Diagram Hover ────────────────────────────────────────────
+        let mouseDiag = new THREE.Vector2(-9999, -9999);
+        const raycasterDiag = new THREE.Raycaster();
+        let currentHoveredName = null;
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isFloorAssemblyActive) return;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const overlayW = w * 0.4;
+            const overlayX = w - overlayW;
+
+            if (e.clientX >= overlayX) {
+                mouseDiag.x = ((e.clientX - overlayX) / overlayW) * 2 - 1;
+                mouseDiag.y = -(e.clientY / h) * 2 + 1;
+            } else {
+                mouseDiag.x = -9999;
+                mouseDiag.y = -9999;
+            }
+        });
+
+        function handleDiagramHover() {
+            if (!isFloorAssemblyActive) {
+                // If turned off, reset highlight if any
+                if (currentHoveredName) {
+                    restoreDiagramHover();
+                    currentHoveredName = null;
+                }
+                return;
+            }
+
+            raycasterDiag.setFromCamera(mouseDiag, cameraDiagram);
+            const intersects = raycasterDiag.intersectObjects(sceneDiagram.children, true);
+
+            let hitName = null;
+            let hitColor = null;
+
+            if (intersects.length > 0) {
+                let curr = intersects[0].object;
+                let modelUrl = null;
+                while (curr) {
+                    if (curr.userData && curr.userData.modelUrl) {
+                        modelUrl = curr.userData.modelUrl;
+                        break;
+                    }
+                    curr = curr.parent;
+                }
+
+                if (modelUrl && explodeGroups[modelUrl]) {
+                    hitName = explodeGroups[modelUrl].name;
+                    hitColor = explodeGroups[modelUrl].color;
+                }
+            }
+
+            if (hitName !== currentHoveredName) {
+                if (currentHoveredName) {
+                    restoreDiagramHover();
+                }
+
+                currentHoveredName = hitName;
+
+                if (currentHoveredName) {
+                    const hoverMat = new THREE.MeshStandardMaterial({ color: hitColor });
+                    sceneDiagram.traverse(child => {
+                        if (child.isMesh) {
+                            let curr = child;
+                            let url = null;
+                            while (curr) {
+                                if (curr.userData && curr.userData.modelUrl) { url = curr.userData.modelUrl; break; }
+                                curr = curr.parent;
+                            }
+                            if (url && explodeGroups[url] && explodeGroups[url].name === currentHoveredName) {
+                                child.userData.nonHoverMaterial = child.material;
+                                child.material = hoverMat;
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function restoreDiagramHover() {
+            sceneDiagram.traverse(child => {
+                if (child.isMesh && child.userData.nonHoverMaterial) {
+                    let curr = child;
+                    let url = null;
+                    while (curr) {
+                        if (curr.userData && curr.userData.modelUrl) { url = curr.userData.modelUrl; break; }
+                        curr = curr.parent;
+                    }
+                    if (url && explodeGroups[url] && explodeGroups[url].name === currentHoveredName) {
+                        child.material = child.userData.nonHoverMaterial;
+                        delete child.userData.nonHoverMaterial;
+                    }
+                }
+            });
+        }
+
         // ─── Resize & render loop ─────────────────────────────────────────────────
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -2143,6 +2265,7 @@
 
         function animate(now) {
             requestAnimationFrame(animate);
+            handleDiagramHover();
 
             if (grassMaterial && grassMaterial.userData.shader) {
                 grassMaterial.userData.shader.uniforms.time.value = now / 1000;
