@@ -605,30 +605,32 @@
                 vec3 nexusCenter = vec3(15.0, 75.0, -15.0);
                 float dist = distance(vWorldPosition, nexusCenter);
 
-                // Tighter gradient: base distance drops off much faster.
-                // The white center itself pulses by dynamically changing the gradient threshold.
+                // The user requested a larger white core.
+                // radius pulses between 25.0 and 55.0
                 float radiusPulse = sin(time * 4.0) * 0.5 + 0.5; // 0.0 to 1.0
-                float gradientThreshold = 10.0 + 20.0 * radiusPulse; // radius pulses between 10 and 30
+                float coreRadius = 25.0 + 30.0 * radiusPulse;
 
-                float normalizedDist = clamp(dist / gradientThreshold, 0.0, 1.0);
-
-                // Create a pulse effect moving towards the center along the paths
-                // As time increases, dist must decrease to keep phase constant -> moves inward
-                float pulsePhase = (dist / 15.0) + (time * 5.0);
-                float pulse = sin(pulsePhase) * 0.5 + 0.5;
-
-                // White center (near 0) transitioning to pink (outside)
+                // Base gradient from white (core) to pink (outer)
+                float normalizedDist = clamp(dist / coreRadius, 0.0, 1.0);
                 float colorMix = normalizedDist;
 
                 vec3 pink = vec3(0.85, 0.0, 1.0); // 0xd800ff
                 vec3 white = vec3(1.0, 1.0, 1.0);
 
+                // Base color of the "globe"
                 vec3 baseColor = mix(white, pink, colorMix);
 
-                // Modulate brightness with the path pulse
-                vec3 finalColor = baseColor + (baseColor * pulse * 0.8);
+                // Traveling wave of white moving from the "crust" inwards to the "core".
+                // As time increases, dist must decrease to keep phase constant -> moves inward.
+                float wavePhase = (dist / 15.0) + (time * 5.0);
+                float wave = sin(wavePhase) * 0.5 + 0.5;
+                // Sharpen the wave to look like bands of data moving inwards
+                float sharpWave = pow(wave, 4.0);
 
-                gl_FragColor = vec4(finalColor, 0.75); // 75% opacity as requested
+                // Mix the white wave into the base color
+                vec3 finalColor = mix(baseColor, white, sharpWave * 0.85);
+
+                gl_FragColor = vec4(finalColor, 0.75);
             }
         `;
 
