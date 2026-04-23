@@ -81,6 +81,14 @@
             text-align: right;
         }
 
+        #screens-btn {
+            position: fixed;
+            bottom: 48px;
+            right: 20px;
+            z-index: 10;
+            width: auto;
+        }
+
         #diagram-tooltip {
             position: fixed;
             pointer-events: none;
@@ -361,6 +369,7 @@
     <div id="title">Henry Gleeson<br>Media</div>
     <div id="loading" style="display: none;">loading models...</div>
     <div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; right-drag to pan</div>
+    <button id="screens-btn" class="menu-btn active">screens</button>
 
     <div id="canvas-container"></div>
     <div id="right-zone"></div>
@@ -673,6 +682,78 @@
 
         // We can reuse the same material for both, as they share the visual style
         const matDataFlow = matDataGlow;
+
+        const screenShaderUniforms = { time: { value: 0.0 } };
+
+        const matScreens = new THREE.ShaderMaterial({
+            uniforms: screenShaderUniforms,
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                varying vec2 vUv;
+
+                vec3 hsv(float h, float s, float v) {
+                    vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+                    vec3 p = abs(fract(h + K.xyz) * 6.0 - K.www);
+                    return v * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), s);
+                }
+
+                float hash(vec2 p) {
+                    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+                    vec2 p = uv * 2.0 - 1.0;
+
+                    // Plasma interference waves
+                    float plasma = 0.0;
+                    plasma += sin(p.x * 7.0 + time * 1.4);
+                    plasma += sin(p.y * 6.0 - time * 1.1);
+                    plasma += sin((p.x + p.y) * 5.5 + time * 0.8);
+                    plasma += sin(length(p) * 9.0 - time * 2.8);
+                    float angle = atan(p.y, p.x) + time * 0.35;
+                    plasma += sin(angle * 6.0 + length(p) * 5.0 - time * 1.6);
+                    plasma = plasma * 0.1 + 0.5;
+
+                    // Dual-hue cycling color
+                    float hue  = plasma + time * 0.08;
+                    float hue2 = hue + 0.45;
+                    float blend = sin(plasma * 6.28318 + time * 1.5) * 0.5 + 0.5;
+                    vec3 color = mix(hsv(hue, 1.0, 1.0), hsv(hue2, 1.0, 0.9), blend);
+
+                    // Glitch blocks — random bright pixel clusters that flash
+                    vec2 blockUV = floor(uv * 48.0) / 48.0;
+                    float n = hash(blockUV + floor(time * 8.0) * 0.017);
+                    float flash = step(0.96, n);
+                    color = mix(color, vec3(1.0), flash * 0.9);
+
+                    // Scanlines
+                    float scan = sin(uv.y * 480.0) * 0.07 + 0.93;
+                    color *= scan;
+
+                    // Subtle pixel grid
+                    float gx = step(0.93, fract(uv.x * 96.0));
+                    float gy = step(0.93, fract(uv.y * 96.0));
+                    color *= 1.0 - max(gx, gy) * 0.22;
+
+                    // Screen-edge vignette
+                    float vign = 1.0 - 0.35 * dot(p * 0.8, p * 0.8);
+                    color *= clamp(vign, 0.0, 1.0);
+
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `,
+            side: THREE.DoubleSide,
+            depthTest: false,
+            depthWrite: false
+        });
 
         const matDarkMetallic = new THREE.MeshStandardMaterial({
             color: 0x222222,
@@ -1611,7 +1692,8 @@
             { file: 'models/floordiagram/StructureHorizontal.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/floordiagram/StructureVertical.glb', isGrid: false, isSystem: true, isFloorDiagram: true },
             { file: 'models/MediaNexus.glb', isGrid: false, materialName: 'matDataGlow', isSystem: true },
-            { file: 'models/NexusFlow.glb', isGrid: false, materialName: 'matDataFlow', isSystem: true }
+            { file: 'models/NexusFlow.glb', isGrid: false, materialName: 'matDataFlow', isSystem: true },
+            { file: 'models/Screens.glb', isGrid: false, materialName: 'matScreens' }
         ];
 
         const loader = new GLTFLoader();
@@ -1832,6 +1914,8 @@
 
             // Show the input panel
             document.getElementById('controls-container').classList.add('ready');
+
+            updateTransparency();
         }
 
         const materialMap = {
@@ -1849,7 +1933,8 @@
             'matWaterIntake': matWaterIntake,
             'matMockFloor': matMockFloor,
             'matDataGlow': matDataGlow,
-            'matDataFlow': matDataFlow
+            'matDataFlow': matDataFlow,
+            'matScreens': matScreens
         };
 
 
@@ -1863,6 +1948,15 @@
 
                     if (file === 'models/HudsonBuildings.glb') {
                         root.traverse(child => { if (child.isMesh) child.userData.isExcluded = true; });
+                    }
+
+                    if (file === 'models/Screens.glb') {
+                        root.traverse(child => { if (child.isMesh) child.renderOrder = 500; });
+                    }
+
+                    const screenOccluders = ['models/Platform.glb', 'models/Highline.glb', 'models/StationTubes.glb'];
+                    if (screenOccluders.includes(file)) {
+                        root.traverse(child => { if (child.isMesh) child.renderOrder = 600; });
                     }
 
                     if (isSystem) {
@@ -1936,6 +2030,7 @@
         let isWaterFiltrationActive = false;
         let isFloorAssemblyActive = false;
         let isMediaArchiveActive = false;
+        let screensVisible = true;
         const halvedMaterials = new Map();
 
         function updateTransparency() {
@@ -1961,6 +2056,18 @@
                             break;
                         }
                         curr = curr.parent;
+                    }
+
+                    // Screens: custom visibility + never apply transparency
+                    if (belongsToModel === 'models/Screens.glb') {
+                        if (isMediaArchiveActive) {
+                            child.visible = true;
+                        } else if (isFloorAssemblyActive || isWaterFiltrationActive) {
+                            child.visible = false;
+                        } else {
+                            child.visible = screensVisible;
+                        }
+                        return;
                     }
 
                     // Strict Floor Assembly Visibility Check
@@ -2340,6 +2447,7 @@
             if (dataShaderUniforms) {
                 dataShaderUniforms.time.value = now / 1000;
             }
+            screenShaderUniforms.time.value = now / 1000;
 
             if (activeGame === 'snake') {
                 if (sn.dirty) { renderSnake(); sn.dirty = false; }
@@ -2485,6 +2593,12 @@
 
         document.getElementById('media-archive-btn').addEventListener('click', () => {
             toggleMediaArchive();
+        });
+
+        document.getElementById('screens-btn').addEventListener('click', () => {
+            screensVisible = !screensVisible;
+            document.getElementById('screens-btn').classList.toggle('active', screensVisible);
+            updateTransparency();
         });
 
     </script>
