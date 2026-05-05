@@ -7,14 +7,14 @@
     <style>
         :root {
             --bg-color: #000000;
-            --bg-gradient: linear-gradient(to bottom right, #000000, #1a0b2e);
+            --bg-gradient: linear-gradient(to bottom right, #000000, #332b00);
             --text-color: #ffffff;
             --muted-color: #888888;
             --border-color: #333333;
             --hover-bg: rgba(255, 255, 255, 0.03);
-            --accent-color: #6366f1; /* purple-ish for dark mode */
-            --glow-color-1: rgba(99, 102, 241, 0.22);
-            --glow-color-2: rgba(99, 102, 241, 0.07);
+            --accent-color: #ffd700; /* gold for dark mode */
+            --glow-color-1: rgba(255, 215, 0, 0.22);
+            --glow-color-2: rgba(255, 215, 0, 0.07);
         }
 
         body.light-mode {
@@ -191,9 +191,9 @@
 </head>
 <body>
     <div class="cursor-glow"></div>
-    <button id="theme-toggle">/light mode</button>
+    <button id="theme-toggle"><span class="accent">/</span>light mode</button>
     <header>
-        <h1>/henry <span class="accent">gleeson</span></h1>
+        <h1><span class="accent">/</span>henry gleeson</h1>
         <div class="intro">
             Welcome to my digital workspace. This is an archive of my projects.
         </div>
@@ -201,7 +201,7 @@
 
     <main>
         <section>
-            <h2>/<span class="accent">projects</span></h2>
+            <h2><span class="accent">/</span>projects</h2>
             <div class="projects-grid">
                 <a href="projects/palace" class="project-item">
                     <h3 class="project-title">The Palace of All Trades</h3>
@@ -235,7 +235,7 @@
         </section>
 
         <section>
-            <h2>/<span class="accent">documents</span></h2>
+            <h2><span class="accent">/</span>documents</h2>
             <div class="projects-grid">
                 <a href="assets/documents/resume.pdf" target="_blank" class="project-item">
                     <h3 class="project-title">Resume</h3>
@@ -253,7 +253,7 @@
         const currentTheme = localStorage.getItem('theme');
         if (currentTheme === 'light') {
             body.classList.add('light-mode');
-            themeToggle.textContent = '/dark mode';
+            themeToggle.innerHTML = '<span class="accent">/</span>dark mode';
         }
 
         themeToggle.addEventListener('click', () => {
@@ -262,10 +262,10 @@
             // Save user preference
             if (body.classList.contains('light-mode')) {
                 localStorage.setItem('theme', 'light');
-                themeToggle.textContent = '/dark mode';
+                themeToggle.innerHTML = '<span class="accent">/</span>dark mode';
             } else {
                 localStorage.setItem('theme', 'dark');
-                themeToggle.textContent = '/light mode';
+                themeToggle.innerHTML = '<span class="accent">/</span>light mode';
             }
         });
 
