@@ -5,103 +5,179 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>hsgleeson.xyz</title>
     <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --muted-color: #888888;
+            --border-color: #333333;
+        }
+
         body {
-            background-color: #000000;
-            color: #ffffff;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             font-family: 'Courier New', Courier, monospace;
             margin: 0;
-            padding: 40px;
+            padding: 6vw 8vw;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        header {
+            margin-bottom: 120px;
+            margin-top: 40px;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: bold;
+            margin: 0 0 40px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .intro {
+            font-size: clamp(1.2rem, 3vw, 2.2rem);
+            max-width: 900px;
+            color: var(--text-color);
+            margin-bottom: 40px;
+            line-height: 1.3;
+        }
+
+        /* Section Headings */
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: bold;
+            margin: 0 0 60px 0;
+            color: var(--text-color);
+            letter-spacing: -0.02em;
+        }
+
+        /* Projects List */
+        .projects-grid {
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid var(--border-color);
+            margin-bottom: 100px;
+        }
+
+        .project-item {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 40px;
+            padding: 50px 20px;
+            border-bottom: 1px solid var(--border-color);
+            text-decoration: none;
+            color: var(--text-color);
+            transition: all 0.4s ease;
+            position: relative;
+        }
+
+        .project-item:hover {
+            padding-left: 40px;
+            padding-right: 0;
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .project-title {
+            font-size: clamp(1.4rem, 2.5vw, 2rem);
+            font-weight: bold;
+            margin: 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .project-title::after {
+            content: '→';
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.4s ease;
+        }
+
+        .project-item:hover .project-title::after {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .project-desc {
+            margin: 0;
+            color: var(--muted-color);
+            font-size: clamp(1rem, 1.2vw, 1.2rem);
+            max-width: 600px;
             line-height: 1.6;
         }
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #ffffff;
-            padding-bottom: 10px;
-            display: inline-block;
-        }
-        .intro {
-            max-width: 800px;
-            margin-bottom: 40px;
-            font-size: 1.2rem;
-        }
-        h2 {
-            font-size: 1.8rem;
-            margin-top: 40px;
-            border-bottom: 1px dashed #ffffff;
-            display: inline-block;
-            padding-bottom: 5px;
-        }
-        .projects {
-            list-style-type: none;
-            padding: 0;
-            max-width: 800px;
-        }
-        .projects li {
-            margin-bottom: 30px;
-        }
-        .projects a {
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 1.5rem;
-            font-weight: bold;
-            border-bottom: 1px dashed transparent;
-            transition: border-bottom 0.3s;
-        }
-        .projects a:hover {
-            border-bottom: 1px dashed #ffffff;
-        }
-        .projects p {
-            margin: 10px 0 0 0;
-            color: #cccccc;
-            font-size: 1rem;
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .project-item {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                padding: 40px 15px;
+            }
+            .project-item:hover {
+                padding-left: 25px;
+            }
+            header {
+                margin-bottom: 80px;
+            }
+            h2 {
+                margin-bottom: 40px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Henry Gleeson</h1>
+    <header>
+        <h1>/henry gleeson</h1>
+        <div class="intro">
+            Welcome to my digital workspace. This is an archive of my projects.
+        </div>
+    </header>
 
-    <div class="intro">
-        <p>Welcome to my digital workspace. This is an archive of my projects.</p>
-    </div>
+    <main>
+        <section>
+            <h2>/projects</h2>
+            <div class="projects-grid">
+                <a href="projects/palace" class="project-item">
+                    <h3 class="project-title">The Palace of All Trades</h3>
+                    <p class="project-desc">Ahhhh, the project from my undergrad Honors Studio. We designed a building concept that it is totally open to the public. It was completed in Fall 2024.</p>
+                </a>
+                <a href="projects/hybrid" class="project-item">
+                    <h3 class="project-title">The Hybrid</h3>
+                    <p class="project-desc">That is my first studio project from SCI-Arc. Using generative AI as a starting point, we created a hybrid shell for our adaptive reuse of the Lincoln Heights Jail in Los Angeles, CA. It was completed Fall 2025.</p>
+                </a>
+                <a href="projects/stonehenge" class="project-item">
+                    <h3 class="project-title">Stonehenge Nighttime Studies</h3>
+                    <p class="project-desc">This series of drawings is a reinterpretation of stonehenge, utilizing digital noise to simulate weathering and time. It was part of a research seminar I took in Fall of 2024</p>
+                </a>
+                <a href="projects/vertical_village" class="project-item">
+                    <h3 class="project-title">Vertical Village</h3>
+                    <p class="project-desc">That project is a community center with an emphasis on its makerspace. It is one of my undergraduate projects from Fall of 2023.</p>
+                </a>
+                <a href="projects/dirtpolitics" class="project-item">
+                    <h3 class="project-title">Dirt Politics</h3>
+                    <p class="project-desc">I kept that plant alive for so long. It definitely helps that this one is just a 3D model. That is my visual studies project from my first semester at SCI-Arc (Fall 2025).</p>
+                </a>
+                <a href="projects/landscape" class="project-item">
+                    <h3 class="project-title">Landscape Drawings</h3>
+                    <p class="project-desc">That binder is a group of drawings I did during my landscape internship in the summer of 23'. I worked in a small team so I got to do a lot of design work while I was there. Good times...</p>
+                </a>
+                <a href="projects/media/index.html" class="project-item">
+                    <h3 class="project-title">Media</h3>
+                    <div class="project-desc"></div>
+                </a>
+            </div>
+        </section>
 
-    <h2>Projects</h2>
-    <ul class="projects">
-        <li>
-            <a href="projects/palace">The Palace of All Trades</a>
-            <p>Ahhhh, the project from my undergrad Honors Studio. We designed a building concept that it is totally open to the public. It was completed in Fall 2024.</p>
-        </li>
-        <li>
-            <a href="projects/hybrid">The Hybrid</a>
-            <p>That is my first studio project from SCI-Arc. Using generative AI as a starting point, we created a hybrid shell for our adaptive reuse of the Lincoln Heights Jail in Los Angeles, CA. It was completed Fall 2025.</p>
-        </li>
-        <li>
-            <a href="projects/stonehenge">Stonehenge Nighttime Studies</a>
-            <p>This series of drawings is a reinterpretation of stonehenge, utilizing digital noise to simulate weathering and time. It was part of a research seminar I took in Fall of 2024</p>
-        </li>
-        <li>
-            <a href="projects/vertical_village">Vertical Village</a>
-            <p>That project is a community center with an emphasis on its makerspace. It is one of my undergraduate projects from Fall of 2023.</p>
-        </li>
-        <li>
-            <a href="projects/dirtpolitics">Dirt Politics</a>
-            <p>I kept that plant alive for so long. It definitely helps that this one is just a 3D model. That is my visual studies project from my first semester at SCI-Arc (Fall 2025).</p>
-        </li>
-        <li>
-            <a href="projects/landscape">Landscape Drawings</a>
-            <p>That binder is a group of drawings I did during my landscape internship in the summer of 23'. I worked in a small team so I got to do a lot of design work while I was there. Good times...</p>
-        </li>
-        <li>
-            <a href="projects/media/index.html">Media</a>
-        </li>
-    </ul>
-
-    <h2>Documents</h2>
-    <ul class="projects">
-        <li>
-            <a href="assets/documents/resume.pdf" target="_blank">Resume</a>
-            <p>That's a piece of paper, but I've been told it's an important one.</p>
-        </li>
-    </ul>
+        <section>
+            <h2>/documents</h2>
+            <div class="projects-grid">
+                <a href="assets/documents/resume.pdf" target="_blank" class="project-item">
+                    <h3 class="project-title">Resume</h3>
+                    <p class="project-desc">That's a piece of paper, but I've been told it's an important one.</p>
+                </a>
+            </div>
+        </section>
+    </main>
 </body>
 </html>
