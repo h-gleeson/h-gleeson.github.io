@@ -43,17 +43,19 @@
         }
 
         #theme-toggle {
-            position: absolute;
+            position: fixed;
             top: 40px;
             right: 8vw;
-            background: transparent;
-            border: none;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             color: var(--text-color);
             font-family: 'Courier New', Courier, monospace;
             font-size: clamp(1rem, 2vw, 1.2rem);
             cursor: pointer;
-            padding: 0;
+            padding: 10px 15px;
             margin: 0;
+            z-index: 1000;
         }
 
         #theme-toggle:hover {
