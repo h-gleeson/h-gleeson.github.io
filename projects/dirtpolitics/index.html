@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dirt Politics - hsgleeson.xyz</title>
-    <style>
-        :root {
-            --bg-color: #ffffff;
-            --text-color: #000000;
-            --secondary-text: #666666;
-            --accent-color: #000000;
+    <link rel="stylesheet" href="../../assets/css/theme.css">
+    <script>
+        // Apply light mode before render to prevent FOUC
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-mode');
         }
+    </script>
+
+    <style>
+
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -149,6 +152,8 @@
     </style>
 </head>
 <body>
+    <button id="theme-toggle"><span class="accent">/</span>light mode</button>
+
 
     <header>
         <div class="project-title">Dirt Politics - The Synthetic Specimen</div>
@@ -223,5 +228,6 @@
             loadGallery('dirtpolitics', '.gallery-content');
         });
     </script>
+    <script src="../../assets/js/theme.js"></script>
 </body>
 </html>

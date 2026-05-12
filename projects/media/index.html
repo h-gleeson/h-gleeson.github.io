@@ -4,11 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media — hsgleeson.xyz</title>
+    <link rel="stylesheet" href="../../assets/css/theme.css">
+    <script>
+        // Apply light mode before render to prevent FOUC
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-mode');
+        }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: #000;
+            background: var(--bg-color);
+            color: var(--text-color);
             overflow: hidden;
             font-family: 'Courier New', Courier, monospace;
         }
@@ -33,7 +41,7 @@
             position: fixed;
             top: 20px;
             left: 20px;
-            color: #fff;
+            color: var(--text-color);
             text-decoration: none;
             font-size: 0.9rem;
             letter-spacing: 0.05em;
@@ -42,14 +50,14 @@
             z-index: 10;
         }
         #back-link:hover {
-            border-bottom: 1px dashed #fff;
+            border-bottom: 1px dashed var(--text-color);
         }
 
         #title {
             position: fixed;
             top: 20px;
             right: 20px;
-            color: #fff;
+            color: var(--text-color);
             font-size: 0.85rem;
             letter-spacing: 0.1em;
             z-index: 10;
@@ -62,7 +70,7 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            color: #666;
+            color: var(--muted-color);
             font-size: 0.8rem;
             letter-spacing: 0.1em;
             z-index: 10;
@@ -73,7 +81,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            color: #333;
+            color: var(--muted-color);
             font-size: 0.75rem;
             letter-spacing: 0.08em;
             z-index: 10;
@@ -364,6 +372,7 @@
     </style>
 </head>
 <body>
+    <button id="theme-toggle"><span class="accent">/</span>light mode</button>
     <div id="site-loading">Loading Models... 0 / 0</div>
     <a id="back-link" href="../../index.html">← back</a>
     <div id="title">Andy Han + Henry Gleeson + Sungmin Jung<br>The Last Archive</div>
@@ -2602,5 +2611,6 @@
         });
 
     </script>
+    <script src="../../assets/js/theme.js"></script>
 </body>
 </html>
