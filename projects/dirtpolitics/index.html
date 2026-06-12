@@ -3,167 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dirt Politics - hsgleeson.xyz</title>
+    <title>Dirt Politics — hsgleeson.xyz</title>
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <script>
-        // Apply light mode before render to prevent FOUC
         if (localStorage.getItem('theme') === 'light') {
             document.documentElement.classList.add('light-mode');
         }
     </script>
-
     <style>
-
-
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            overflow-x: hidden;
-        }
-
-        /* Header / Nav */
-        header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 40px;
-            background-color: rgba(255, 255, 255, 0.95);
-            z-index: 1000;
-            box-sizing: border-box;
-            border-bottom: 1px solid #eee;
-        }
-
-        .project-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .close-btn {
-            text-decoration: none;
-            color: var(--text-color);
-            font-size: 2rem;
-            line-height: 1;
-            font-weight: 300;
-            transition: opacity 0.3s;
-        }
-
-        .close-btn:hover {
-            opacity: 0.6;
-        }
-
-        /* Main Layout */
-        main {
-            display: grid;
-            grid-template-columns: 350px 1fr; /* Fixed sidebar, fluid content */
-            min-height: 100vh;
-            padding-top: 80px; /* Space for fixed header */
-        }
-
-        /* Sidebar (Info) */
-        .info-sidebar {
-            padding: 40px;
-            border-right: 1px solid #eee;
-            height: calc(100vh - 80px);
-            position: sticky;
-            top: 80px;
-            overflow-y: auto;
-        }
-
-        .info-block {
-            margin-bottom: 40px;
-        }
-
-        .info-label {
-            font-size: 0.75rem;
-            color: var(--secondary-text);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        .info-value {
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-
-        .description {
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin-top: 20px;
-        }
-
-        /* Gallery Content */
-        .gallery-content {
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            gap: 40px;
-        }
-
-        .project-image {
-            width: 100%;
-            height: auto;
-            display: block;
-            background-color: #f0f0f0; /* Placeholder color */
-        }
-
-        /* Placeholder styling for demo */
-        .placeholder-img {
-            width: 100%;
-            height: 600px;
-            background-color: #eee;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #aaa;
-            font-size: 1.5rem;
-            text-transform: uppercase;
-        }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-            main {
-                grid-template-columns: 1fr;
-            }
-            .info-sidebar {
-                height: auto;
-                position: static;
-                border-right: none;
-                border-bottom: 1px solid #eee;
-            }
-            header {
-                padding: 15px 20px;
-            }
-            .gallery-content, .info-sidebar {
-                padding: 20px;
-            }
-        }
+        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
     </style>
 </head>
 <body>
-    <button id="theme-toggle"><span class="accent">/</span>light mode</button>
 
-
-    <header>
-        <div class="project-title">Dirt Politics - The Synthetic Specimen</div>
-        <!-- Link back to desk -->
-        <a href="../../" class="close-btn">&times;</a>
+    <header class="page-header">
+        <a href="../../" class="back-btn">BACK</a>
+        <div class="header-project-title">Dirt Politics — The Synthetic Specimen</div>
+        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
     </header>
 
-    <main>
-        <!-- Left Sidebar: Project Details -->
+    <main class="project-main">
+
         <aside class="info-sidebar">
+
             <div class="info-block">
                 <span class="info-label">Location</span>
                 <span class="info-value">Los Angeles, CA</span>
@@ -181,45 +43,44 @@
 
             <div class="info-block">
                 <span class="info-label">Software</span>
-                <span class="info-value" style="display: block;">Midjourney</span>
-                <span class="info-value" style="display: block;">HitEm3D</span>
-                <span class="info-value" style="display: block;">Zbrush</span>
+                <span class="info-value">Midjourney</span>
+                <span class="info-value">HitEm3D</span>
+                <span class="info-value">Zbrush</span>
             </div>
 
-          <div class="info-block">
-    <span class="info-label">Description</span>
-    
-    <span class="info-value" style="display: block; margin-bottom: 20px;">
-        <strong>Overview:</strong> Developed for the SCI-Arc Visual Studies core curriculum, this project explores the concept of "entanglement" by treating a living houseplant as a collaborator rather than a passive subject. The process involved a semester-long cycle of biological care and radical digital mutation, resulting in a "post-natural" organism that blurs the line between the organic and the synthetic.
-    </span>
+            <div class="info-block desc">
+                <span class="info-label">Description</span>
+                <div class="info-value">
+                    <strong>Overview</strong>
+                    Developed for the SCI-Arc Visual Studies core curriculum, this project explores the concept of "entanglement" by treating a living houseplant as a collaborator rather than a passive subject. The process involved a semester-long cycle of biological care and radical digital mutation, resulting in a "post-natural" organism that blurs the line between the organic and the synthetic.
+                </div>
+                <div class="info-value">
+                    In an exercise where the plant's survival directly impacted the final grade, I am proud to report my collaborator is still very much alive and thriving.
+                </div>
+                <div class="info-value">
+                    <strong>Observation &amp; Capture</strong>
+                    The project began with the physical care and digital 3D scanning of a real houseplant. This scan provided the base geometry—the "skeletal" framework for the coming transformation.
+                </div>
+                <div class="info-value">
+                    <strong>AI Hybridization</strong>
+                    Using Midjourney, I generated speculative appendages by hybridizing the plant's natural structures with the anatomy of a snake, crab, and centipede. This created a series of "monstrous" leaf clusters and limbs that maintained a strange biological logic while feeling decidedly alien.
+                </div>
+                <div class="info-value">
+                    <strong>Mesh Generation &amp; Sculpting</strong>
+                    I translated these AI-generated images into 3D meshes using HitEm3D. These disparate parts were then brought into ZBrush, where I "grafted" and stitched them onto the original plant scan. The goal was to create a single, coherent organism where the transition from plant to animal felt seamless and intentional.
+                </div>
+                <div class="info-value">
+                    <strong>Physical Manifestation</strong>
+                    The final digital sculpture was 3D printed. I spent significant time post-processing the model—sanding and finishing the surface to move it away from the "stepped" look of a print and toward the high-fidelity finish of a gallery object.
+                </div>
+            </div>
 
-    <span class="info-value" style="display: block; margin-bottom: 20px;">
-        In an exercise where the plant’s survival directly impacted the final grade, I am proud to report my collaborator is still very much alive and thriving.
-    </span>
-
-    <span class="info-value" style="display: block; margin-bottom: 20px;">
-        <strong>Observation & Capture:</strong> The project began with the physical care and digital 3D scanning of a real houseplant. This scan provided the base geometry—the "skeletal" framework for the coming transformation.
-    </span>
-
-    <span class="info-value" style="display: block; margin-bottom: 20px;">
-        <strong>AI Hybridization:</strong> Using Midjourney, I generated speculative appendages by hybridizing the plant’s natural structures with the anatomy of a snake, crab, and centipede. This created a series of "monstrous" leaf clusters and limbs that maintained a strange biological logic while feeling decidedly alien.
-    </span>
-
-    <span class="info-value" style="display: block; margin-bottom: 20px;">
-        <strong>Mesh Generation & Sculpting:</strong> I translated these AI-generated images into 3D meshes using HitEm3D. These disparate parts were then brought into ZBrush, where I "grafted" and stitched them onto the original plant scan. The goal was to create a single, coherent organism where the transition from plant to animal felt seamless and intentional.
-    </span>
-
-    <span class="info-value" style="display: block;">
-        <strong>Physical Manifestation:</strong> The final digital sculpture was 3D printed. I spent significant time post-processing the model—sanding and finishing the surface to move it away from the "stepped" look of a print and toward the high-fidelity finish of a gallery object.
-    </span>
-</div>
-           
         </aside>
 
-        <!-- Right Content: Image Gallery -->
         <section class="gallery-content">
-            <!-- Images will be loaded dynamically by gallery-loader.js -->
+            <!-- Images loaded dynamically -->
         </section>
+
     </main>
 
     <script src="../../assets/js/gallery-loader.js"></script>

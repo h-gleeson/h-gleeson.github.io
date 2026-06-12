@@ -1,28 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const themeToggle = document.getElementById('theme-toggle');
-    const body = document.documentElement;
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
 
-    if (!themeToggle) return;
-
-    // We already checked and applied the body class in the inline script to avoid FOUC,
-    // but we need to update the button text to match.
-    const currentTheme = localStorage.getItem('theme');
-    if (currentTheme === 'light') {
-        themeToggle.innerHTML = '<span class="accent">/</span>dark mode';
-    } else {
-        themeToggle.innerHTML = '<span class="accent">/</span>light mode';
+    function updateBtn() {
+        const isLight = document.documentElement.classList.contains('light-mode');
+        btn.innerHTML = 'MODE: <span style="color:var(--orange)">' + (isLight ? 'LIGHT' : 'DARK') + '</span>';
     }
 
-    themeToggle.addEventListener('click', () => {
-        body.classList.toggle('light-mode');
+    updateBtn();
 
-        // Save user preference
-        if (body.classList.contains('light-mode')) {
-            localStorage.setItem('theme', 'light');
-            themeToggle.innerHTML = '<span class="accent">/</span>dark mode';
-        } else {
-            localStorage.setItem('theme', 'dark');
-            themeToggle.innerHTML = '<span class="accent">/</span>light mode';
-        }
+    btn.addEventListener('click', () => {
+        document.documentElement.classList.toggle('light-mode');
+        localStorage.setItem('theme',
+            document.documentElement.classList.contains('light-mode') ? 'light' : 'dark'
+        );
+        updateBtn();
     });
 });
