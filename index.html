@@ -412,6 +412,19 @@
             h1 { letter-spacing: -0.015em; line-height: 0.95; }
 
             .hero::before, .hero::after { display: none; }
+
+        }
+
+        /* ── About content ──────────────────────── */
+        .about-content {
+            border-top: 1px solid var(--border);
+            margin-bottom: 90px;
+            padding: 36px 20px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: clamp(0.72rem, 1vw, 0.82rem);
+            line-height: 1.9;
+            letter-spacing: 0.03em;
         }
     </style>
 </head>
@@ -513,26 +526,41 @@
                 </div>
             </section>
 
-            <!-- ── Documents ─────────────────────────── -->
+            <!-- ── Writings ──────────────────────────── -->
             <section>
                 <div class="section-divider">
-                    <span class="section-tag">DATA_VAULT</span>
+                    <span class="section-tag">TXT_ARCHIVE</span>
                     <div class="divider-line"></div>
                 </div>
                 <div class="section-head">
-                    <h2>Documents</h2>
-                    <div class="section-meta">01 ENTRY FOUND // CLASSIFIED FILES</div>
+                    <h2>Writings</h2>
+                    <div class="section-meta">01 ENTRY FOUND // ESSAYS + THOUGHTS</div>
                 </div>
                 <div class="projects-grid">
 
-                    <a href="assets/documents/resume.pdf" target="_blank" class="project-item">
+                    <a href="writings/studio-album-by-war-1975/" class="project-item">
                         <div class="project-meta">
-                            <span class="project-index">DOC_001</span>
-                            <h3 class="project-title">Resume <span class="arrow">→</span></h3>
+                            <span class="project-index">TXT_001</span>
+                            <h3 class="project-title">Studio Album by War - 1975 <span class="arrow">→</span></h3>
                         </div>
-                        <p class="project-desc">That's a piece of paper, but I've been told it's an important one.</p>
+                        <p class="project-desc">A reflection on befriending — in architecture, in life, and in a parking lot forum after class.</p>
                     </a>
 
+                </div>
+            </section>
+
+            <!-- ── About ─────────────────────────────── -->
+            <section>
+                <div class="section-divider">
+                    <span class="section-tag">SYS_INFO</span>
+                    <div class="divider-line"></div>
+                </div>
+                <div class="section-head">
+                    <h2>About</h2>
+                    <div class="section-meta">// SYSTEM PROFILE</div>
+                </div>
+                <div class="about-content">
+                    <!-- content coming soon -->
                 </div>
             </section>
 
@@ -569,6 +597,7 @@
             glow.style.transform = `translate(${glowX}px, ${glowY}px)`;
             requestAnimationFrame(tick);
         })();
+
     </script>
 </body>
 </html>
