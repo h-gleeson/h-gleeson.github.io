@@ -82,6 +82,72 @@
             margin-bottom: 0.5em;
         }
 
+        .audio-player {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        #audio-toggle {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            background: transparent;
+            border: 1px solid var(--border-mid);
+            color: var(--text-dim);
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        #audio-toggle:hover {
+            border-color: var(--orange);
+            color: var(--text-bright);
+        }
+
+        #audio-toggle.playing {
+            border-color: var(--orange);
+            color: var(--orange);
+        }
+
+        .audio-progress-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .audio-progress-bar {
+            height: 2px;
+            background: var(--border-mid);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .audio-progress-bar:hover {
+            background: var(--text-label);
+        }
+
+        .audio-progress-fill {
+            height: 100%;
+            background: var(--orange);
+            width: 0%;
+            pointer-events: none;
+        }
+
+        .audio-time {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 0.15em;
+            color: var(--text-dim);
+        }
+
         @media (max-width: 768px) {
             .writing-main {
                 padding: 48px 24px 80px;
@@ -90,6 +156,8 @@
     </style>
 </head>
 <body>
+
+    <audio id="writing-audio" src="../audio/Writing1Audio.mp3" preload="metadata"></audio>
 
     <header class="page-header">
         <a href="../../" class="back-btn">BACK</a>
@@ -103,10 +171,19 @@
             <span class="writing-index">TXT_001</span>
             <h1 class="writing-title">Studio Album by War - 1975</h1>
             <p class="writing-teaser">A reflection on befriending — in architecture, in life, and in a parking lot forum after class.</p>
+            <div class="audio-player">
+                <button id="audio-toggle">▶</button>
+                <div class="audio-progress-wrap">
+                    <div class="audio-progress-bar" id="audio-progress-bar">
+                        <div class="audio-progress-fill" id="audio-fill"></div>
+                    </div>
+                    <span class="audio-time" id="audio-time">0:00 / 0:00</span>
+                </div>
+            </div>
         </div>
 
         <div class="writing-body">
-            <p>Hey! I'm not sure who it is that's going to be reading this, but I think being addressed is important, so hello. I hope you're having a good day and thank you for taking the time to read this little blurb of mine. I've been having such a hard time putting some of these thoughts into something legible, but then I remembered that I'm writing this, and can be as informal or disorganized as I'd like.</p>
+            <p>Hey! I'm not sure who it is that's going to be reading this, but I think being addressed is important, so hello. I hope you're having a good day and thank you for taking the time to read this little blurb of mine. I've been having a hard time putting some of these thoughts into something legible, but then I remembered that I'm writing this, and can be as informal or disorganized as I'd like.</p>
 
             <p>Beginning with some context! My name is Henry Gleeson. I've always cared a little bit too much about what people think, I've always walked at the back of my friend group on the sidewalk, and I've been told my entire life that I'm too sensitive and I should stop being a people pleaser. I'm currently a 23-year-old student pursuing my Master of Architecture in Los Angeles. I was born and raised in Northeast Ohio, I'm the oldest of three children, my parents got divorced when I was nine years old, and my father passed away when I was seventeen in February of 2020. I feel like that's probably enough personal information for any psychologist to diagnose what kind of person I am, so keep that in mind whilst you read.</p>
 
@@ -114,15 +191,15 @@
 
             <p>HOWEVER, I am not a pessimist at heart, and I have some hope for all of us in these ~interesting~ times. Whether reading or listening to this inspires you to feel the same way is beyond me, but I'm going to do my best. As I mentioned previously, I'm an architecture student. I already have a Bachelor of Science in Architecture, and I'm currently working towards my master's to delay being unemployed in this amazing job market *COUGH* I mean to better deliver value to shareholders.</p>
 
-            <p>Architecture is WEIRD. I LOVE IT. Sometimes it feels like an endless echo chamber of the stupidest ideas I've ever heard, and sometimes I meet someone who's so passionate that even being in their presence makes me feel like I'm learning, and it's honestly really inspiring.</p>
+            <p>Architecture is a WEIRD space. I love it. Sometimes it feels like an endless echo chamber of the stupidest ideas I've ever heard, and sometimes I meet someone who's so passionate that even being in their presence makes me feel like I'm learning, and it's honestly really inspiring.</p>
 
-            <p>Architecture is also filled with some interesting characters. I have a professor who recently saw Oppenheimer for the second time, and he decided to write an article about his thoughts. The article was quite interesting. I wouldn't necessarily say that I agree with everything or even most things in the article, but I can respect putting a series of your opinions out on the internet for people to interact with and think about. He was discussing the attention economy, and how Christopher Nolan is the master of fast paced storytelling that always keeps your attention, and it reminded him of the current state of media consumption. Content consumption keeps ramping up and getting faster, and there have been plenty of studies showing its reduction in attention span and focus; things that we've all heard before. However, he introduces this idea in the article that increased content consumption could lead to a new type of learning and information processing. Personally, I think that's a load of nonsense, but I absolutely don't mind being wrong if it turns out that everyone you know who's glued to their cell phone is secretly on the same intellectual level as Albert Einstein.</p>
+            <p>Architecture is also filled with some interesting characters. I have a professor who recently saw Oppenheimer for the second time, and he decided to write an article about his thoughts. The article was quite interesting. I wouldn't necessarily say that I agree with everything or even most things in the article, but I can respect putting a series of your opinions out on the internet for people to interact with and think about. He was discussing the attention economy, and how Christopher Nolan is the master of this fast paced storytelling that always keeps your attention, and it reminded him of the current state of media consumption. Content consumption keeps ramping up and getting faster, and there have been plenty of studies showing its reduction in attention span and focus; things that we've all heard before. However, he introduces this idea in the article that increased content consumption could lead to a new type of learning and information processing. Personally, I think that's a load of nonsense, but I absolutely don't mind being wrong if it turns out that everyone you know who's glued to their cell phone is secretly on the same intellectual level as Albert Einstein.</p>
 
             <p>Now onto the positives. Something that I do appreciate about the piece is the connection made between economic/class association and content consumption. My professor makes a boundary between a more traditional "slow looking" form of media consumption versus this current, faster paced and widely accessible form of media consumption. Things that are "slow looking" would be activities like going to the opera, or a museum, or an art gallery. Things that are often reserved for the ultra-wealthy, where you go through this curated experience that another rich person hand-selected just for you to enjoy. This opposing rapid consumption and ease of access to art allows for increased accessibility for people, and things like social media allow anyone to access an almost endless amount of media, which I would say from a "class" perspective is good for humans and cultural expression overall.</p>
 
-            <p>We ended up having a sort of forum around this writing on a Friday after classes were over. Professors and students gathered outside in the parking lot and discussed our feelings around the piece. The discussion went in a couple of different directions, but ultimately, I think the most important thing I took away from it was what my professor himself had to say. We didn't talk as much about the content of the article as much as we talked about the reasoning behind it. He said that he was attempting to bring to light the excessive critiquing that we do in the field of architecture, and something just CLICKED for me. He's right. Architecture, especially in the academic world that I am surrounded by is EXCELLENT at critique. We love to nitpick, and often it can feel like it's happening just for the sake of nitpicking. There are cliques of certain professors and students that support each other's works, but it still ultimately ends up as this us vs. them conflict. We pick things that we like and align with, and if something doesn't align with our own mindset or viewpoint, it gets shut down and dismissed. I respect that my professor is trying to encourage people to keep an open mind about the possibilities of the future. I think it's a mindset that should see a little bit more representation. However, I would like to propose some slight tweaks.</p>
+            <p>We ended up having a sort of forum around this writing on a Friday after classes were over. Professors and students gathered outside in the parking lot and we discussed our feelings on the piece. The discussion went in a couple of different directions, but ultimately, I think the most important thing I took away from it was what my professor himself had to say. We didn't talk much about the content of the article as much as we talked about the reasoning behind its' creation. He said that he was attempting to bring to light the excessive critiquing that we do in the field of architecture, and something just CLICKED for me. He's right. Architecture, especially in the academic world that I am surrounded by is EXCELLENT at critique. We love to nitpick, and often it can feel like it's happening just for the sake of nitpicking. There are cliques of certain professors and students that support each other's works, but it still ultimately ends up as this us vs. them conflict. We pick things that we like and align with, and if something doesn't align with our mindset or viewpoint, it gets shut down and dismissed. I respect that my professor is trying to encourage people to keep an open mind about the possibilities of the future. I think it's a mindset that should see a little bit more representation. However, I would like to propose some slight tweaks.</p>
 
-            <p>This brings me to what essentially inspired me to write this piece in the first place. There's this word that gets thrown around a lot in the theory community of architecture, and that word is "befriending". I'm going to hit you with a lot of vocabulary, so be prepared. Merriam-Webster defines the word befriend as "to become or act as a friend to". I suppose then we need to define what a friend would be, and we've got SO MANY options for definitions on that one.</p>
+            <p>This brings me to what essentially inspired me to write this piece in the first place. There's this word that gets thrown around a lot in the theory community of architecture, and that word is "befriending". I'm going to hit you with a lot of vocabulary, so be prepared. Marriam Webster defines the word befriend as "to become or act as a friend to". I suppose then we need to define what a friend would be, and we've got SO MANY options for definitions on that one.</p>
 
             <ol>
                 <li>One attached to another by affection or esteem.</li>
@@ -136,23 +213,85 @@
 
             <p>I list all of this out solely because the specificity of language is important when trying to make a clear point, and because I want people to know that when I say "befriending" I am not talking about the guys who make oats (Quakers). No, the definition that I am thinking of is sort of a mix between definitions 1, 3 and 7.</p>
 
-            <p>In my own little weird architectural world, befriending is often used as a term to refer to the larger movement of environmentalism… But it's broader than that. To befriend in architecture is to try and achieve a sort of symbiosis with one's environment. At least to try to create those connections. If one was trying to build a dam on a river, the "friendly" thing to do would be to find a spot on the river where the least amount or no damage would be done to the surrounding ecological systems. A step further would be maybe even trying to integrate design elements that promote ecological growth within your project. Creating green roofs for animals to occupy and intentionally creating recesses and protrusions in your building for birds to nest in are some other examples. If you want to get super into it, I think the "solarpunk" aesthetic does a really good job of capturing fantasy worlds that we should strive for. Solarpunk is defined as "an optimistic environmentalist subgenre of speculative fiction, art, and design that envisions future life on Earth transformed using sustainable energy, close co-existence of human beings with nature, and progressive sociopolitical values." All of this is to say, I want to use befriending in a way that means none of that…</p>
+            <p>In my own little weird architectural world, befriending is often used as a term to refer to the larger movement of environmentalism…. But it's more specific than that. To befriend in architecture is to try and achieve a sort of symbiosis with one's environment. At least to try to create those connections. If one was trying to build a damn on a river, the "friendly" thing to do would be to find a spot on the river where the least amount or no damage would be done to the surrounding ecological systems. A step further would be maybe even trying to integrate design elements that promote ecological growth within your project. Creating green roofs for animals to occupy and intentionally creating recesses and protrusions in your building for birds to nest in are some other examples. If you want to get super into it, I think the "solarpunk" aesthetic does a really good job of capturing fantasy worlds that we should strive for. Solarpunk is defined as "an optimistic environmentalist subgenre of speculative fiction, art, and design that envisions future life on Earth transformed using sustainable energy, close co-existence of human beings with nature, and progressive sociopolitical values. All of this is to say, I want to use befriending in a way that means none of that….</p>
 
             <p>I'm sorry for leading you on a wild goose chase that leads to a totally different definition, but I personally always find a person's thought process to be very interesting. The trail that people follow to get to their conclusions is important, and I don't think the final product of something is as important without the context and work that it takes to get there.</p>
 
-            <p>What I am looking for is to try and inspire people to be more considerate. More "friendly" if you will. This is what I'd like my thesis in school to be about, and it's how I want to lead my life as well. I want us all to be better friends. When I say this, I don't necessarily mean it in the same way as the professor I had previously mentioned. To befriend someone doesn't mean that you don't criticize them, at least not if you want a healthy and lasting friendship. To befriend someone is to put a bit of stake on that person. You care about them. When they're sad, it makes you sad, and when they're happy and experience success, a little bit of that washes onto you as well.</p>
+            <p>What I am looking for is to try and inspire people to be more considerate. More "friendly" if you will. This is what I'd like my thesis in school to be about, and it's how I want to lead my life as well. I want us all to be better friends. When I say this, I don't necessarily mean we should all adopt the mindset of the professor I had previously mentioned. A mindset that lacks critique. To befriend someone doesn't mean that you don't criticize them, at least not if you want a healthy and lasting friendship. To befriend someone is to put a bit of stake on that person. You care about them. When they're sad, it makes you sad, and when they're happy and experience success, a little bit of that washes onto you as well.</p>
 
-            <p>I think we could all benefit a bit from caring just a bit more about those around us. I'm not saying that we all need to be Jesus Christ, and forgive every person who has ever wronged us, and that we all need to like each other no matter what. I don't like everybody I know, and I did not decide to write this to ultimately conclude that I'm a hypocrite, because we all can be at times, it's part of being human, and I already believed that. However, I think that we can acknowledge that we are imperfect and reflect and realize that other people are imperfect as well. We should ask more questions, wonder why things are the way they are, and do they need to continue to be that way? If you're curious about why someone does something, ask them, and then LISTEN. So many of us care about being right and hurting our fragile egos that we don't take the time to listen to each other.</p>
+            <p>I think we could all benefit from caring just a bit more about those around us. I'm not saying that we all need to be Jesus Christ, and forgive every person who has ever wronged us, and that we all need to like each other no matter what. I don't like everybody I know, and I did not decide to write this to ultimately conclude that I'm a hypocrite, because we all can be at times, it's part of being human. However, I think that we can acknowledge that we are imperfect and reflect and realize that other people are imperfect as well. We should ask more questions, wonder why are things are the way they are, and do they need to continue to be that way? If you're curious about why someone does something, ask them, and then LISTEN. So many of us care about being right and hurting our fragile egos that we don't take the time to listen to each other.</p>
 
-            <p>I get it. Life is busy. I'm busy too. I don't know if you know this, but EVERYONE is busy. Gas where I live is $6.00 a gallon right now, everyone needs somewhere to live, and food to eat, and stuff to do to give them a purpose on this rock that's still mostly water. It's bigger than you. Now take a breath, accept that, and next time someone tries to have a genuine moment of connection with you — let them. Tell the people that matter to you that you love them and remember that almost everyone else is that person to probably at least one other person, even if you don't happen to enjoy them.</p>
+            <p>I get it. Life is busy. I'm busy too. I don't know if you know this, but EVERYONE is busy. Gas where I live is $6.00 a gallon right now, everyone needs somewhere to live, and food to eat, and stuff to do to give them a purpose on this rock that's actually still mostly water. It's bigger than you. Now take a breath, accept that, and next time someone tries to have a genuine moment of connection with you. Let them. Tell the people that matter to you that you love them and remember that almost everyone else is that person to probably at least one other person, even if you don't happen to enjoy them.</p>
 
-            <p>We all learned in kindergarten that the golden rule is to treat others how you'd like to be treated, but I feel like we forget that in our busy day-to-day lives. We all want to be happy, and to totally level with you, I think some of the ways other people try to achieve that in their own lives is totally ridiculous. Instead of getting upset about it, I'm just going to leave them alone because maybe they feel the same way about my life choices. We all deserve a little respect from one another, and sometimes that's all that being a friend means. Put a little more stake into other people. I think it would make the world a little better. We seem to think that everyone is out to get us, but I think if we all worked a little harder to succeed TOGETHER, we'd be better off.</p>
+            <p>We all learned in kindergarten that the golden rule is to treat others how you'd like to be treated, but I feel like we forget that in our busy day-to-day lives. We all want to be happy, and to totally level with you, I think some of the ways other people try to achieve that in their own lives is totally ridiculous. Instead of getting upset about it, I'm just going to leave them alone because maybe they feel the same way about my life choices. We all deserve a little respect from one another, and sometimes I think that that's what being a friend means. Put a little more stake into other people. I think it would make the world a little better. We seem to think that everyone is out to get us, but I think if we all worked a little harder to succeed TOGETHER, we'd be better off.</p>
 
-            <p>Eh, maybe I'm just too sensitive, but I like that I care about other people, and I'm not going to change. Most of the lessons I've learned in my life were not learned in isolation, so even if I'm naive to put my trust in others, I guess it'll teach me something. See ya! Enjoy your day or whatever.</p>
+            <p>Maybe I'm just too sensitive, but I like that I care about other people, and I'm not going to change. Most of the lessons I've learned in my life were not learned in isolation, so even if I'm naive to put my trust in others, I guess it'll teach me something.</p>
+
+            <p>See ya!</p>
+
+            <p>Enjoy your day or whatever.</p>
         </div>
 
     </main>
 
     <script src="../../assets/js/theme.js"></script>
+    <script>
+        const audio = document.getElementById('writing-audio');
+        const audioBtn = document.getElementById('audio-toggle');
+        const progressBar = document.getElementById('audio-progress-bar');
+        const progressFill = document.getElementById('audio-fill');
+        const audioTime = document.getElementById('audio-time');
+
+        function fmt(s) {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return m + ':' + (sec < 10 ? '0' : '') + sec;
+        }
+
+        function updateTime() {
+            const cur = audio.currentTime || 0;
+            const dur = audio.duration || 0;
+            audioTime.textContent = fmt(cur) + ' / ' + (dur ? fmt(dur) : '0:00');
+            progressFill.style.width = dur ? (cur / dur * 100) + '%' : '0%';
+        }
+
+        audio.addEventListener('loadedmetadata', updateTime);
+        audio.addEventListener('timeupdate', updateTime);
+
+        audioBtn.addEventListener('click', function () {
+            if (audio.paused) {
+                audio.play();
+                this.textContent = '⏸';
+                this.classList.add('playing');
+            } else {
+                audio.pause();
+                this.textContent = '▶';
+                this.classList.remove('playing');
+            }
+        });
+
+        audio.addEventListener('ended', function () {
+            audioBtn.textContent = '▶';
+            audioBtn.classList.remove('playing');
+        });
+
+        // Click to seek
+        progressBar.addEventListener('click', function (e) {
+            if (!audio.duration) return;
+            const rect = this.getBoundingClientRect();
+            audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+        });
+
+        // Drag to seek
+        let dragging = false;
+        progressBar.addEventListener('mousedown', function () { dragging = true; });
+        document.addEventListener('mousemove', function (e) {
+            if (!dragging || !audio.duration) return;
+            const rect = progressBar.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            audio.currentTime = pct * audio.duration;
+        });
+        document.addEventListener('mouseup', function () { dragging = false; });
+    </script>
 </body>
 </html>
