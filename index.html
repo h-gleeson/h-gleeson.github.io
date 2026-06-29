@@ -397,6 +397,32 @@
             align-self: center;
         }
 
+        /* ── Writing card (with cover image) ───────── */
+        .project-item.writing-card {
+            grid-template-columns: auto 1fr 2fr;
+            padding-left: 0;
+        }
+
+        .project-item.writing-card:hover {
+            padding-left: 32px;
+        }
+
+        .writing-card-cover {
+            align-self: stretch;
+            min-width: 1px;
+            overflow: hidden;
+            margin: -38px 0;
+            background-color: var(--orange);
+            transition: background-color 0.2s;
+            -webkit-mask-image: var(--cover-img);
+            mask-image: var(--cover-img);
+            -webkit-mask-size: cover;
+            mask-size: cover;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            mask-mode: luminance;
+        }
+
         /* ── Responsive ─────────────────────────────── */
         @media (max-width: 768px) {
             .project-item {
@@ -406,6 +432,12 @@
             }
 
             .project-item:hover { padding-left: 22px; }
+
+            .project-item.writing-card {
+                grid-template-columns: 1fr;
+            }
+
+            .writing-card-cover { display: none; }
 
             .status-right { display: none; }
 
@@ -538,7 +570,8 @@
                 </div>
                 <div class="projects-grid">
 
-                    <a href="writings/studio-album-by-war-1975/" class="project-item">
+                    <a href="writings/studio-album-by-war-1975/" class="project-item writing-card">
+                        <div class="writing-card-cover" style="--cover-img: url('writings/covers/studio-album-by-war-1975.png');" role="img" aria-label="Studio Album by War - 1975 cover art"></div>
                         <div class="project-meta">
                             <span class="project-index">TXT_001</span>
                             <h3 class="project-title">Studio Album by War - 1975 <span class="arrow">→</span></h3>
@@ -597,6 +630,17 @@
             glow.style.transform = `translate(${glowX}px, ${glowY}px)`;
             requestAnimationFrame(tick);
         })();
+
+        // Size writing card covers to be a perfect square (width = card height)
+        function sizeWritingCovers() {
+            document.querySelectorAll('.project-item.writing-card').forEach(function(card) {
+                card.style.gridTemplateColumns = '';
+                var h = card.clientHeight; // clientHeight excludes border, matches cover's stretched height
+                card.style.gridTemplateColumns = h + 'px 1fr 2fr';
+            });
+        }
+        window.addEventListener('load', sizeWritingCovers);
+        window.addEventListener('resize', sizeWritingCovers);
 
     </script>
 </body>

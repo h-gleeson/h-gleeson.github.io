@@ -148,6 +148,22 @@
             color: var(--text-dim);
         }
 
+        .writing-cover {
+            width: 100%;
+            aspect-ratio: 1;
+            overflow: hidden;
+            margin-bottom: 60px;
+            background-color: var(--orange);
+            transition: background-color 0.2s;
+            -webkit-mask-image: var(--cover-img);
+            mask-image: var(--cover-img);
+            -webkit-mask-size: cover;
+            mask-size: cover;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            mask-mode: luminance;
+        }
+
         @media (max-width: 768px) {
             .writing-main {
                 padding: 48px 24px 80px;
@@ -181,6 +197,8 @@
                 </div>
             </div>
         </div>
+
+        <div class="writing-cover" style="--cover-img: url('../covers/studio-album-by-war-1975.png');" role="img" aria-label="Studio Album by War - 1975 cover art"></div>
 
         <div class="writing-body">
             <p>Hey! I'm not sure who it is that's going to be reading this, but I think being addressed is important, so hello. I hope you're having a good day and thank you for taking the time to read this little blurb of mine. I've been having a hard time putting some of these thoughts into something legible, but then I remembered that I'm writing this, and can be as informal or disorganized as I'd like.</p>
