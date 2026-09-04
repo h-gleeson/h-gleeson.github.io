@@ -287,9 +287,47 @@
             background: linear-gradient(to right, var(--border-mid), transparent);
         }
 
+        /* ── Collapsible sections ───────────────────── */
+        .section-collapse {
+            border: none;
+        }
+
+        .section-collapse > summary {
+            list-style: none;
+            cursor: pointer;
+        }
+
+        .section-collapse > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .section-collapse > summary:hover .section-tag,
+        .section-collapse > summary:hover h2 {
+            color: var(--orange);
+        }
+
+        .section-toggle {
+            font-family: var(--mono);
+            font-size: 1.5rem;
+            font-weight: 600;
+            line-height: 1;
+            color: var(--text-dim);
+            flex-shrink: 0;
+            transition: transform 0.25s ease, color 0.2s ease;
+        }
+
+        .section-collapse > summary:hover .section-toggle {
+            color: var(--orange);
+        }
+
+        .section-collapse[open] > summary .section-toggle {
+            transform: rotate(45deg);
+        }
+
         /* ── Section header ─────────────────────────── */
         .section-head {
             margin-bottom: 44px;
+            transition: color 0.2s ease;
         }
 
         h2 {
@@ -506,14 +544,18 @@
 
             <!-- ── Projects ──────────────────────────── -->
             <section>
+                <details class="section-collapse">
+                <summary>
                 <div class="section-divider">
                     <span class="section-tag">OPS_ARCHIVE</span>
                     <div class="divider-line"></div>
+                    <span class="section-toggle">+</span>
                 </div>
                 <div class="section-head">
                     <h2>Projects</h2>
                     <div class="section-meta">07 ENTRIES FOUND // ARCHITECTURE + DESIGN</div>
                 </div>
+                </summary>
                 <div class="projects-grid">
 
                     <a href="projects/palace" class="project-item">
@@ -573,18 +615,23 @@
                     </a>
 
                 </div>
+                </details>
             </section>
 
             <!-- ── Writings ──────────────────────────── -->
             <section>
+                <details class="section-collapse">
+                <summary>
                 <div class="section-divider">
                     <span class="section-tag">TXT_ARCHIVE</span>
                     <div class="divider-line"></div>
+                    <span class="section-toggle">+</span>
                 </div>
                 <div class="section-head">
                     <h2>Writings</h2>
                     <div class="section-meta">01 ENTRY FOUND // ESSAYS + THOUGHTS</div>
                 </div>
+                </summary>
                 <div class="projects-grid">
 
                     <a href="writings/studio-album-by-war-1975/" class="project-item writing-card">
@@ -597,21 +644,47 @@
                     </a>
 
                 </div>
+                </details>
+            </section>
+
+            <!-- ── Experiments ──────────────────────────── -->
+            <section>
+                <details class="section-collapse">
+                <summary>
+                <div class="section-divider">
+                    <span class="section-tag">LAB_ARCHIVE</span>
+                    <div class="divider-line"></div>
+                    <span class="section-toggle">+</span>
+                </div>
+                <div class="section-head">
+                    <h2>Experiments</h2>
+                    <div class="section-meta">// WORK IN PROGRESS</div>
+                </div>
+                </summary>
+                <div class="projects-grid">
+                    <!-- content coming soon -->
+                </div>
+                </details>
             </section>
 
             <!-- ── About ─────────────────────────────── -->
             <section>
+                <details class="section-collapse">
+                <summary>
                 <div class="section-divider">
                     <span class="section-tag">SYS_INFO</span>
                     <div class="divider-line"></div>
+                    <span class="section-toggle">+</span>
                 </div>
                 <div class="section-head">
                     <h2>About</h2>
                     <div class="section-meta">// SYSTEM PROFILE</div>
                 </div>
+                </summary>
                 <div class="about-content">
                     <!-- content coming soon -->
                 </div>
+                </details>
             </section>
 
         </main>

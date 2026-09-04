@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment Name — hsgleeson.xyz</title>
+    <link rel="stylesheet" href="../../assets/css/theme.css">
+    <script>
+        (function () {
+            var root = document.documentElement;
+            if (localStorage.getItem('theme') === 'light') {
+                root.classList.add('light-mode');
+            }
+            var a = (localStorage.getItem('accent') || '').split(',');
+            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
+                root.style.setProperty('--accent-h', a[0]);
+                root.style.setProperty('--accent-s', a[1] + '%');
+            }
+        })();
+    </script>
+    <style>
+        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+    </style>
+</head>
+<body>
+
+    <header class="page-header">
+        <a href="../../" class="back-btn">BACK</a>
+        <div class="header-project-title">Experiment Name</div>
+        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+    </header>
+
+    <main class="project-main">
+
+        <aside class="info-sidebar">
+
+            <div class="info-block">
+                <span class="info-label">Year</span>
+                <span class="info-value">YYYY</span>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Tools</span>
+                <span class="info-value">Tool 1</span>
+                <span class="info-value">Tool 2</span>
+            </div>
+
+            <div class="info-block desc">
+                <span class="info-label">Description</span>
+                <div class="info-value">
+                    <strong>Overview</strong>
+                    Describe what this experiment explores and why.
+                </div>
+            </div>
+
+        </aside>
+
+        <section class="gallery-content">
+            <!-- Images loaded dynamically -->
+        </section>
+
+    </main>
+
+    <script src="../../assets/js/gallery-loader.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGallery('template', '.gallery-content');
+        });
+    </script>
+    <script src="../../assets/js/theme.js"></script>
+</body>
+</html>
