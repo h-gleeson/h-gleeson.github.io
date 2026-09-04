@@ -7,9 +7,17 @@
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <script>
         // Apply light mode before render to prevent FOUC
-        if (localStorage.getItem('theme') === 'light') {
-            document.documentElement.classList.add('light-mode');
-        }
+        (function () {
+            var root = document.documentElement;
+            if (localStorage.getItem('theme') === 'light') {
+                root.classList.add('light-mode');
+            }
+            var a = (localStorage.getItem('accent') || '').split(',');
+            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
+                root.style.setProperty('--accent-h', a[0]);
+                root.style.setProperty('--accent-s', a[1] + '%');
+            }
+        })();
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }

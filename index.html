@@ -8,20 +8,36 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script>
-        if (localStorage.getItem('theme') === 'light') {
-            document.documentElement.classList.add('light-mode');
-        }
+        (function () {
+            var root = document.documentElement;
+            if (localStorage.getItem('theme') === 'light') {
+                root.classList.add('light-mode');
+            }
+            var a = (localStorage.getItem('accent') || '').split(',');
+            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
+                root.style.setProperty('--accent-h', a[0]);
+                root.style.setProperty('--accent-s', a[1] + '%');
+            }
+        })();
     </script>
     <style>
+        /* Accent hue + saturation are user-customisable (see theme.js);
+           lightness stays theme-controlled. */
         :root {
+            --accent-h: 19;
+            --accent-s: 100%;
+            --accent-l: 50%;
+            --accent:       hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+            --accent-soft:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.05);
+
             --bg:           #040404;
             --bg-panel:     #080808;
-            --bg-hover:     rgba(255, 82, 0, 0.05);
+            --bg-hover:     var(--accent-soft);
             --border:       #181818;
             --border-mid:   #2A2A2A;
-            --orange:       #FF5200;
-            --orange-dim:   rgba(255, 82, 0, 0.18);
-            --orange-glow:  rgba(255, 82, 0, 0.35);
+            --orange:       var(--accent);
+            --orange-dim:   hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.18);
+            --orange-glow:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.35);
             --text-bright:  #EBEBEB;
             --text:         #A8A8A8;
             --text-dim:     #525252;
@@ -32,14 +48,15 @@
         }
 
         :root.light-mode {
+            --accent-l:     42%;
             --bg:           #ECEBE6;
             --bg-panel:     #E4E2DC;
-            --bg-hover:     rgba(217, 69, 0, 0.05);
+            --bg-hover:     var(--accent-soft);
             --border:       #D0CBC1;
             --border-mid:   #C4BEB4;
-            --orange:       #D94500;
-            --orange-dim:   rgba(217, 69, 0, 0.10);
-            --orange-glow:  rgba(217, 69, 0, 0.25);
+            --orange:       var(--accent);
+            --orange-dim:   hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.10);
+            --orange-glow:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.25);
             --text-bright:  #0E0E0E;
             --text:         #3C3C3C;
             --text-dim:     #7A7A7A;
@@ -80,8 +97,8 @@
             margin-top: -350px;
             border-radius: 50%;
             background: radial-gradient(circle,
-                rgba(255, 82, 0, 0.10) 0%,
-                rgba(255, 82, 0, 0.04) 40%,
+                hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.10) 0%,
+                hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.04) 40%,
                 transparent 70%
             );
             pointer-events: none;

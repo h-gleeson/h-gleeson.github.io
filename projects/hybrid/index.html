@@ -6,9 +6,17 @@
     <title>The Hybrid — hsgleeson.xyz</title>
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <script>
-        if (localStorage.getItem('theme') === 'light') {
-            document.documentElement.classList.add('light-mode');
-        }
+        (function () {
+            var root = document.documentElement;
+            if (localStorage.getItem('theme') === 'light') {
+                root.classList.add('light-mode');
+            }
+            var a = (localStorage.getItem('accent') || '').split(',');
+            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
+                root.style.setProperty('--accent-h', a[0]);
+                root.style.setProperty('--accent-s', a[1] + '%');
+            }
+        })();
     </script>
     <style>
         body { background: var(--bg); color: var(--text); font-family: var(--sans); }
