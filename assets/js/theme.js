@@ -74,8 +74,9 @@
     .theme-controls {
         position: relative;
         display: flex;
-        align-items: center;
-        gap: 8px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
         flex-shrink: 0;
     }
     #accent-toggle {
