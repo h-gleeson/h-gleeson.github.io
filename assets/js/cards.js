@@ -272,7 +272,23 @@
 
     /* ── Boot ──────────────────────────────────────────────────────── */
 
+    /* url() inside a custom property resolves against the stylesheet
+       (assets/css/), not the page. Rewrite --art / --art-full as absolute
+       URLs so paths in index.html can stay relative to the page. */
+    function resolveArt() {
+        document.querySelectorAll('.card-art').forEach(function (el) {
+            ['--art', '--art-full'].forEach(function (prop) {
+                var v = el.style.getPropertyValue(prop);
+                var m = v && v.match(/url\(\s*(['"]?)(.*?)\1\s*\)/);
+                if (!m) return;
+                el.style.setProperty(prop,
+                    'url("' + new URL(m[2], document.baseURI).href + '")');
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        resolveArt();
         rollVariants();
         document.querySelectorAll('.card-rail').forEach(initRail);
     });

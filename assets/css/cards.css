@@ -230,6 +230,8 @@
 }
 
 .card.full-art .card-art {
+    /* --art-full is optional; falls back to the regular art */
+    background-image: var(--art-full, var(--art));
     position: absolute;
     inset: 0;
     z-index: 0;
