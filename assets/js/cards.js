@@ -194,7 +194,8 @@
            the tab right to left, the active card leaving last, and only
            then does the <details> actually close. */
         var COLLAPSE_STAGGER = 45;
-        var COLLAPSE_DURATION = 380;
+        var COLLAPSE_DURATION = 460;
+        var WRAP_LEAD = 160;   // ms the cards get moving before the tab starts closing
         var collapsing = false;
 
         function collapse(details) {
@@ -209,13 +210,42 @@
                 c.style.transform = '';   // drop any tilt before lifting
                 c.style.setProperty('--deal-delay', (n * COLLAPSE_STAGGER) + 'ms');
             });
+
+            var totalDuration = (order.length - 1) * COLLAPSE_STAGGER + COLLAPSE_DURATION;
+
+            // cards start lifting immediately; the tab itself follows a beat
+            // later so it reads as being pulled shut by the cards leaving,
+            // rather than the two starting in lockstep.
+            if (wrap) {
+                var wrapDuration = Math.max(totalDuration - WRAP_LEAD, COLLAPSE_DURATION);
+                wrap.style.height = wrap.offsetHeight + 'px';
+                wrap.style.overflow = 'hidden';
+                void wrap.offsetHeight;   // force reflow before animating
+                setTimeout(function () {
+                    wrap.style.transition =
+                        'height ' + wrapDuration + 'ms cubic-bezier(.4,0,1,1), ' +
+                        'opacity ' + Math.round(wrapDuration * 0.8) + 'ms ease';
+                    requestAnimationFrame(function () {
+                        wrap.style.height = '0px';
+                        wrap.style.opacity = '0';
+                    });
+                }, WRAP_LEAD);
+            }
+            details.classList.add('is-closing');
             rail.classList.add('is-collapsing');
 
             setTimeout(function () {
                 details.open = false;
                 rail.classList.remove('is-collapsing');
+                details.classList.remove('is-closing');
+                if (wrap) {
+                    wrap.style.height = '';
+                    wrap.style.overflow = '';
+                    wrap.style.opacity = '';
+                    wrap.style.transition = '';
+                }
                 collapsing = false;
-            }, (order.length - 1) * COLLAPSE_STAGGER + COLLAPSE_DURATION);
+            }, totalDuration);
         }
 
         /* Re-centre when the rail is revealed (<details> opens) or resized */

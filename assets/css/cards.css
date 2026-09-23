@@ -336,13 +336,21 @@
 /* Collapse: the reverse. Only a `to` keyframe, and `forwards` holds the
    cards out of sight until the section actually closes. */
 .card-rail.is-collapsing .card {
-    animation: card-lift 0.38s cubic-bezier(.5, 0, .75, 0) forwards;
+    animation: card-lift 0.46s cubic-bezier(.4, 0, 1, 1) forwards;
     animation-delay: var(--deal-delay, 0ms);
     pointer-events: none;
 }
 
 @keyframes card-lift {
-    to {
+    0% {
+        translate: 0 0;
+        rotate: 0deg;
+        opacity: 1;
+    }
+    45% {
+        opacity: 1;
+    }
+    100% {
         translate: 0 -150px;
         rotate: 5deg;
         opacity: 0;
