@@ -53,7 +53,9 @@
     border-radius: var(--card-radius);
     flex: 0 0 auto;
     width: var(--card-w);
-    aspect-ratio: 5 / 7;
+    height: calc(var(--card-w) * 1.4);   /* 5:7, fixed: content can't stretch it */
+    box-sizing: border-box;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     text-decoration: none;
@@ -126,17 +128,25 @@
     justify-content: space-between;
     gap: 8px;
     padding: 2px 2px 8px;
+    order: -1;               /* title above the art (art comes first in the markup) */
+    height: 26px;            /* fixed: single-line title */
+    flex: 0 0 auto;
+    box-sizing: border-box;
 }
 
 .card-title {
     font-family: var(--sans);
-    font-size: 0.86rem;
+    font-size: 0.6rem;
     font-weight: 700;
     line-height: 1.12;
     letter-spacing: -0.01em;
     color: var(--text-bright);
     text-transform: uppercase;
     text-align: left;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .card-index {
@@ -148,11 +158,29 @@
     padding-top: 2px;
 }
 
+/* Regular cards: title on top, art tight beneath it, index under the art.
+   The head wrapper dissolves so title and index can be ordered separately. */
+.card:not(.full-art) .card-head { display: contents; }
+.card:not(.full-art) .card-title {
+    order: -1;
+    flex: 0 0 auto;
+    padding: 2px 2px 0;
+    margin-bottom: 5px;
+}
+.card:not(.full-art) .card-index {
+    order: 1;
+    align-self: flex-end;
+    padding: 4px 2px 0;
+}
+.card:not(.full-art) .card-body { order: 2; padding-top: 4px; }
+.card:not(.full-art) .card-foot { order: 3; }
+
 /* ── Art window ────────────────────────────────────────────────────── */
 
 .card-art {
     position: relative;
-    flex: 1 1 auto;
+    flex: 0 0 var(--art-h, 175px);   /* fixed height, never shifts with text */
+    height: var(--art-h, 175px);
     min-height: 0;
     background-image: var(--art);
     background-size: cover;
@@ -182,19 +210,17 @@
     position: relative;
     z-index: 3;
     padding: 9px 2px 0;
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .card-desc {
     font-family: var(--mono);
-    font-size: 0.58rem;
-    line-height: 1.55;
-    letter-spacing: 0.02em;
+    font-size: 0.42rem;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
     color: var(--text-dim);
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
 .card-foot {
@@ -234,6 +260,7 @@
     background-image: var(--art-full, var(--art));
     position: absolute;
     inset: 0;
+    height: auto;
     z-index: 0;
     border: none;
     border-radius: inherit;
@@ -253,7 +280,7 @@
     z-index: 1;
 }
 
-.card.full-art .card-head { padding: 11px 11px 0; }
+.card.full-art .card-head { padding: 11px 11px 0; height: auto; }
 .card.full-art .card-body { padding: 0 11px; }
 .card.full-art .card-foot {
     padding: 8px 11px 10px;
@@ -262,12 +289,11 @@
 .card.full-art .card-title {
     color: #fff;
     text-shadow: 0 2px 10px rgba(0,0,0,0.9);
-    font-size: 0.94rem;
+    font-size: 0.66rem;
 }
 .card.full-art .card-desc {
     color: rgba(235,235,235,0.9);
     text-shadow: 0 1px 8px rgba(0,0,0,0.95);
-    -webkit-line-clamp: 3;
 }
 .card.full-art .card-foot { color: rgba(235,235,235,0.65); }
 
@@ -395,9 +421,9 @@
 /* ── Responsive ────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-    .card { --card-w: 190px; --card-radius: 9px; }
+    .card { --card-w: 190px; --card-radius: 9px; --art-h: 115px; }
     .card-rail { gap: 16px; padding: 54px 14px 38px; }
-    .card-title { font-size: 0.76rem; }
+    .card-title { font-size: 0.48rem; }
     .card-rail-wrap::before,
     .card-rail-wrap::after { width: 28px; }
 }
