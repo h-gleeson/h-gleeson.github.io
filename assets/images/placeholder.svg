@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 700" width="500" height="700">
+  <defs>
+    <pattern id="p" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0v40" fill="none" stroke="#2a2a2a" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="500" height="700" fill="#101010"/>
+  <rect width="500" height="700" fill="url(#p)"/>
+  <path d="M0 0l500 700M500 0L0 700" stroke="#1e1e1e" stroke-width="1"/>
+  <rect x="60" y="316" width="380" height="68" fill="#101010" stroke="#2f2f2f"/>
+  <text x="250" y="360" text-anchor="middle" font-family="'Share Tech Mono',monospace"
+        font-size="34" letter-spacing="6" fill="#6a6a6a">PLACEHOLDER</text>
+  <text x="250" y="420" text-anchor="middle" font-family="'Share Tech Mono',monospace"
+        font-size="15" letter-spacing="5" fill="#3d3d3d">500 × 700</text>
+</svg>

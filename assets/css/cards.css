@@ -1,0 +1,356 @@
+/* ── Trading-card UI ───────────────────────────────────────────────────
+   Each entry (project / writing / experiment) renders as a card in a
+   horizontal rail. One card is "active" (raised); the wheel moves the
+   highlight, a click promotes a card, a second click opens it.
+   Every card rolls for a FULL ART variant on page load — see cards.js. */
+
+.card-rail-wrap {
+    position: relative;
+    margin-bottom: 90px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.card-rail {
+    display: flex;
+    align-items: flex-end;
+    gap: 22px;
+    /* room above for the raised card, room below for its shadow */
+    padding: 66px 20px 46px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+.card-rail::-webkit-scrollbar { display: none; }
+
+/* fade the rail edges so cards slide out of frame rather than get cut */
+.card-rail-wrap::before,
+.card-rail-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 56px;
+    pointer-events: none;
+    z-index: 3;
+}
+.card-rail-wrap::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg), transparent);
+}
+.card-rail-wrap::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg), transparent);
+}
+
+/* ── The card ──────────────────────────────────────────────────────── */
+
+.card {
+    --card-w: 236px;
+    --card-radius: 11px;
+    position: relative;
+    border-radius: var(--card-radius);
+    flex: 0 0 auto;
+    width: var(--card-w);
+    aspect-ratio: 5 / 7;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: var(--text);
+    background: var(--bg-panel);
+    border: 1px solid var(--border-mid);
+    padding: 9px;
+    cursor: pointer;
+    transform: translateY(0) scale(0.9);
+    transform-origin: bottom center;
+    opacity: 0.45;
+    filter: saturate(0.35);
+    transition: transform 0.38s cubic-bezier(.2,.7,.25,1),
+                opacity 0.38s ease,
+                filter 0.38s ease,
+                border-color 0.3s ease,
+                box-shadow 0.38s ease;
+    will-change: transform;
+}
+
+.card:hover { opacity: 0.75; }
+
+.card.is-active {
+    transform: translateY(-34px) scale(1);
+    opacity: 1;
+    filter: none;
+    border-color: var(--orange);
+    box-shadow: 0 26px 48px -18px rgba(0,0,0,0.75),
+                0 0 0 1px var(--orange-dim),
+                0 0 34px -6px var(--orange-glow);
+}
+
+.card:focus-visible {
+    outline: 1px solid var(--orange);
+    outline-offset: 4px;
+}
+
+/* corner ticks */
+.card::before,
+.card::after {
+    content: '';
+    position: absolute;
+    width: 9px; height: 9px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 4;
+}
+.card::before {
+    top: 4px; left: 4px;
+    border-top: 1px solid var(--orange);
+    border-left: 1px solid var(--orange);
+    border-top-left-radius: calc(var(--card-radius) - 4px);
+}
+.card::after {
+    bottom: 4px; right: 4px;
+    border-bottom: 1px solid var(--orange);
+    border-right: 1px solid var(--orange);
+    border-bottom-right-radius: calc(var(--card-radius) - 4px);
+}
+.card.is-active::before,
+.card.is-active::after { opacity: 1; }
+
+/* ── Header: title top-left, index top-right ───────────────────────── */
+
+.card-head {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 2px 8px;
+}
+
+.card-title {
+    font-family: var(--sans);
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    color: var(--text-bright);
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.card-index {
+    font-family: var(--mono);
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
+    color: var(--orange);
+    white-space: nowrap;
+    padding-top: 2px;
+}
+
+/* ── Art window ────────────────────────────────────────────────────── */
+
+.card-art {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    background-image: var(--art);
+    background-size: cover;
+    background-position: center;
+    background-color: #0d0d0d;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--card-radius) - 5px);
+    overflow: hidden;
+}
+
+/* scanline tint over the art */
+.card-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent 0 2px,
+        rgba(0,0,0,0.16) 2px 3px
+    );
+    pointer-events: none;
+}
+
+/* ── Body: description ─────────────────────────────────────────────── */
+
+.card-body {
+    position: relative;
+    z-index: 3;
+    padding: 9px 2px 0;
+    flex: 0 0 auto;
+}
+
+.card-desc {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    line-height: 1.55;
+    letter-spacing: 0.02em;
+    color: var(--text-dim);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-foot {
+    position: relative;
+    z-index: 3;
+    margin-top: auto;
+    padding: 8px 2px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 0.48rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-label);
+    border-top: 1px solid var(--border);
+}
+
+.card-cta {
+    color: var(--text-label);
+    opacity: 0;
+    transition: opacity 0.3s ease, color 0.3s ease;
+}
+.card.is-active .card-cta { opacity: 1; color: var(--orange); }
+
+/* ── FULL ART variant ──────────────────────────────────────────────── */
+
+.card.full-art {
+    padding: 0;
+    border-color: var(--orange-dim);
+    background: #0a0a0a;
+}
+
+.card.full-art .card-art {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border: none;
+    border-radius: inherit;
+    flex: none;
+}
+
+/* scrim so text stays readable over the artwork */
+.card.full-art .card-art::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom,
+        rgba(0,0,0,0.82) 0%,
+        rgba(0,0,0,0.25) 26%,
+        rgba(0,0,0,0.30) 52%,
+        rgba(0,0,0,0.88) 100%);
+    z-index: 1;
+}
+
+.card.full-art .card-head { padding: 11px 11px 0; }
+.card.full-art .card-body { padding: 0 11px; }
+.card.full-art .card-foot {
+    padding: 8px 11px 10px;
+    border-top-color: rgba(255,255,255,0.14);
+}
+.card.full-art .card-title {
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+    font-size: 0.94rem;
+}
+.card.full-art .card-desc {
+    color: rgba(235,235,235,0.9);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.95);
+    -webkit-line-clamp: 3;
+}
+.card.full-art .card-foot { color: rgba(235,235,235,0.65); }
+
+/* holo sheen */
+.card.full-art .holo {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    border-radius: inherit;
+    mix-blend-mode: color-dodge;
+    opacity: 0.30;
+    background: linear-gradient(115deg,
+        transparent 20%,
+        hsl(var(--accent-h) 90% 60% / 0.55) 38%,
+        rgba(120,220,255,0.45) 48%,
+        rgba(190,140,255,0.45) 58%,
+        transparent 76%);
+    background-size: 260% 260%;
+    animation: holo-drift 7s ease-in-out infinite;
+}
+.card:not(.full-art) .holo { display: none; }
+
+@keyframes holo-drift {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+}
+
+/* rarity stamp */
+.card-rarity {
+    position: absolute;
+    z-index: 4;
+    top: 50%;
+    right: 0;
+    border-radius: 0 4px 4px 0;   /* rotated 180°, so this reads as the inner edge */
+    transform: translateY(-50%) rotate(180deg);
+    writing-mode: vertical-rl;
+    font-family: var(--mono);
+    font-size: 0.46rem;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    padding: 9px 3px;
+    color: #0a0a0a;
+    background: var(--orange);
+    display: none;
+}
+.card.full-art .card-rarity { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+    .card, .card-rail { transition: none; scroll-behavior: auto; }
+    .card.full-art .holo { animation: none; }
+}
+
+/* ── Rail HUD (counter + hint) ─────────────────────────────────────── */
+
+.rail-hud {
+    position: relative;
+    z-index: 4;          /* sits above the rail's edge fades */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 20px 14px;
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-label);
+}
+.rail-hud .rail-now { color: var(--orange); }
+
+/* ── Light mode tweaks ─────────────────────────────────────────────── */
+
+:root.light-mode .card.is-active {
+    box-shadow: 0 22px 40px -20px rgba(0,0,0,0.45),
+                0 0 0 1px var(--orange-dim);
+}
+:root.light-mode .card-art::after { opacity: 0.35; }
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .card { --card-w: 190px; --card-radius: 9px; }
+    .card-rail { gap: 16px; padding: 54px 14px 38px; }
+    .card-title { font-size: 0.76rem; }
+    .card-rail-wrap::before,
+    .card-rail-wrap::after { width: 28px; }
+}
