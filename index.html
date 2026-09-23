@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLEESON // H.S.</title>
+    <title>Henry Gleeson — Architecture, Drawings &amp; Experiments</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -41,8 +41,8 @@
             --orange-glow:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.35);
             --text-bright:  #EBEBEB;
             --text:         #A8A8A8;
-            --text-dim:     #525252;
-            --text-label:   #3E3E3E;
+            --text-dim:     #929292;
+            --text-label:   #858585;
             --dot-color:    rgba(255, 255, 255, 0.12);
             --mono:         'Share Tech Mono', 'Courier New', monospace;
             --sans:         'Space Grotesk', system-ui, sans-serif;
@@ -60,8 +60,8 @@
             --orange-glow:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.25);
             --text-bright:  #0E0E0E;
             --text:         #3C3C3C;
-            --text-dim:     #7A7A7A;
-            --text-label:   #A0A0A0;
+            --text-dim:     #626262;
+            --text-label:   #666666;
             --dot-color:    rgba(0, 0, 0, 0.12);
         }
 
@@ -350,6 +350,8 @@
             margin-top: 10px;
         }
 
+        .card-desc { font-size: clamp(0.875rem, 1.1vw, 0.95rem); }
+
         /* ── Responsive ─────────────────────────────── */
         @media (max-width: 768px) {
             .status-right { display: none; }
@@ -367,9 +369,18 @@
             padding: 36px 20px;
             color: var(--text);
             font-family: var(--mono);
-            font-size: clamp(0.72rem, 1vw, 0.82rem);
+            font-size: clamp(0.875rem, 1.1vw, 0.95rem);
             line-height: 1.9;
             letter-spacing: 0.03em;
+        }
+        .about-content p + p { margin-top: 1em; }
+        a:focus-visible, button:focus-visible, summary:focus-visible {
+            outline: 2px solid var(--text-bright); outline-offset: 5px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { animation: none !important; transition: none !important; }
+            .cursor-glow { display: none; }
         }
     </style>
 </head>
@@ -394,7 +405,7 @@
         <header class="hero">
             <h1>Henry<br><em>Gleeson</em></h1>
             <div class="hero-sub">
-                <p class="intro-text">Welcome to my digital workspace. This is an archive of my projects.</p>
+                <p class="intro-text">Architecture, drawings, and interactive experiments by Henry Gleeson. An archive of design projects, processes, and ideas.</p>
             </div>
         </header>
 
@@ -402,7 +413,7 @@
 
             <!-- ── Projects ──────────────────────────── -->
             <section>
-                <details class="section-collapse">
+                <details class="section-collapse" open>
                 <summary>
                 <div class="section-divider">
                     <span class="section-tag">OPS_ARCHIVE</span>
@@ -436,11 +447,11 @@
                         <a href="projects/hybrid" class="card">
                             <div class="card-art" style="--art: url('assets/images/placeholder.svg')"></div>
                             <div class="card-head">
-                                <h3 class="card-title">The Hybrid</h3>
+                                <h3 class="card-title">The Hybrid of Lincoln Heights</h3>
                                 <span class="card-index">OBJ_002</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">A hybrid shell for the adaptive reuse of the Lincoln Heights Jail in Los Angeles, CA.</p>
+                                <p class="card-desc">A proposal to transform the Lincoln Heights Jail in Los Angeles into an off-grid hotel.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -452,7 +463,7 @@
                                 <span class="card-index">OBJ_003</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">Drawings that reinterpret stonehenge, showing how the space has meant many different things to different groups.</p>
+                                <p class="card-desc">Drawings that reinterpret Stonehenge, showing how the space has meant many different things to different groups.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -476,7 +487,7 @@
                                 <span class="card-index">OBJ_005</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">I kept that plant alive for so long. It definitely helps that this one is just a 3D model.</p>
+                                <p class="card-desc">A scanned houseplant transformed into a hybrid digital sculpture and 3D print. It started with keeping the real plant alive.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -488,7 +499,7 @@
                                 <span class="card-index">OBJ_006</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">A group of drawings I did during my landscape internship in the summer of 2023. I worked in a small team so I got to do a lot of design work while I was there.</p>
+                                <p class="card-desc">Planting plans and construction details from my summer 2023 internship with DTDesign in Northeast Ohio. Working in a small team gave me a hands-on role in the design process.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -496,11 +507,11 @@
                         <a href="projects/media_museum" class="card">
                             <div class="card-art" style="--art: url('assets/images/placeholder.svg')"></div>
                             <div class="card-head">
-                                <h3 class="card-title">The Media Museum</h3>
+                                <h3 class="card-title">The Last Archive — Media Museum</h3>
                                 <span class="card-index">OBJ_007</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">An architectural exploration of what resources a museum filled with "media" would require.</p>
+                                <p class="card-desc">A proposal for a media archive and public park in New York, exploring data storage, water cooling, and a responsive algae facade.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -572,11 +583,11 @@
                         <a href="experiments/media/index.html" class="card">
                             <div class="card-art" style="--art: url('assets/images/placeholder.svg')"></div>
                             <div class="card-head">
-                                <h3 class="card-title">Media Museum Interactive Diagram</h3>
+                                <h3 class="card-title">The Last Archive — Interactive Diagram</h3>
                                 <span class="card-index">EXP_001</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">An interactive diagrammatic experience of our media museum, The Last Archive.</p>
+                                <p class="card-desc">Explore the building systems and try patterns, text, music, and games on the proposed facade of The Last Archive.</p>
                             </div>
                             <div class="card-foot"><span>EXPERIMENT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -601,7 +612,7 @@
                 </div>
                 </summary>
                 <div class="about-content">
-                    <!-- content coming soon -->
+                    <p>I’m Henry Gleeson. I grew up in Northeast Ohio, and my work brings together architecture, drawing, digital modeling, and interactive experiments.</p><p>This archive includes academic design projects, work from my landscape design internship, and personal writing. Each project records an idea and the process of making it.</p>
                 </div>
                 </details>
             </section>
