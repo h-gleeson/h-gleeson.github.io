@@ -167,15 +167,77 @@
             });
         }
 
+        /* ── Deal: cards drop in one by one when the rail is revealed.
+           The active card lands first, the rest follow left to right. */
+        var DEAL_STAGGER = 75;   // ms between cards
+        var dealTimer = null;
+
+        function deal() {
+            if (reduceMotion) return;
+            var order = [cards[active]].concat(cards.filter(function (c, n) {
+                return n !== active;
+            }));
+            rail.classList.remove('is-dealing');
+            order.forEach(function (c, n) {
+                c.style.setProperty('--deal-delay', (n * DEAL_STAGGER) + 'ms');
+            });
+            void rail.offsetWidth;   // restart the animation if it's mid-run
+            rail.classList.add('is-dealing');
+
+            clearTimeout(dealTimer);
+            dealTimer = setTimeout(function () {
+                rail.classList.remove('is-dealing');
+            }, order.length * DEAL_STAGGER + 800);
+        }
+
+        /* ── Collapse: the reverse of the deal. Cards lift back up into
+           the tab right to left, the active card leaving last, and only
+           then does the <details> actually close. */
+        var COLLAPSE_STAGGER = 45;
+        var COLLAPSE_DURATION = 380;
+        var collapsing = false;
+
+        function collapse(details) {
+            collapsing = true;
+            clearTimeout(dealTimer);
+            rail.classList.remove('is-dealing');
+
+            var order = cards.filter(function (c, n) {
+                return n !== active;
+            }).reverse().concat([cards[active]]);
+            order.forEach(function (c, n) {
+                c.style.transform = '';   // drop any tilt before lifting
+                c.style.setProperty('--deal-delay', (n * COLLAPSE_STAGGER) + 'ms');
+            });
+            rail.classList.add('is-collapsing');
+
+            setTimeout(function () {
+                details.open = false;
+                rail.classList.remove('is-collapsing');
+                collapsing = false;
+            }, (order.length - 1) * COLLAPSE_STAGGER + COLLAPSE_DURATION);
+        }
+
         /* Re-centre when the rail is revealed (<details> opens) or resized */
         var reveal = function () { if (rail.clientWidth) centre(cards[active]); };
         window.addEventListener('resize', reveal);
         var details = rail.closest('details');
         if (details) details.addEventListener('toggle', function () {
-            if (details.open) setTimeout(reveal, 60);
+            if (!details.open) return;
+            if (!rail.classList.contains('is-dealing')) deal();
+            setTimeout(reveal, 60);
+        });
+
+        var summary = details && details.querySelector(':scope > summary');
+        if (summary && !reduceMotion) summary.addEventListener('click', function (e) {
+            if (collapsing) { e.preventDefault(); return; }
+            if (!details.open) return;   // opening: let it through, toggle deals
+            e.preventDefault();
+            collapse(details);
         });
 
         setActive(0, false);
+        if (!details || details.open) deal();
     }
 
     /* ── Boot ──────────────────────────────────────────────────────── */

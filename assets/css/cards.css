@@ -314,8 +314,45 @@
 }
 .card.full-art .card-rarity { display: block; }
 
+/* ── Deal-in animation ─────────────────────────────────────────────
+   Runs when a section opens. Only a `from` keyframe, so each card
+   settles into whatever state it already has (raised if active,
+   dimmed otherwise). Uses the standalone translate/rotate properties
+   so it stacks on top of the card's own transform instead of fighting it. */
+
+.card-rail.is-dealing .card {
+    animation: card-drop 0.62s cubic-bezier(.3, 1.35, .55, 1) backwards;
+    animation-delay: var(--deal-delay, 0ms);
+}
+
+@keyframes card-drop {
+    from {
+        translate: 0 -150px;
+        rotate: -5deg;
+        opacity: 0;
+    }
+}
+
+/* Collapse: the reverse. Only a `to` keyframe, and `forwards` holds the
+   cards out of sight until the section actually closes. */
+.card-rail.is-collapsing .card {
+    animation: card-lift 0.38s cubic-bezier(.5, 0, .75, 0) forwards;
+    animation-delay: var(--deal-delay, 0ms);
+    pointer-events: none;
+}
+
+@keyframes card-lift {
+    to {
+        translate: 0 -150px;
+        rotate: 5deg;
+        opacity: 0;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .card, .card-rail { transition: none; scroll-behavior: auto; }
+    .card-rail.is-dealing .card,
+    .card-rail.is-collapsing .card { animation: none; }
     .card.full-art .holo { animation: none; }
 }
 
