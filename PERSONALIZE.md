@@ -7,7 +7,11 @@ Visible filler is in square brackets. Search for `PERSONALIZE` to find it in the
 
 ## Your card template
 
-The cards still use a 5:7 portrait ratio. A 1000 × 1400 design is a convenient starting size. Regular cards reserve room for the title, an image window, collection number, short description, and footer. Full-art variants place text over a full-bleed image.
+Each homepage card has a `[Card type]` placeholder in `.card-type-label`. Replace it with your own category (for example, `Building — Community space` or `Drawing — Study`). The workshop's **Card type** field previews this label on both variants and includes it in copied settings. The collection number sits at the other end of the same bar.
+
+Open `experiments/cards/index.html` (also linked under Experiments on the homepage) for the **Card workshop**. It previews regular and full-art cards using the shared homepage styles. Adjust the sliders and text, turn on layout guides, then copy the settings with your feedback. Your draft is saved only in this browser; it does not edit the homepage. Reset to homepage layout after shared CSS changes to inspect the new defaults.
+
+The cards use a 5:7 portrait ratio (280 × 392px). A 1000 × 1400 design is a convenient starting size. Regular cards reserve room for the title, an image window, collection number, short description, and footer. Full-art variants place text over a full-bleed image.
 
 Keep text on separate layers from your artwork so titles and descriptions can remain selectable, accessible HTML. Leave room for two-line titles. If you make a frame, export it with a transparent center; a matching back is optional and is not displayed yet.
 

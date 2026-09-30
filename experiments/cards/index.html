@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card workshop — Henry Gleeson</title>
+    <link rel="stylesheet" href="../../assets/css/theme.css">
+    <link rel="stylesheet" href="../../assets/css/home.css">
+    <link rel="stylesheet" href="../../assets/css/cards.css">
+    <link rel="stylesheet" href="workshop.css">
+    <script>
+        if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('light-mode');
+    </script>
+</head>
+<body>
+    <div class="workshop">
+        <header class="site-header">
+            <a href="../../">← Home</a>
+            <button id="theme-toggle" type="button">Change theme</button>
+        </header>
+        <header class="workshop-intro">
+            <h1>Card workshop</h1>
+            <p>A place to work out the shape, spacing, and personality of the cards.</p>
+            <p class="muted">These previews use the homepage card styles. Adjustments stay here as a draft in this browser; they do not change the homepage.</p>
+        </header>
+        <main class="workbench">
+            <form class="controls" id="controls" aria-label="Card layout controls">
+                <h2>Try a change</h2>
+                <div id="sliders"></div>
+                <label for="sample">Sample artwork</label>
+                <select id="sample">
+                    <option value="palace">The Palace of All Trades</option>
+                    <option value="dirtpolitics">Dirt Politics</option>
+                    <option value="media_museum">The Last Archive</option>
+                </select>
+                <label for="title">Title</label>
+                <input id="title" type="text" maxlength="160">
+                <label for="description">Description</label>
+                <textarea id="description" rows="4" maxlength="600"></textarea>
+                <label for="typeLabel">Card type</label>
+                <input id="typeLabel" type="text" maxlength="60" placeholder="e.g. Building — Community space">
+                <label class="check"><input id="guides" type="checkbox"> Show layout guides</label>
+                <p class="muted">Guides outline the title, artwork, type bar, description, and footer.</p>
+                <button id="reset" type="button">Reset to homepage layout</button>
+            </form>
+            <div class="preview-area">
+                <div class="preview-stage" id="stage">
+                    <figure>
+                        <figcaption>Regular card <span class="dimensions"></span></figcaption>
+                        <article class="card is-active" data-variant="regular" aria-label="Regular card preview">
+                            <div class="card-art"></div>
+                            <div class="card-head"><h3 class="card-title"></h3></div>
+                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
+                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">001</span></div>
+                            <div class="card-body"><p class="card-desc"></p></div>
+                            <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
+                        </article>
+                    </figure>
+                    <figure>
+                        <figcaption>Full-art card <span class="dimensions"></span></figcaption>
+                        <article class="card is-active" data-variant="full" aria-label="Full-art card preview">
+                            <div class="card-art"></div>
+                            <div class="card-head"><h3 class="card-title"></h3></div>
+                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
+                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">001</span></div>
+                            <div class="card-body"><p class="card-desc"></p></div>
+                            <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
+                        </article>
+                    </figure>
+                </div>
+                <p id="fit-status" class="muted" role="status"></p>
+                <details class="settings">
+                    <summary>Settings to send back to me</summary>
+                    <p>Copy these with your feedback so I can apply the exact layout you like.</p>
+                    <textarea id="settings" readonly rows="12" aria-label="Current card settings"></textarea>
+                    <button id="copy" type="button">Copy settings</button>
+                    <span id="copy-status" role="status"></span>
+                </details>
+                <p class="muted refresh-note">When we edit the shared card styles, reset this draft and refresh to see the new starting point. The cards are held still here so you can inspect their layout.</p>
+            </div>
+        </main>
+        <noscript>This workshop needs JavaScript to populate the previews and controls.</noscript>
+    </div>
+    <style id="draft-style"></style>
+    <script src="../../assets/js/theme.js"></script>
+    <script src="../../assets/js/cards.js"></script>
+    <script src="workshop.js"></script>
+</body>
+</html>

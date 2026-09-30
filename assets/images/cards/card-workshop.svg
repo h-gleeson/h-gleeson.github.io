@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="700" viewBox="0 0 500 700">
+  <rect width="500" height="700" fill="#191918"/>
+  <g fill="none" stroke="#ff5100" stroke-width="2">
+    <rect x="80" y="65" width="340" height="560" rx="20"/>
+    <rect x="100" y="125" width="300" height="270" rx="8"/>
+    <path d="M100 100h180M100 440h300M100 465h250M100 490h270M100 565h300"/>
+    <path d="M40 65v560M30 65h20M30 625h20M80 655h340M80 645v20M420 645v20" stroke-dasharray="4 6"/>
+    <path d="m130 350 75-95 60 65 45-45 60 75z" stroke="#aaa89f"/>
+    <circle cx="320" cy="185" r="25" stroke="#aaa89f"/>
+  </g>
+  <text x="100" y="600" fill="#f0eee7" font-family="monospace" font-size="16">CARD WORKSHOP</text>
+</svg>

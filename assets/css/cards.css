@@ -46,22 +46,25 @@
 /* ── The card ──────────────────────────────────────────────────────── */
 
 .card {
+    --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.18) 13%;
+    --card-surface: hsl(var(--card-surface-hsl));
     --card-w: 280px;
-    --card-radius: 11px;
+    --card-radius: 10px;
+    --card-padding: 9px;
     position: relative;
     border-radius: var(--card-radius);
     flex: 0 0 auto;
     width: var(--card-w);
-    height: calc(var(--card-w) * 1.4);   /* 5:7, fixed: content can't stretch it */
+    height: calc(var(--card-w) * 1.4);   /* Keep the original 5:7 card proportions. */
     box-sizing: border-box;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     text-decoration: none;
     color: var(--text);
-    background: var(--bg-panel);
-    border: 1px solid var(--border-mid);
-    padding: 9px;
+    background: var(--card-surface);
+    border: 5px solid var(--border-mid);
+    padding: var(--card-padding);
     cursor: pointer;
     transform: translateY(0) scale(0.9);
     transform-origin: bottom center;
@@ -89,31 +92,6 @@
     outline-offset: 4px;
 }
 
-/* corner ticks */
-.card::before,
-.card::after {
-    content: '';
-    position: absolute;
-    width: 9px; height: 9px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 4;
-}
-.card::before {
-    top: 4px; left: 4px;
-    border-top: 1px solid var(--orange);
-    border-left: 1px solid var(--orange);
-    border-top-left-radius: calc(var(--card-radius) - 4px);
-}
-.card::after {
-    bottom: 4px; right: 4px;
-    border-bottom: 1px solid var(--orange);
-    border-right: 1px solid var(--orange);
-    border-bottom-right-radius: calc(var(--card-radius) - 4px);
-}
-.card.is-active::before,
-.card.is-active::after { opacity: 1; }
-
 /* ── Header: title top-left, index top-right ───────────────────────── */
 
 .card-head {
@@ -132,7 +110,7 @@
 
 .card-title {
     font-family: var(--sans);
-    font-size: 0.9rem;
+    font-size: 0.8125rem;
     font-weight: 700;
     line-height: 1.25;
     letter-spacing: -0.01em;
@@ -154,27 +132,48 @@
 /* Regular cards: title on top, art tight beneath it, index under the art.
    The head wrapper dissolves so title and index can be ordered separately. */
 .card:not(.full-art) .card-head { display: contents; }
+.card .card-title,
+.card .card-type,
+.card .card-desc {
+    padding: 4px 7px;
+    border: 1px solid hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.4);
+    border-radius: 6px;
+    background: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12);
+}
 .card:not(.full-art) .card-title {
     order: -1;
     flex: 0 0 auto;
-    padding: 2px 2px 0;
-    margin-bottom: 5px;
-    min-height: 36px;
+    /* Match the space around the nameplate, even when its text wraps. */
+    margin-bottom: var(--card-padding);
 }
 .card:not(.full-art) .card-index {
     order: 1;
     align-self: flex-end;
     padding: 4px 2px 0;
 }
-.card:not(.full-art) .card-body { order: 2; padding-top: 4px; }
+.card-type {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 0 0 auto;
+    font-family: var(--sans);
+    font-size: 0.65625rem;
+    line-height: 1.5;
+    color: var(--text-bright);
+}
+.card-type-label { min-width: 0; overflow-wrap: anywhere; }
+.card:not(.full-art) .card-type { order: 1; margin-top: 5px; }
+.card .card-type .card-index { order: 0; align-self: center; padding: 0; }
+.card:not(.full-art) .card-body { order: 2; padding: 4px 0 8px; }
 .card:not(.full-art) .card-foot { order: 3; }
 
 /* ── Art window ────────────────────────────────────────────────────── */
 
 .card-art {
     position: relative;
-    flex: 0 0 var(--art-h, 175px);   /* fixed height, never shifts with text */
-    height: var(--art-h, 175px);
+    flex: 0 0 var(--art-h, 205px);   /* fixed height, never shifts with text */
+    height: var(--art-h, 205px);
     min-height: 0;
     background-image: var(--art);
     background-size: cover;
@@ -190,6 +189,8 @@
 .card-body {
     position: relative;
     z-index: 3;
+    display: flex;
+    flex-direction: column;
     padding: 9px 2px 0;
     flex: 1 1 auto;
     min-height: 0;
@@ -197,8 +198,9 @@
 }
 
 .card-desc {
+    flex: 1 0 auto;
     font-family: var(--sans);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     line-height: 1.5;
     letter-spacing: 0.01em;
     color: var(--text);
@@ -232,7 +234,7 @@
 .card.full-art {
     padding: 0;
     border-color: var(--orange-dim);
-    background: #0a0a0a;
+    background: var(--card-surface);
 }
 
 .card.full-art .card-art {
@@ -256,27 +258,50 @@
         rgba(0,0,0,0.82) 0%,
         rgba(0,0,0,0.25) 26%,
         rgba(0,0,0,0.30) 52%,
-        rgba(0,0,0,0.88) 100%);
+        rgba(0,0,0,0.40) 100%);
     z-index: 1;
 }
 
-.card.full-art .card-head { padding: 12px; flex-direction: column; gap: 6px; }
-.card.full-art .card-index { color: #eee; }
-.card.full-art .card-body { padding: 12px; margin-top: auto; flex: 0 0 auto; }
+.card.full-art .card-head {
+    padding: 12px;
+    flex-direction: column;
+    gap: 6px;
+    /* Reserve the upper artwork area; the description fills below it. */
+    flex: 0 0 58%;
+}
+.card.full-art .card-index { color: var(--text); }
+.card.full-art .card-type { margin: 0 12px; color: var(--text-bright); }
+.card.full-art .card-body { padding: 6px 12px 8px; margin-top: 0; flex: 1 1 0; }
 .card.full-art .card-foot {
     padding: 8px 11px 10px;
     border-top-color: rgba(255,255,255,0.14);
 }
 .card.full-art .card-title {
-    color: #fff;
+    width: 100%;
+    color: var(--text-bright);
     text-shadow: 0 2px 10px rgba(0,0,0,0.9);
-    font-size: 0.9rem;
+    font-size: 0.8125rem;
 }
 .card.full-art .card-desc {
     color: rgba(235,235,235,0.9);
     text-shadow: 0 1px 8px rgba(0,0,0,0.95);
 }
+.card.full-art .card-title,
+.card.full-art .card-type,
+.card.full-art .card-desc {
+    /* Keep the tint, with a dark backing for legibility over full-bleed art. */
+    background: linear-gradient(
+        hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12),
+        hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12)
+    ), hsl(var(--card-surface-hsl) / 0.85);
+    text-shadow: none;
+}
 .card.full-art .card-foot { color: #eee; margin-top: 0; }
+.card.full-art .card-desc {
+    background-color: hsl(var(--card-surface-hsl) / 0.45);
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
 .card.full-art.is-active .card-cta { color: #fff; }
 
 /* holo sheen */
@@ -393,6 +418,15 @@
 
 /* ── Light mode tweaks ─────────────────────────────────────────────── */
 
+:root.light-mode .card {
+    --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.6) 92%;
+}
+:root.light-mode .card.full-art .card-desc {
+    background-color: hsl(var(--card-surface-hsl) / 0.8);
+    color: var(--text-bright);
+    text-shadow: none;
+}
+
 :root.light-mode .card.is-active {
     box-shadow: 0 22px 40px -20px rgba(0,0,0,0.45),
                 0 0 0 1px var(--orange-dim);
@@ -401,7 +435,6 @@
 /* ── Responsive ────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-    .card { --card-w: 260px; --card-radius: 9px; --art-h: 148px; }
     .card-rail { gap: 12px; padding: 44px 10px 24px; }
     .rail-title { display: none; }
     .card-rail-wrap::before,

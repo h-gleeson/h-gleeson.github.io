@@ -1,0 +1,38 @@
+.workshop { max-width: 1500px; margin: auto; padding: 0 28px 48px; }
+.workshop-intro { padding: 32px 0; max-width: 750px; }
+.workshop-intro h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin-bottom: 18px; }
+.workshop-intro p { line-height: 1.6; margin-top: 8px; }
+.muted { color: var(--text-dim); font-size: 0.875rem; line-height: 1.6; }
+.workbench { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 40px; }
+.controls { border-top: 1px solid var(--border); padding-top: 20px; }
+.controls h2 { font-size: 1.3rem; margin-bottom: 20px; }
+.controls label { display: block; font-size: 0.875rem; margin: 16px 0 7px; }
+.controls output { float: right; color: var(--text-dim); font-family: var(--mono); }
+.controls input[type="range"] { width: 100%; accent-color: var(--orange); }
+.controls input[type="text"], select, textarea { width: 100%; min-width: 0; padding: 9px; color: var(--text-bright); background: var(--bg-panel); border: 1px solid var(--border-mid); border-radius: 3px; font: inherit; }
+textarea { resize: vertical; font-size: 0.875rem; line-height: 1.5; }
+.check input { accent-color: var(--orange); margin-right: 8px; }
+button { padding: 10px 14px; background: var(--bg-panel); color: var(--text-bright); border: 1px solid var(--border-mid); border-radius: 3px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--orange); }
+#reset { margin-top: 20px; }
+.preview-area { min-width: 0; }
+.preview-stage { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 32px; padding: 20px 16px 36px; border: 1px solid var(--border); overflow-x: auto; }
+.preview-stage figure { margin: 0; flex: 0 0 auto; }
+.preview-stage figcaption { display: flex; justify-content: space-between; gap: 12px; font-size: 0.875rem; margin-bottom: 18px; }
+.dimensions { font-family: var(--mono); color: var(--text-dim); font-size: 0.75rem; }
+.preview-stage .card { transform: none; cursor: default; }
+.preview-stage .holo { animation: none; }
+.preview-stage.guides :is(.card-title, .card-art, .card-type, .card-body, .card-foot) { outline: 1px dashed var(--orange); outline-offset: -1px; }
+#fit-status { padding: 14px 0; min-height: 48px; }
+.settings { border-top: 1px solid var(--border); padding: 20px 0; }
+.settings summary { cursor: pointer; }
+.settings p { margin: 16px 0; line-height: 1.6; }
+.settings textarea { display: block; margin-bottom: 12px; font-family: var(--mono); }
+#copy-status { font-size: 0.875rem; margin-left: 8px; }
+.refresh-note { max-width: 660px; }
+@media (max-width: 850px) {
+    .workshop { padding: 0 16px 32px; }
+    .workbench { grid-template-columns: 1fr; gap: 24px; }
+    .preview-area { grid-row: 1; }
+    .preview-stage { flex-wrap: nowrap; gap: 24px; }
+}
