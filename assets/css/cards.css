@@ -6,9 +6,7 @@
 
 .card-rail-wrap {
     position: relative;
-    margin-bottom: 90px;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 42px;
 }
 
 .card-rail {
@@ -16,7 +14,7 @@
     align-items: flex-end;
     gap: 22px;
     /* room above for the raised card, room below for its shadow */
-    padding: 66px 20px 46px;
+    padding: 44px 12px 24px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
@@ -31,7 +29,7 @@
     content: '';
     position: absolute;
     top: 0; bottom: 0;
-    width: 56px;
+    width: 16px;
     pointer-events: none;
     z-index: 3;
 }
@@ -47,7 +45,7 @@
 /* ── The card ──────────────────────────────────────────────────────── */
 
 .card {
-    --card-w: 236px;
+    --card-w: 280px;
     --card-radius: 11px;
     position: relative;
     border-radius: var(--card-radius);
@@ -66,26 +64,23 @@
     cursor: pointer;
     transform: translateY(0) scale(0.9);
     transform-origin: bottom center;
-    opacity: 0.45;
-    filter: saturate(0.35);
+    opacity: 1;
     transition: transform 0.38s cubic-bezier(.2,.7,.25,1),
                 opacity 0.38s ease,
-                filter 0.38s ease,
                 border-color 0.3s ease,
                 box-shadow 0.38s ease;
     will-change: transform;
 }
 
-.card:hover { opacity: 0.75; }
+.card:hover { border-color: var(--orange); }
 
 .card.is-active {
     transform: translateY(-34px) scale(1);
     opacity: 1;
     filter: none;
     border-color: var(--orange);
-    box-shadow: 0 26px 48px -18px rgba(0,0,0,0.75),
-                0 0 0 1px var(--orange-dim),
-                0 0 34px -6px var(--orange-glow);
+    box-shadow: 0 18px 28px -16px rgba(0,0,0,0.65),
+                0 0 0 1px var(--orange-dim);
 }
 
 .card:focus-visible {
@@ -129,31 +124,28 @@
     gap: 8px;
     padding: 2px 2px 8px;
     order: -1;               /* title above the art (art comes first in the markup) */
-    height: 26px;            /* fixed: single-line title */
+    min-height: 40px;
     flex: 0 0 auto;
     box-sizing: border-box;
 }
 
 .card-title {
     font-family: var(--sans);
-    font-size: 0.6rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    line-height: 1.12;
+    line-height: 1.25;
     letter-spacing: -0.01em;
     color: var(--text-bright);
-    text-transform: uppercase;
     text-align: left;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
+    white-space: normal;
     min-width: 0;
 }
 
 .card-index {
     font-family: var(--mono);
-    font-size: 0.5rem;
-    letter-spacing: 0.16em;
-    color: var(--orange);
+    font-size: 0.65rem;
+    letter-spacing: 0.03em;
+    color: var(--text-dim);
     white-space: nowrap;
     padding-top: 2px;
 }
@@ -166,6 +158,7 @@
     flex: 0 0 auto;
     padding: 2px 2px 0;
     margin-bottom: 5px;
+    min-height: 36px;
 }
 .card:not(.full-art) .card-index {
     order: 1;
@@ -191,19 +184,6 @@
     overflow: hidden;
 }
 
-/* scanline tint over the art */
-.card-art::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-        to bottom,
-        transparent 0 2px,
-        rgba(0,0,0,0.16) 2px 3px
-    );
-    pointer-events: none;
-}
-
 /* ── Body: description ─────────────────────────────────────────────── */
 
 .card-body {
@@ -216,11 +196,11 @@
 }
 
 .card-desc {
-    font-family: var(--mono);
-    font-size: 0.42rem;
+    font-family: var(--sans);
+    font-size: 0.875rem;
     line-height: 1.5;
     letter-spacing: 0.01em;
-    color: var(--text-dim);
+    color: var(--text);
 }
 
 .card-foot {
@@ -233,9 +213,8 @@
     justify-content: space-between;
     gap: 8px;
     font-family: var(--mono);
-    font-size: 0.48rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
     color: var(--text-label);
     border-top: 1px solid var(--border);
 }
@@ -280,8 +259,9 @@
     z-index: 1;
 }
 
-.card.full-art .card-head { padding: 11px 11px 0; height: auto; }
-.card.full-art .card-body { padding: 0 11px; }
+.card.full-art .card-head { padding: 12px; flex-direction: column; gap: 6px; }
+.card.full-art .card-index { color: #eee; }
+.card.full-art .card-body { padding: 12px; margin-top: auto; flex: 0 0 auto; }
 .card.full-art .card-foot {
     padding: 8px 11px 10px;
     border-top-color: rgba(255,255,255,0.14);
@@ -289,13 +269,14 @@
 .card.full-art .card-title {
     color: #fff;
     text-shadow: 0 2px 10px rgba(0,0,0,0.9);
-    font-size: 0.66rem;
+    font-size: 0.9rem;
 }
 .card.full-art .card-desc {
     color: rgba(235,235,235,0.9);
     text-shadow: 0 1px 8px rgba(0,0,0,0.95);
 }
-.card.full-art .card-foot { color: rgba(235,235,235,0.65); }
+.card.full-art .card-foot { color: #eee; margin-top: 0; }
+.card.full-art.is-active .card-cta { color: #fff; }
 
 /* holo sheen */
 .card.full-art .holo {
@@ -401,11 +382,10 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 0 20px 14px;
+    padding: 0 12px 8px;
     font-family: var(--mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
     color: var(--text-label);
 }
 .rail-hud .rail-now { color: var(--orange); }
@@ -416,14 +396,13 @@
     box-shadow: 0 22px 40px -20px rgba(0,0,0,0.45),
                 0 0 0 1px var(--orange-dim);
 }
-:root.light-mode .card-art::after { opacity: 0.35; }
 
 /* ── Responsive ────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-    .card { --card-w: 190px; --card-radius: 9px; --art-h: 115px; }
-    .card-rail { gap: 16px; padding: 54px 14px 38px; }
-    .card-title { font-size: 0.48rem; }
+    .card { --card-w: 260px; --card-radius: 9px; --art-h: 148px; }
+    .card-rail { gap: 12px; padding: 44px 10px 24px; }
+    .rail-title { display: none; }
     .card-rail-wrap::before,
-    .card-rail-wrap::after { width: 28px; }
+    .card-rail-wrap::after { width: 10px; }
 }

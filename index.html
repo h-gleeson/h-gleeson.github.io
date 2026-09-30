@@ -21,412 +21,47 @@
             }
         })();
     </script>
-    <style>
-        /* Accent hue + saturation are user-customisable (see theme.js);
-           lightness stays theme-controlled. */
-        :root {
-            --accent-h: 19;
-            --accent-s: 100%;
-            --accent-l: 50%;
-            --accent:       hsl(var(--accent-h) var(--accent-s) var(--accent-l));
-            --accent-soft:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.05);
-
-            --bg:           #040404;
-            --bg-panel:     #080808;
-            --bg-hover:     var(--accent-soft);
-            --border:       #181818;
-            --border-mid:   #2A2A2A;
-            --orange:       var(--accent);
-            --orange-dim:   hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.18);
-            --orange-glow:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.35);
-            --text-bright:  #EBEBEB;
-            --text:         #A8A8A8;
-            --text-dim:     #929292;
-            --text-label:   #858585;
-            --dot-color:    rgba(255, 255, 255, 0.12);
-            --mono:         'Share Tech Mono', 'Courier New', monospace;
-            --sans:         'Space Grotesk', system-ui, sans-serif;
-        }
-
-        :root.light-mode {
-            --accent-l:     42%;
-            --bg:           #ECEBE6;
-            --bg-panel:     #E4E2DC;
-            --bg-hover:     var(--accent-soft);
-            --border:       #D0CBC1;
-            --border-mid:   #C4BEB4;
-            --orange:       var(--accent);
-            --orange-dim:   hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.10);
-            --orange-glow:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.25);
-            --text-bright:  #0E0E0E;
-            --text:         #3C3C3C;
-            --text-dim:     #626262;
-            --text-label:   #666666;
-            --dot-color:    rgba(0, 0, 0, 0.12);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        html { scroll-behavior: smooth; }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: var(--sans);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Dot-grid background */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* Cursor glow */
-        .cursor-glow {
-            position: fixed;
-            top: 0; left: 0;
-            width: 700px;
-            height: 700px;
-            margin-left: -350px;
-            margin-top: -350px;
-            border-radius: 50%;
-            background: radial-gradient(circle,
-                hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.10) 0%,
-                hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.04) 40%,
-                transparent 70%
-            );
-            pointer-events: none;
-            z-index: 9999;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-            will-change: transform;
-        }
-
-        /* Main wrapper */
-        .site-wrapper {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 7vw 100px;
-            position: relative;
-            z-index: 2;
-        }
-
-        /* ── Status bar ─────────────────────────────── */
-        .status-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 0;
-            border-bottom: 1px solid var(--border);
-            font-family: var(--mono);
-            font-size: 0.62rem;
-            letter-spacing: 0.18em;
-            color: var(--text-label);
-            text-transform: uppercase;
-        }
-
-        .status-left {
-            display: flex;
-            align-items: center;
-            gap: 28px;
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            color: var(--orange);
-        }
-
-        .status-dot {
-            width: 5px;
-            height: 5px;
-            background: var(--orange);
-            border-radius: 50%;
-            animation: blink 2.6s ease-in-out infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: 0.2; }
-        }
-
-        #theme-toggle {
-            font-family: var(--mono);
-            font-size: 0.58rem;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            background: transparent;
-            border: 1px solid var(--border-mid);
-            color: var(--text-dim);
-            padding: 6px 10px;
-            cursor: pointer;
-            transition: border-color 0.2s, color 0.2s;
-            white-space: nowrap;
-            line-height: 1;
-        }
-
-        #theme-toggle:hover {
-            border-color: var(--orange);
-            color: var(--text-bright);
-        }
-
-        /* ── Hero ───────────────────────────────────── */
-        .hero {
-            padding: 80px 0 88px;
-            position: relative;
-        }
-
-        /* Corner brackets */
-        .hero::before,
-        .hero::after {
-            content: '';
-            position: absolute;
-            width: 18px;
-            height: 18px;
-        }
-        .hero::before {
-            top: 40px; left: -4px;
-            border-top: 1px solid var(--orange);
-            border-left: 1px solid var(--orange);
-        }
-        .hero::after {
-            bottom: 48px; right: -4px;
-            border-bottom: 1px solid var(--orange);
-            border-right: 1px solid var(--orange);
-        }
-
-        .operator-label {
-            font-family: var(--mono);
-            font-size: 0.62rem;
-            letter-spacing: 0.28em;
-            color: var(--orange);
-            text-transform: uppercase;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .operator-label::before {
-            content: '';
-            display: block;
-            width: 20px;
-            height: 1px;
-            background: var(--orange);
-            flex-shrink: 0;
-        }
-
-        h1 {
-            font-family: var(--sans);
-            font-size: clamp(3rem, 7vw, 6.5rem);
-            font-weight: 700;
-            color: var(--text-bright);
-            letter-spacing: -0.025em;
-            line-height: 0.92;
-            text-transform: uppercase;
-            margin-bottom: 36px;
-        }
-
-        h1 em {
-            font-style: normal;
-            color: var(--orange);
-        }
-
-        .hero-sub {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-        }
-
-        .hero-sub::before {
-            content: '//';
-            font-family: var(--mono);
-            font-size: 0.75rem;
-            color: var(--orange);
-            letter-spacing: 0;
-            margin-top: 2px;
-            flex-shrink: 0;
-        }
-
-        .intro-text {
-            font-family: var(--mono);
-            font-size: clamp(0.78rem, 1.3vw, 0.9rem);
-            color: var(--text-dim);
-            max-width: 460px;
-            line-height: 1.8;
-            letter-spacing: 0.04em;
-        }
-
-        /* ── Section divider ────────────────────────── */
-        .section-divider {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 36px;
-        }
-
-        .section-tag {
-            font-family: var(--mono);
-            font-size: 0.6rem;
-            letter-spacing: 0.32em;
-            color: var(--orange);
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-
-        .divider-line {
-            flex: 1;
-            height: 1px;
-            background: linear-gradient(to right, var(--border-mid), transparent);
-        }
-
-        /* ── Collapsible sections ───────────────────── */
-        .section-collapse {
-            border: none;
-        }
-
-        .section-collapse > summary {
-            list-style: none;
-            cursor: pointer;
-        }
-
-        .section-collapse > summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .section-collapse > summary:hover .section-tag,
-        .section-collapse > summary:hover h2 {
-            color: var(--orange);
-        }
-
-        .section-toggle {
-            font-family: var(--mono);
-            font-size: 1.5rem;
-            font-weight: 600;
-            line-height: 1;
-            color: var(--text-dim);
-            flex-shrink: 0;
-            transition: transform 0.25s ease, color 0.2s ease;
-        }
-
-        .section-collapse > summary:hover .section-toggle {
-            color: var(--orange);
-        }
-
-        .section-collapse[open] > summary .section-toggle {
-            transform: rotate(45deg);
-        }
-
-        .section-collapse[open].is-closing > summary .section-toggle {
-            transform: rotate(0deg);
-        }
-
-        /* ── Section header ─────────────────────────── */
-        .section-head {
-            margin-bottom: 44px;
-            transition: color 0.2s ease;
-        }
-
-        h2 {
-            font-family: var(--sans);
-            font-size: clamp(1.6rem, 3.5vw, 2.8rem);
-            font-weight: 700;
-            color: var(--text-bright);
-            letter-spacing: -0.01em;
-            text-transform: uppercase;
-            line-height: 1;
-        }
-
-        .section-meta {
-            font-family: var(--mono);
-            font-size: 0.6rem;
-            letter-spacing: 0.22em;
-            color: var(--text-label);
-            text-transform: uppercase;
-            margin-top: 10px;
-        }
-
-        .card-desc { font-size: clamp(0.875rem, 1.1vw, 0.95rem); }
-
-        /* ── Responsive ─────────────────────────────── */
-        @media (max-width: 768px) {
-            .status-right { display: none; }
-
-            h1 { letter-spacing: -0.015em; line-height: 0.95; }
-
-            .hero::before, .hero::after { display: none; }
-
-        }
-
-        /* ── About content ──────────────────────── */
-        .about-content {
-            border-top: 1px solid var(--border);
-            margin-bottom: 90px;
-            padding: 36px 20px;
-            color: var(--text);
-            font-family: var(--mono);
-            font-size: clamp(0.875rem, 1.1vw, 0.95rem);
-            line-height: 1.9;
-            letter-spacing: 0.03em;
-        }
-        .about-content p + p { margin-top: 1em; }
-        a:focus-visible, button:focus-visible, summary:focus-visible {
-            outline: 2px solid var(--text-bright); outline-offset: 5px;
-        }
-        @media (prefers-reduced-motion: reduce) {
-            html { scroll-behavior: auto; }
-            *, *::before, *::after { animation: none !important; transition: none !important; }
-            .cursor-glow { display: none; }
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/home.css">
 </head>
 <body>
-    <div class="cursor-glow"></div>
+
 
     <div class="site-wrapper">
 
-        <!-- ── Status bar ────────────────────────────── -->
-        <div class="status-bar">
-            <div class="status-left">
-                <div class="status-indicator">
-                    <div class="status-dot"></div>
-                    <span>SYS_ONLINE</span>
-                </div>
-                <span>PORTFOLIO_DB</span>
-            </div>
+        <!-- ── Navigation ────────────────────────────── -->
+        <div class="site-header">
+            <nav class="site-nav" aria-label="Main navigation">
+                <a href="#projects">Projects</a>
+                <a href="experiments/media/">Play</a>
+                <a href="#about">About me</a>
+            </nav>
             <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
         </div>
 
         <!-- ── Hero ─────────────────────────────────── -->
         <header class="hero">
-            <h1>Henry<br><em>Gleeson</em></h1>
+            <h1>Henry<br> <em>Gleeson</em></h1>
             <div class="hero-sub">
-                <p class="intro-text">Architecture, drawings, and interactive experiments by Henry Gleeson. An archive of design projects, processes, and ideas.</p>
+                <p class="intro-text">Architecture, drawings, and things to play with.</p>
+                <!-- PERSONALIZE: Replace this visible introduction with your own words. -->
+                <p class="intro-text">Hello! I'm a designer (of various things). I like a lot of stuff, but some of my favorites are forests, playing the drums, writing, and video games. I love stories. Hearing personal anecdotes always reminds me of the possibilities of life, so let's inspire each other! My contact is below, and thanks for checking out my website!</p>
             </div>
         </header>
 
         <main>
 
             <!-- ── Projects ──────────────────────────── -->
-            <section>
+            <section id="projects">
                 <details class="section-collapse" open>
                 <summary>
                 <div class="section-divider">
-                    <span class="section-tag">OPS_ARCHIVE</span>
+                    <span class="section-tag">01 / Buildings &amp; drawings</span>
                     <div class="divider-line"></div>
                     <span class="section-toggle">+</span>
                 </div>
                 <div class="section-head">
                     <h2>Projects</h2>
-                    <div class="section-meta">07 ENTRIES FOUND // ARCHITECTURE + DESIGN</div>
+                    <div class="section-meta">Seven projects. Pick a card to take a closer look.</div>
                 </div>
                 </summary>
                 <div class="card-rail-wrap">
@@ -440,7 +75,7 @@
                             <div class="card-art" style="--art: url('assets/images/cards/palace_reg.png'); --art-full: url('assets/images/cards/palace_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Palace of All Trades</h3>
-                                <span class="card-index">OBJ_001</span>
+                                <span class="card-index">001 / 007</span>
                             </div>
                             <div class="card-body">
                                 <p class="card-desc">A building designed to celebrate the labor of construction and the people who perform it.</p>
@@ -452,7 +87,7 @@
                             <div class="card-art" style="--art: url('assets/images/cards/hybrid_reg.png'); --art-full: url('assets/images/cards/hybrid_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Hybrid of Lincoln Heights</h3>
-                                <span class="card-index">OBJ_002</span>
+                                <span class="card-index">002 / 007</span>
                             </div>
                             <div class="card-body">
                                 <p class="card-desc">A proposal to transform the Lincoln Heights Jail in Los Angeles into an off-grid hotel.</p>
@@ -464,10 +99,10 @@
                             <div class="card-art" style="--art: url('assets/images/cards/stonehenge_reg.png'); --art-full: url('assets/images/cards/stonehenge_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Stonehenge Nighttime Studies</h3>
-                                <span class="card-index">OBJ_003</span>
+                                <span class="card-index">003 / 007</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">Drawings that reinterpret Stonehenge, showing how the space has meant many different things to different groups.</p>
+                                <p class="card-desc">Nighttime drawings of Stonehenge and its changing meanings.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -476,7 +111,7 @@
                             <div class="card-art" style="--art: url('assets/images/cards/vertical_village_reg.png'); --art-full: url('assets/images/cards/vertical_village_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Vertical Village</h3>
-                                <span class="card-index">OBJ_004</span>
+                                <span class="card-index">004 / 007</span>
                             </div>
                             <div class="card-body">
                                 <p class="card-desc">A community center with an emphasis on its makerspace and public programs.</p>
@@ -488,10 +123,10 @@
                             <div class="card-art" style="--art: url('assets/images/cards/dirtpolitics_reg.png'); --art-full: url('assets/images/cards/dirtpolitics_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Dirt Politics</h3>
-                                <span class="card-index">OBJ_005</span>
+                                <span class="card-index">005 / 007</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">A scanned houseplant transformed into a hybrid digital sculpture and 3D print. It started with keeping the real plant alive.</p>
+                                <p class="card-desc">A houseplant, a 3D scan, and a strange new creature. Keeping the plant alive was part of the grade.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -500,10 +135,10 @@
                             <div class="card-art" style="--art: url('assets/images/cards/landscape_reg.png'); --art-full: url('assets/images/cards/landscape_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Landscape Drawings</h3>
-                                <span class="card-index">OBJ_006</span>
+                                <span class="card-index">006 / 007</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">Planting plans and construction details from my summer 2023 internship with DTDesign in Northeast Ohio. Working in a small team gave me a hands-on role in the design process.</p>
+                                <p class="card-desc">Planting plans and construction details from a summer at DTDesign in Northeast Ohio.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -512,10 +147,10 @@
                             <div class="card-art" style="--art: url('assets/images/cards/media_museum_reg.png'); --art-full: url('assets/images/cards/media_museum_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Last Archive</h3>
-                                <span class="card-index">OBJ_007</span>
+                                <span class="card-index">007 / 007</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">A proposal for a media archive and public park in New York, exploring data storage, water cooling, and a responsive algae facade.</p>
+                                <p class="card-desc">A New York media archive and public park with a responsive algae facade.</p>
                             </div>
                             <div class="card-foot"><span>PROJECT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -525,18 +160,30 @@
                 </details>
             </section>
 
+            <aside class="side-trips" aria-label="More to explore">
+                <a href="experiments/media/">
+                    <span>Something to play with</span>
+                    <strong>Play Tetris on a building ↗</strong>
+                    <p>The Last Archive has an interactive facade. Try Tetris, Snake, or a little music.</p>
+                </a>
+                <a href="writings/studio-album-by-war-1975/">
+                    <span>Something to read</span>
+                    <strong>Studio Album by War — 1975 ↗</strong>
+                    <p>“Architecture is a WEIRD space. I love it.” A few thoughts on being better friends.</p>
+                </a>
+            </aside>
             <!-- ── Writings ──────────────────────────── -->
             <section>
                 <details class="section-collapse">
                 <summary>
                 <div class="section-divider">
-                    <span class="section-tag">TXT_ARCHIVE</span>
+                    <span class="section-tag">02 / Words</span>
                     <div class="divider-line"></div>
                     <span class="section-toggle">+</span>
                 </div>
                 <div class="section-head">
-                    <h2>Writings</h2>
-                    <div class="section-meta">01 ENTRY FOUND // ESSAYS + THOUGHTS</div>
+                    <h2>Writing</h2>
+                    <div class="section-meta">An essay on architecture, friendship, and paying attention.</div>
                 </div>
                 </summary>
                 <div class="card-rail-wrap">
@@ -550,7 +197,7 @@
                             <div class="card-art" style="--art: url('writings/covers/studio-album-by-war-1975.png'); --art-full: url('assets/images/cards/writing1_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Studio Album by War — 1975</h3>
-                                <span class="card-index">TXT_001</span>
+                                <span class="card-index">001 / 001</span>
                             </div>
                             <div class="card-body">
                                 <p class="card-desc">A reflection on befriending — in architecture, in life, and in a parking lot after class.</p>
@@ -568,13 +215,13 @@
                 <details class="section-collapse">
                 <summary>
                 <div class="section-divider">
-                    <span class="section-tag">LAB_ARCHIVE</span>
+                    <span class="section-tag">03 / Things to try</span>
                     <div class="divider-line"></div>
                     <span class="section-toggle">+</span>
                 </div>
                 <div class="section-head">
                     <h2>Experiments</h2>
-                    <div class="section-meta">01 ENTRY FOUND // INTERACTIVE + MISC</div>
+                    <div class="section-meta">Buildings you can mess around with.</div>
                 </div>
                 </summary>
                 <div class="card-rail-wrap">
@@ -588,10 +235,10 @@
                             <div class="card-art" style="--art: url('assets/images/cards/experiment1_reg.png'); --art-full: url('assets/images/cards/experiment1_full.png')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Last Archive — Interactive Diagram</h3>
-                                <span class="card-index">EXP_001</span>
+                                <span class="card-index">001 / 001</span>
                             </div>
                             <div class="card-body">
-                                <p class="card-desc">Explore the building systems and try patterns, text, music, and games on the proposed facade of The Last Archive.</p>
+                                <p class="card-desc">Try games, music, and patterns on the facade, or explore the systems behind it.</p>
                             </div>
                             <div class="card-foot"><span>EXPERIMENT</span><span class="card-cta">OPEN →</span></div>
                         </a>
@@ -602,22 +249,22 @@
             </section>
 
             <!-- ── About ─────────────────────────────── -->
-            <section>
-                <details class="section-collapse">
+            <section id="about">
+                <details class="section-collapse" open>
                 <summary>
                 <div class="section-divider">
-                    <span class="section-tag">SYS_INFO</span>
+                    <span class="section-tag">04 / Hello</span>
                     <div class="divider-line"></div>
                     <span class="section-toggle">+</span>
                 </div>
                 <div class="section-head">
-                    <h2>About</h2>
-                    <div class="section-meta">// SYSTEM PROFILE</div>
+                    <h2>About me</h2>
+                    <div class="section-meta">A little about the person making all this.</div>
                 </div>
                 </summary>
                 <div class="about-content">
-                    <p>I’m Henry Gleeson. I grew up in Northeast Ohio, and my work brings together architecture, drawing, digital modeling, and interactive experiments.</p><p>This archive includes academic design projects, work from my landscape design internship, and personal writing. Each project records an idea and the process of making it.</p>
-                </div>
+                    <p>I’m Henry Gleeson. I grew up in Northeast Ohio, and my work brings together architecture, drawing, digital modeling, and interactive experiments.</p>
+                    <!-- PERSONALIZE: Your interests and a way to get in touch. -->
                 </details>
             </section>
 
@@ -626,36 +273,6 @@
 
     <script src="assets/js/theme.js"></script>
     <script src="assets/js/cards.js"></script>
-    <script>
-        // Cursor glow
-        const glow = document.querySelector('.cursor-glow');
-        let mouseX = window.innerWidth / 2;
-        let mouseY = window.innerHeight / 2;
-        let glowX = mouseX, glowY = mouseY;
-        let glowVisible = false;
 
-        document.addEventListener('mousemove', e => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-            if (!glowVisible) {
-                glowX = mouseX; glowY = mouseY;
-                glowVisible = true;
-                glow.style.opacity = '1';
-            }
-        });
-
-        document.addEventListener('mouseleave', () => {
-            glow.style.opacity = '0';
-            glowVisible = false;
-        });
-
-        (function tick() {
-            glowX += (mouseX - glowX) * 0.06;
-            glowY += (mouseY - glowY) * 0.06;
-            glow.style.transform = `translate(${glowX}px, ${glowY}px)`;
-            requestAnimationFrame(tick);
-        })();
-
-    </script>
 </body>
 </html>

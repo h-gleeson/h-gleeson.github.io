@@ -235,6 +235,21 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Gallery ────────────────────────────────────────────── */
+.process-note {
+    max-width: 640px;
+    border-left: 2px solid var(--orange);
+    padding: 4px 0 4px 18px;
+}
+.process-note h2 {
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+}
+.process-note p { font-family: var(--sans); font-size: 1rem; line-height: 1.7; }
+.process-note .personal-placeholder { color: var(--text-dim); font-style: italic; }
+
 .gallery-content {
     padding: 36px;
     display: flex;
