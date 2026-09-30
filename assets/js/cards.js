@@ -1,6 +1,7 @@
 /* ── Trading-card rails ────────────────────────────────────────────────
    • Every card rolls once per page load for its FULL ART variant.
    • Each rail keeps one active (raised) card.
+   • Swiping selects the leading card without interrupting native scrolling.
    • Wheel over a rail moves the highlight; at either end the page
      scrolls normally so the rail never traps the scroll.
    • Click a card that isn't active -> it becomes active.
@@ -72,6 +73,8 @@
         var hudNow = wrap && wrap.querySelector('.rail-now');
         var hudTitle = wrap && wrap.querySelector('.rail-title');
         var active = 0;
+        var scrollTarget = null;
+        var scrollIdleTimer = null;
 
         function pad(n) { return (n < 10 ? '0' : '') + n; }
 
@@ -97,15 +100,57 @@
             var max = rail.scrollWidth - rail.clientWidth;
             target = Math.max(0, Math.min(max, target));
             if (Math.abs(target - rail.scrollLeft) < 2) return;
+            // Keep click/keyboard selection while its smooth scroll passes
+            // other cards. A new gesture takes ownership immediately.
+            scrollTarget = target;
             if (reduceMotion || !rail.scrollTo) rail.scrollLeft = target;
             else rail.scrollTo({ left: target, behavior: 'smooth' });
         }
+
+        function selectFromScroll() {
+            if (scrollTarget !== null || !rail.clientWidth) return;
+            var max = rail.scrollWidth - rail.clientWidth;
+            if (max <= 1) return;
+            var left = Math.max(0, Math.min(max, rail.scrollLeft));
+            var padding = parseFloat(getComputedStyle(rail).paddingLeft) || 0;
+            var next = cards.length - 1;
+            if (left < max - 2) {
+                // Ignore the trailing sliver of the previous card once most
+                // of it has left the row. Layout offsets ignore tilt/scale.
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i].offsetLeft + cards[i].offsetWidth / 2 > left + padding) {
+                        next = i;
+                        break;
+                    }
+                }
+            }
+            if (next !== active) setActive(next, false);
+        }
+
+        rail.addEventListener('scroll', function () {
+            clearTimeout(scrollIdleTimer);
+            scrollIdleTimer = setTimeout(function () { scrollTarget = null; }, 180);
+            // Browsers can emit a final fractional scroll after reaching
+            // the target, so keep ownership until scrolling has gone idle.
+            if (scrollTarget !== null) return;
+            selectFromScroll();
+        }, { passive: true });
+
+        rail.addEventListener('pointerdown', function () {
+            scrollTarget = null;
+            clearTimeout(scrollIdleTimer);
+        }, { passive: true });
 
         /* ── Wheel: step the highlight, but hand scroll back at the ends */
         var wheelAcc = 0;
         var wheelLock = false;
 
         rail.addEventListener('wheel', function (e) {
+            // Trackpad horizontal gestures behave like a native mobile swipe.
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                scrollTarget = null;
+                return;
+            }
             var delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
             var dir = delta > 0 ? 1 : -1;
 
@@ -152,6 +197,7 @@
         if (!reduceMotion) {
             cards.forEach(function (card) {
                 card.addEventListener('pointermove', function (e) {
+                    if (e.pointerType === 'touch') return;
                     if (!card.classList.contains('is-active')) return;
                     var r = card.getBoundingClientRect();
                     var px = (e.clientX - r.left) / r.width - 0.5;
