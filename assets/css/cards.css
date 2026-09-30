@@ -152,6 +152,8 @@
     padding: 4px 2px 0;
 }
 .card-type {
+    position: relative;
+    z-index: 3;              /* above the full-art artwork and holo layers */
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -262,18 +264,19 @@
     z-index: 1;
 }
 
+/* Same insets and gaps as the regular card, driven by --card-padding. */
 .card.full-art .card-head {
-    padding: 12px;
+    padding: var(--card-padding) var(--card-padding) 5px;
     flex-direction: column;
     gap: 6px;
     /* Reserve the upper artwork area; the description fills below it. */
     flex: 0 0 58%;
 }
 .card.full-art .card-index { color: var(--text); }
-.card.full-art .card-type { margin: 0 12px; color: var(--text-bright); }
-.card.full-art .card-body { padding: 6px 12px 8px; margin-top: 0; flex: 1 1 0; }
+.card.full-art .card-type { margin: 0 var(--card-padding); color: var(--text-bright); }
+.card.full-art .card-body { padding: 4px var(--card-padding) 8px; margin-top: 0; flex: 1 1 0; }
 .card.full-art .card-foot {
-    padding: 8px 11px 10px;
+    padding: 8px calc(var(--card-padding) + 2px) var(--card-padding);
     border-top-color: rgba(255,255,255,0.14);
 }
 .card.full-art .card-title {

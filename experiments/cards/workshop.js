@@ -11,7 +11,7 @@
         ['ratio', 'Height / width', 1.2, 1.8, 0.01, ''],
         ['radius', 'Corner radius', 0, 32, 1, 'px'],
         ['art', 'Regular artwork height', 80, 240, 1, 'px'],
-        ['padding', 'Regular frame inset', 0, 24, 1, 'px'],
+        ['padding', 'Frame inset', 0, 24, 1, 'px'],
         ['titleSize', 'Title size', 12, 24, 0.1, 'px'],
         ['textSize', 'Description size', 8, 20, 0.1, 'px']
     ];
@@ -68,7 +68,7 @@
             document.getElementById('guides').checked = state.guides;
             stage.classList.toggle('guides', state.guides);
             style.textContent = '.preview-stage .card { --card-w:' + state.width + 'px; --card-radius:' + state.radius + 'px; --art-h:' + state.art + 'px; height:' + (state.width * state.ratio) + 'px; }' +
-                '.preview-stage .card:not(.full-art) { --card-padding:' + state.padding + 'px; }' +
+                '.preview-stage .card { --card-padding:' + state.padding + 'px; }' +
                 '.preview-stage .card .card-title { font-size:' + state.titleSize + 'px; }' +
                 '.preview-stage .card .card-desc { font-size:' + state.textSize + 'px; }';
             stage.querySelectorAll('.card').forEach(function (card) {
