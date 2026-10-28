@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wind Simulation — hsgleeson.xyz</title>
+    <link rel="stylesheet" href="../../assets/css/theme.css">
+    <script>
+        (function () {
+            var root = document.documentElement;
+            if (localStorage.getItem('theme') === 'light') {
+                root.classList.add('light-mode');
+            }
+            var a = (localStorage.getItem('accent') || '').split(',');
+            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
+                root.style.setProperty('--accent-h', a[0]);
+                root.style.setProperty('--accent-s', a[1] + '%');
+            }
+        })();
+    </script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+
+        /* The tool fills the content column instead of showing a gallery */
+        .gallery-content { padding: 0; gap: 0; position: relative; height: calc(100vh - 58px); min-height: 0; overflow: hidden; }
+        @media (max-width: 900px) { .gallery-content { height: 72vh; } }
+        #stage { position: absolute; inset: 0; touch-action: none; }
+        #stage canvas { display: block; }
+
+        /* Sidebar controls */
+        .seg { display: flex; margin-bottom: 10px; }
+        .seg button, .btn {
+            flex: 1;
+            background: none;
+            border: 1px solid var(--border-mid);
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: .08em;
+            padding: 7px 4px;
+            cursor: pointer;
+        }
+        .seg button + button { border-left: none; }
+        .seg button:hover, .btn:hover { color: var(--text); border-color: var(--text-dim); }
+        .seg button.on { color: var(--orange); border-color: var(--orange); background: var(--orange-dim); }
+        .seg button.on + button { border-left: 1px solid var(--border-mid); }
+        .btn-row { display: flex; gap: 6px; margin-bottom: 10px; }
+        .ctl { display: block; margin-bottom: 12px; }
+        .ctl .row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--text-dim); text-transform: uppercase; }
+        .ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+        .chk { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--text-dim); margin-bottom: 8px; cursor: pointer; text-transform: uppercase; }
+        .chk input { accent-color: var(--accent); }
+        .hint { font-family: var(--mono); font-size: 11px; line-height: 1.6; color: var(--text-dim); }
+        .hint b { color: var(--text); font-weight: normal; }
+
+        /* Program legend / editor */
+        .prog { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid transparent; cursor: pointer; }
+        .prog:hover { background: var(--bg-hover); }
+        .prog.sel { border-color: var(--orange); background: var(--orange-dim); }
+        .prog .num { font-family: var(--mono); font-size: 11px; color: var(--text-dim); width: 18px; }
+        .prog .sw { width: 10px; height: 10px; flex: none; }
+        .prog input { flex: 1; min-width: 0; background: none; border: none; border-bottom: 1px solid transparent; color: var(--text); font-family: var(--mono); font-size: 12px; letter-spacing: .04em; padding: 2px 0; }
+        .prog input:focus { outline: none; border-bottom-color: var(--orange); }
+
+        /* Stage overlays */
+        .label {
+            position: absolute; left: 0; top: 0;
+            pointer-events: none;
+            font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+            padding: 2px 6px;
+            color: var(--text);
+            background: color-mix(in srgb, var(--bg) 78%, transparent);
+            border: 1px solid var(--border-mid);
+            white-space: nowrap;
+            will-change: transform;
+        }
+        .label.sel { border-color: var(--orange); color: var(--orange); }
+        #hud { position: absolute; left: 16px; bottom: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--text-dim); pointer-events: none; text-transform: uppercase; }
+        #compass { position: absolute; right: 16px; top: 14px; width: 46px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-dim); pointer-events: none; }
+        #windArrow { font-size: 26px; line-height: 1; color: var(--orange); transition: transform .15s; }
+        #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); letter-spacing: .12em; color: var(--text-dim); pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <header class="page-header">
+        <a href="../../" class="back-btn">BACK</a>
+        <div class="header-project-title">Wind Simulation</div>
+        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+    </header>
+
+    <main class="project-main">
+
+        <aside class="info-sidebar">
+
+            <div class="info-block">
+                <span class="info-label">View</span>
+                <div class="seg" id="seg-view">
+                    <button data-view="plan" class="on">PLAN</button>
+                    <button data-view="persp">3D</button>
+                </div>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Tool</span>
+                <div class="seg" id="seg-tool">
+                    <button data-tool="move" class="on">MOVE</button>
+                    <button data-tool="draw">DRAW</button>
+                    <button data-tool="erase">ERASE</button>
+                </div>
+                <span class="info-label">Wall style</span>
+                <div class="seg" id="seg-style">
+                    <button data-style="pen" class="on">PEN</button>
+                    <button data-style="line">LINE</button>
+                    <button data-style="spline">SPLINE</button>
+                </div>
+                <label class="ctl">
+                    <span class="row"><span>Wall height</span><span id="wh-val">14</span></span>
+                    <input type="range" id="wh" min="4" max="32" step="1" value="14">
+                </label>
+                <label class="ctl">
+                    <span class="row"><span>Wall thickness</span><span id="wt-val">3</span></span>
+                    <input type="range" id="wt" min="1" max="8" step="0.5" value="3">
+                </label>
+                <div class="btn-row">
+                    <button class="btn" id="undo">UNDO</button>
+                    <button class="btn" id="clear-walls">CLEAR WALLS</button>
+                </div>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Wind</span>
+                <label class="ctl">
+                    <span class="row"><span>Speed</span><span id="ws-val">4.0</span></span>
+                    <input type="range" id="ws" min="0" max="8" step="0.1" value="4">
+                </label>
+                <label class="ctl">
+                    <span class="row"><span>Blowing from</span><span id="wd-val">270° W</span></span>
+                    <input type="range" id="wd" min="0" max="359" step="1" value="270">
+                </label>
+                <label class="ctl">
+                    <span class="row"><span>Turbulence</span><span id="wv-val">0.60</span></span>
+                    <input type="range" id="wv" min="0" max="1" step="0.01" value="0.6">
+                </label>
+                <label class="ctl">
+                    <span class="row"><span>Particles</span><span id="wp-val">8000</span></span>
+                    <input type="range" id="wp" min="1000" max="16000" step="500" value="8000">
+                </label>
+                <label class="chk"><input type="checkbox" id="show-wind" checked> Show wind</label>
+                <label class="chk"><input type="checkbox" id="show-labels" checked> Show labels</label>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Programs</span>
+                <div id="progs"></div>
+                <div class="btn-row" style="margin-top:10px">
+                    <button class="btn" id="reset-masses">RESET MASSES</button>
+                </div>
+                <p class="hint">Select a mass to move it. <b>Q / E</b> rotates it. Click a name to rename it.</p>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Year</span>
+                <span class="info-value">2026</span>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Tools</span>
+                <span class="info-value">Three.js</span>
+                <span class="info-value">Lattice Boltzmann (D2Q9)</span>
+            </div>
+
+            <div class="info-block desc">
+                <span class="info-label">Description</span>
+                <div class="info-value">
+                    <strong>Overview</strong>
+                    Draw walls over a massing model and watch the wind move through it. The wind is a stack of five 2D lattice Boltzmann flow slices, from ground level up to 34 units. Each slice only sees the masses and walls tall enough to reach it, so air higher up passes straight over lower volumes, and particles that meet a low roof or wall rise over it. It is an approximation rather than full 3D CFD, but it shows where wind funnels, stalls and slips over.
+                </div>
+            </div>
+
+        </aside>
+
+        <section class="gallery-content">
+            <div id="stage">
+                <div id="loading">LOADING MASSING…</div>
+                <div id="compass"><div>N</div><div id="windArrow">↑</div></div>
+                <div id="hud"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    /* ── Program names, in the same order as the objects in BuildingMassing.glb.
+          Fill these in; anything left out shows as "Program NN". Names can also
+          be edited live in the sidebar (saved in this browser). ─────────────── */
+    const PROGRAMS = [
+        'Living Room',
+        'Hobby / Tool Room',
+        'Hobby / Tool Room',
+        'Kitchen',
+        'Greenhouse',
+        'Rain Collection',
+        'Garage',
+        'Livestock Area',
+        'Restroom',
+        'Restroom',
+        'Bedroom',
+        'Bedroom',
+        'Bedroom'
+    ];
+
+    /* ── Simulation domain (plan, in model units) ─────────────────────────── */
+    const DOM_W = 520, DOM_D = 340;
+    const NX = 260, NY = 170, N = NX * NY;
+    const CELL = DOM_W / NX;            // 2 units per cell
+    const LAYERS = [3, 10, 18, 26, 34]; // heights of the stacked 2D flow slices
+    const PSCALE = 16;                  // particle speed multiplier (cosmetic)
+    const LS = 0.012;                   // slider speed -> lattice velocity
+
+    const $ = (s) => document.querySelector(s);
+    const stage = $('#stage');
+
+    /* ── Renderer, cameras, controls ──────────────────────────────────────── */
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    const scene = new THREE.Scene();
+    const camPlan = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 4000);
+    camPlan.position.set(0, 1000, 0);
+    camPlan.up.set(0, 0, -1);           // north is -Z, up on screen
+    camPlan.lookAt(0, 0, 0);
+    const camPersp = new THREE.PerspectiveCamera(40, 1, 1, 6000);
+    camPersp.position.set(250, 230, 330);
+    camPersp.lookAt(0, 0, 0);
+
+    const ctlPlan = new OrbitControls(camPlan, renderer.domElement);
+    ctlPlan.enableRotate = false;
+    ctlPlan.screenSpacePanning = true;
+    ctlPlan.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
+    ctlPlan.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+    ctlPlan.zoomSpeed = 1.2;
+
+    const ctlPersp = new OrbitControls(camPersp, renderer.domElement);
+    ctlPersp.enableDamping = true;
+    ctlPersp.maxPolarAngle = Math.PI * 0.49;
+    ctlPersp.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
+
+    let view = 'plan';
+    let interacting = false;            // true while a tool owns the pointer
+    const cam = () => (view === 'plan' ? camPlan : camPersp);
+    function applyControls() {
+        ctlPlan.enabled = view === 'plan' && !interacting;
+        ctlPersp.enabled = view === 'persp' && !interacting;
+    }
+
+    function resize() {
+        const w = stage.clientWidth, h = stage.clientHeight;
+        if (!w || !h) return;
+        renderer.setSize(w, h);
+        camPersp.aspect = w / h;
+        camPersp.updateProjectionMatrix();
+        const hh = 185;
+        camPlan.left = -hh * w / h; camPlan.right = hh * w / h;
+        camPlan.top = hh; camPlan.bottom = -hh;
+        camPlan.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(stage);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555560, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+    sun.position.set(200, 400, 150);
+    scene.add(sun);
+
+    /* ── Theme colours (follow light/dark mode and the accent picker) ─────── */
+    const theme = {};
+    function cssColor(expr) {
+        const el = document.createElement('span');
+        el.style.color = expr;
+        document.body.appendChild(el);
+        const c = getComputedStyle(el).color;
+        el.remove();
+        return new THREE.Color(c);
+    }
+    const wallMat = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0, side: THREE.DoubleSide });
+    const edgeMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
+    const gridMat = new THREE.LineBasicMaterial();
+    const domainMat = new THREE.LineBasicMaterial();
+    const previewMat = new THREE.LineBasicMaterial();
+    function readTheme() {
+        theme.bg = new THREE.Color(getComputedStyle(document.body).backgroundColor);
+        theme.accent = cssColor('var(--accent)');
+        theme.text = cssColor('var(--text)');
+        scene.background = theme.bg;
+        wallMat.color.copy(theme.accent);
+        edgeMat.color.copy(theme.text);
+        gridMat.color.copy(theme.bg).lerp(theme.text, 0.1);
+        domainMat.color.copy(theme.bg).lerp(theme.text, 0.35);
+        previewMat.color.copy(theme.accent);
+    }
+
+    /* ── Ground grid + domain outline ─────────────────────────────────────── */
+    {
+        const pts = [];
+        for (let x = -DOM_W / 2; x <= DOM_W / 2; x += 20) pts.push(x, -0.1, -DOM_D / 2, x, -0.1, DOM_D / 2);
+        for (let z = -DOM_D / 2; z <= DOM_D / 2; z += 20) pts.push(-DOM_W / 2, -0.1, z, DOM_W / 2, -0.1, z);
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+        scene.add(new THREE.LineSegments(g, gridMat));
+        const hw = DOM_W / 2, hd = DOM_D / 2;
+        const o = new THREE.BufferGeometry();
+        o.setAttribute('position', new THREE.Float32BufferAttribute([-hw, 0, -hd, hw, 0, -hd, hw, 0, hd, -hw, 0, hd], 3));
+        scene.add(new THREE.LineLoop(o, domainMat));
+    }
+
+    /* ── State ────────────────────────────────────────────────────────────── */
+    const masses = [];
+    const walls = [];
+    const undoStack = [];
+    let selected = -1;
+    let tool = 'move', style = 'pen';
+    let maskDirty = true;
+    const wind = { dirx: 1, dirz: 0, vx: 0, vy: 0, U: 0 };
+    let omega = 1.78;
+
+    /* ── Lattice Boltzmann (D2Q9) ─────────────────────────────────────────── */
+    const ex = [0, 1, 0, -1, 0, 1, -1, -1, 1];
+    const ey = [0, 0, 1, 0, -1, 1, 1, -1, -1];
+    const wt = [4 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 36, 1 / 36, 1 / 36, 1 / 36];
+    const opp = [0, 3, 4, 1, 2, 7, 8, 5, 6];
+    // One 2D flow slice per height. The solver functions below work on whichever
+    // slice useLayer() selected last.
+    const layers = LAYERS.map(H => ({
+        H, sc: Math.pow(H / 26, 0.25),   // wind is slower closer to the ground
+        f: new Float32Array(9 * N), g: new Float32Array(9 * N),
+        ux: new Float32Array(N), uy: new Float32Array(N),
+        solid: new Uint8Array(N), prev: new Uint8Array(N)
+    }));
+    const hmap = new Float32Array(N);   // obstacle height per cell (masses + walls)
+    let f, g, ux, uy, solid, prevSolid, sc = 1, curH = 0;
+    function useLayer(L) { f = L.f; g = L.g; ux = L.ux; uy = L.uy; solid = L.solid; prevSolid = L.prev; sc = L.sc; curH = L.H; }
+    function stepLayer(L) { useLayer(L); lbmStep(); L.f = f; L.g = g; }
+
+    function setEq(idx, rho, vx, vy) {
+        const usq = 1.5 * (vx * vx + vy * vy);
+        for (let k = 0; k < 9; k++) {
+            const eu = ex[k] * vx + ey[k] * vy;
+            f[k * N + idx] = wt[k] * rho * (1 + 3 * eu + 4.5 * eu * eu - usq);
+        }
+    }
+    function resetField() {
+        for (let i = 0; i < N; i++) setEq(i, 1, solid[i] ? 0 : wind.vx * sc, solid[i] ? 0 : wind.vy * sc);
+        g.set(f);
+    }
+    function resetAll() { layers.forEach(L => { useLayer(L); resetField(); }); }
+
+    function updateWind() {
+        const speed = parseFloat($('#ws').value);
+        const bearing = parseFloat($('#wd').value);       // wind blows FROM this bearing
+        const phi = (bearing + 180) * Math.PI / 180;      // direction it blows TOWARD
+        wind.dirx = Math.sin(phi);
+        wind.dirz = -Math.cos(phi);
+        wind.U = speed * LS;
+        wind.vx = wind.dirx * wind.U;
+        wind.vy = wind.dirz * wind.U;
+        omega = 1.55 + 0.38 * parseFloat($('#wv').value);
+        $('#ws-val').textContent = speed.toFixed(1);
+        const names = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        $('#wd-val').textContent = bearing + '° ' + names[Math.round(bearing / 45) % 8];
+        $('#wv-val').textContent = parseFloat($('#wv').value).toFixed(2);
+        $('#windArrow').style.transform = 'rotate(' + ((bearing + 180) % 360) + 'deg)';
+    }
+
+    function lbmStep() {
+        const om = omega;
+        let bad = false;
+        for (let idx = 0; idx < N; idx++) {
+            if (solid[idx]) { ux[idx] = 0; uy[idx] = 0; continue; }
+            const f0 = f[idx], f1 = f[N + idx], f2 = f[2 * N + idx], f3 = f[3 * N + idx], f4 = f[4 * N + idx];
+            const f5 = f[5 * N + idx], f6 = f[6 * N + idx], f7 = f[7 * N + idx], f8 = f[8 * N + idx];
+            const rho = f0 + f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8;
+            if (!(rho > 0.2 && rho < 5)) { bad = true; break; }
+            let vx = (f1 + f5 + f8 - f3 - f6 - f7) / rho;
+            let vy = (f2 + f5 + f6 - f4 - f7 - f8) / rho;
+            const sp = vx * vx + vy * vy;
+            if (sp > 0.0625) { const s = 0.25 / Math.sqrt(sp); vx *= s; vy *= s; }
+            ux[idx] = vx; uy[idx] = vy;
+            const usq = 1.5 * (vx * vx + vy * vy);
+            for (let k = 0; k < 9; k++) {
+                const eu = ex[k] * vx + ey[k] * vy;
+                const o = k * N + idx;
+                f[o] += om * (wt[k] * rho * (1 + 3 * eu + 4.5 * eu * eu - usq) - f[o]);
+            }
+        }
+        if (bad) { resetField(); return; }
+
+        // stream (pull) with bounce-back at solid cells
+        for (let j = 0; j < NY; j++) {
+            for (let i = 0; i < NX; i++) {
+                const idx = j * NX + i;
+                if (solid[idx]) continue;
+                for (let k = 0; k < 9; k++) {
+                    const si = i - ex[k], sj = j - ey[k];
+                    const o = k * N + idx;
+                    if (si < 0 || si >= NX || sj < 0 || sj >= NY) { g[o] = f[o]; continue; }
+                    const s = sj * NX + si;
+                    g[o] = solid[s] ? f[opp[k] * N + idx] : f[k * N + s];
+                }
+            }
+        }
+        const t = f; f = g; g = t;
+
+        // open boundaries: equilibrium on inflow edges, zero-gradient elsewhere
+        const e = 1e-6, vx = wind.vx * sc, vy = wind.vy * sc;
+        const inL = vx > e, inR = vx < -e, inT = vy > e, inB = vy < -e;
+        const copy = (d, s) => { for (let k = 0; k < 9; k++) f[k * N + d] = f[k * N + s]; };
+        for (let j = 0; j < NY; j++) {
+            if (!inL) copy(j * NX, j * NX + 1);
+            if (!inR) copy(j * NX + NX - 1, j * NX + NX - 2);
+        }
+        for (let i = 0; i < NX; i++) {
+            if (!inT) copy(i, NX + i);
+            if (!inB) copy((NY - 1) * NX + i, (NY - 2) * NX + i);
+        }
+        for (let j = 0; j < NY; j++) {
+            if (inL) setEq(j * NX, 1, vx, vy);
+            if (inR) setEq(j * NX + NX - 1, 1, vx, vy);
+        }
+        for (let i = 0; i < NX; i++) {
+            if (inT) setEq(i, 1, vx, vy);
+            if (inB) setEq((NY - 1) * NX + i, 1, vx, vy);
+        }
+    }
+
+    /* ── Rasterise masses + walls into the solid mask ─────────────────────── */
+    let putMode = 0, putVal = 0;        // 0: mark solid in the current layer, 1: raise the height map
+    function put(i) {
+        if (putMode === 0) solid[i] = 1;
+        else if (hmap[i] < putVal) hmap[i] = putVal;
+    }
+    function fillTri(x0, z0, x1, z1, x2, z2) {
+        x0 = (x0 + DOM_W / 2) / CELL; x1 = (x1 + DOM_W / 2) / CELL; x2 = (x2 + DOM_W / 2) / CELL;
+        z0 = (z0 + DOM_D / 2) / CELL; z1 = (z1 + DOM_D / 2) / CELL; z2 = (z2 + DOM_D / 2) / CELL;
+        const den = (z1 - z2) * (x0 - x2) + (x2 - x1) * (z0 - z2);
+        if (Math.abs(den) < 1e-9) return;
+        const i0 = Math.max(0, Math.floor(Math.min(x0, x1, x2)));
+        const i1 = Math.min(NX - 1, Math.ceil(Math.max(x0, x1, x2)));
+        const j0 = Math.max(0, Math.floor(Math.min(z0, z1, z2)));
+        const j1 = Math.min(NY - 1, Math.ceil(Math.max(z0, z1, z2)));
+        const eps = 0.02;
+        for (let j = j0; j <= j1; j++) {
+            for (let i = i0; i <= i1; i++) {
+                const cx = i + 0.5, cz = j + 0.5;
+                const a = ((z1 - z2) * (cx - x2) + (x2 - x1) * (cz - z2)) / den;
+                const b = ((z2 - z0) * (cx - x2) + (x0 - x2) * (cz - z2)) / den;
+                if (a >= -eps && b >= -eps && 1 - a - b >= -eps) put(j * NX + i);
+            }
+        }
+    }
+    function stampMass(m, mode, H) {
+        putMode = mode;
+        const th = m.pivot.rotation.y, c = Math.cos(th), s = Math.sin(th);
+        const px = m.pivot.position.x, pz = m.pivot.position.z, t = m.tri, ty = m.triY;
+        for (let q = 0; q < t.length; q += 6) {
+            // a layer only sees surfaces at or above its height (roofs of lower volumes drop out)
+            if (mode === 0) { if (ty[q / 3] < H) continue; }
+            else { putVal = ty[q / 3 + 1]; if (putVal <= 0) continue; }
+            fillTri(
+                px + t[q] * c + t[q + 1] * s,     pz - t[q] * s + t[q + 1] * c,
+                px + t[q + 2] * c + t[q + 3] * s, pz - t[q + 2] * s + t[q + 3] * c,
+                px + t[q + 4] * c + t[q + 5] * s, pz - t[q + 4] * s + t[q + 5] * c);
+        }
+    }
+    function stampWall(w, mode) {
+        putMode = mode;
+        if (mode === 0 && w.height <= curH) return;
+        putVal = w.height;
+        const r = Math.max(w.thick / 2, CELL * 0.8) / CELL;
+        const p = w.pts;
+        for (let q = 0; q < p.length - 1; q++) {
+            const ax = (p[q].x + DOM_W / 2) / CELL, az = (p[q].z + DOM_D / 2) / CELL;
+            const bx = (p[q + 1].x + DOM_W / 2) / CELL, bz = (p[q + 1].z + DOM_D / 2) / CELL;
+            const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1e-9;
+            const i0 = Math.max(0, Math.floor(Math.min(ax, bx) - r)), i1 = Math.min(NX - 1, Math.ceil(Math.max(ax, bx) + r));
+            const j0 = Math.max(0, Math.floor(Math.min(az, bz) - r)), j1 = Math.min(NY - 1, Math.ceil(Math.max(az, bz) + r));
+            for (let j = j0; j <= j1; j++) {
+                for (let i = i0; i <= i1; i++) {
+                    const cx = i + 0.5 - ax, cz = j + 0.5 - az;
+                    const u = Math.max(0, Math.min(1, (cx * dx + cz * dz) / L2));
+                    const ox = cx - u * dx, oz = cz - u * dz;
+                    if (ox * ox + oz * oz <= r * r) put(j * NX + i);
+                }
+            }
+        }
+    }
+    function rebuildLayer(L) {
+        useLayer(L);
+        prevSolid.set(solid);
+        solid.fill(0);
+        for (const m of masses) stampMass(m, 0, curH);
+        for (const w of walls) stampWall(w, 0);
+        for (let i = 0; i < NX; i++) { solid[i] = 0; solid[(NY - 1) * NX + i] = 0; }
+        for (let j = 0; j < NY; j++) { solid[j * NX] = 0; solid[j * NX + NX - 1] = 0; }
+        for (let i = 0; i < N; i++) {
+            if (solid[i] && !prevSolid[i]) setEq(i, 1, 0, 0);
+            else if (!solid[i] && prevSolid[i]) setEq(i, 1, wind.vx * sc, wind.vy * sc);
+        }
+    }
+    function rebuildMask() {
+        maskDirty = false;
+        layers.forEach(rebuildLayer);
+        hmap.fill(0);
+        for (const m of masses) stampMass(m, 1, 0);
+        for (const w of walls) stampWall(w, 1);
+    }
+
+    /* ── Wind particles (advected through the layered velocity fields) ───── */
+    const PMAX = 16000, T = 8;
+    let pActive = 8000;
+    const hist = new Float32Array(PMAX * (T + 1) * 3);     // x, y, z per trail point
+    const ph0 = new Float32Array(PMAX);                    // home height
+    const pclimb = new Float32Array(PMAX);                 // how tall an obstacle it will climb over
+    const page = new Float32Array(PMAX);
+    const pPos = new Float32Array(PMAX * T * 6), pCol = new Float32Array(PMAX * T * 6);
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    trailGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+    trailGeo.setDrawRange(0, pActive * T * 2);
+    const trails = new THREE.LineSegments(trailGeo, new THREE.LineBasicMaterial({ vertexColors: true }));
+    trails.frustumCulled = false;
+    scene.add(trails);
+    const slowCol = new THREE.Color(0x5aa9ff);
+    const hc = new THREE.Color();
+    const TOPH = LAYERS[LAYERS.length - 1];
+    const profile = (y) => Math.pow(Math.min(Math.max(y, 3), TOPH) / 26, 0.25);   // wind is slower near the ground
+
+    const hmapAt = (x, z) => {
+        const i = Math.floor((x + DOM_W / 2) / CELL), j = Math.floor((z + DOM_D / 2) / CELL);
+        return (i < 0 || j < 0 || i >= NX || j >= NY) ? 1e9 : hmap[j * NX + i];
+    };
+
+    function spawn(p, anywhere) {
+        const base = p * (T + 1) * 3;
+        let x = 0, z = 0;
+        for (let tries = 0; tries < 6; tries++) {
+            const sum = Math.abs(wind.dirx) + Math.abs(wind.dirz);
+            if (anywhere || wind.U < 1e-4 || Math.random() < 0.2) {
+                x = (Math.random() - 0.5) * DOM_W; z = (Math.random() - 0.5) * DOM_D;
+            } else if (Math.random() < Math.abs(wind.dirx) / sum) {
+                x = (wind.dirx > 0 ? -1 : 1) * (DOM_W / 2 - 2 - Math.random() * 60); z = (Math.random() - 0.5) * DOM_D;
+            } else {
+                z = (wind.dirz > 0 ? -1 : 1) * (DOM_D / 2 - 2 - Math.random() * 60); x = (Math.random() - 0.5) * DOM_W;
+            }
+            if (hmapAt(x, z) <= 0) break;
+        }
+        const y = ph0[p] = 0.8 + Math.pow(Math.random(), 1.4) * 32;
+        pclimb[p] = Math.random() * 18;
+        for (let t = 0; t <= T; t++) { hist[base + t * 3] = x; hist[base + t * 3 + 1] = y; hist[base + t * 3 + 2] = z; }
+        page[p] = anywhere ? Math.random() * 300 : 0;
+    }
+    for (let p = 0; p < PMAX; p++) spawn(p, true);
+
+    // bilinear sample of the layer fields at the current cell neighbourhood
+    let ia = 0, ib = 0, ja = 0, jb = 0, w00 = 0, w10 = 0, w01 = 0, w11 = 0;
+    const bil = (a) => a[ja + ia] * w00 + a[ja + ib] * w10 + a[jb + ia] * w01 + a[jb + ib] * w11;
+    let svx = 0, svz = 0;
+    function sampleVel(y, x, z) {
+        const gx = (x + DOM_W / 2) / CELL - 0.5, gz = (z + DOM_D / 2) / CELL - 0.5;
+        const i0 = Math.floor(gx), j0 = Math.floor(gz), fx = gx - i0, fz = gz - j0;
+        ia = Math.max(0, Math.min(NX - 1, i0)); ib = Math.max(0, Math.min(NX - 1, i0 + 1));
+        ja = Math.max(0, Math.min(NY - 1, j0)) * NX; jb = Math.max(0, Math.min(NY - 1, j0 + 1)) * NX;
+        w00 = (1 - fx) * (1 - fz); w10 = fx * (1 - fz); w01 = (1 - fx) * fz; w11 = fx * fz;
+        let l0 = 0, l1 = 0, t = 0;
+        if (y >= TOPH) { l0 = l1 = LAYERS.length - 1; }
+        else if (y > LAYERS[0]) {
+            l1 = 1; while (LAYERS[l1] < y) l1++;
+            l0 = l1 - 1; t = (y - LAYERS[l0]) / (LAYERS[l1] - LAYERS[l0]);
+        }
+        const A = layers[l0];
+        let vx = bil(A.ux), vz = bil(A.uy);
+        if (l1 !== l0) {
+            const B = layers[l1];
+            vx += (bil(B.ux) - vx) * t; vz += (bil(B.uy) - vz) * t;
+        } else if (y > TOPH) {
+            const tt = Math.min(1, (y - TOPH) / 8), pr = profile(y);   // fade into the undisturbed wind above the layers
+            vx += (wind.vx * pr - vx) * tt; vz += (wind.vy * pr - vz) * tt;
+        }
+        svx = vx; svz = vz;
+    }
+
+    function updateParticles() {
+        const k = PSCALE * CELL;
+        const bg = theme.bg;
+        for (let p = 0; p < pActive; p++) {
+            const base = p * (T + 1) * 3;
+            const x = hist[base], y = hist[base + 1], z = hist[base + 2];
+            sampleVel(y, x, z);
+            const vx = svx, vz = svz;
+            const nx = x + vx * k, nz = z + vz * k;
+            const sp = Math.sqrt(vx * vx + vz * vz);
+
+            // rise over obstacles it is able to climb, settle back to its home height afterwards
+            let want = ph0[p];
+            if (sp > 1e-5) {
+                const dx = vx / sp, dz = vz / sp;
+                const ahead = Math.max(hmapAt(x + dx * 6, z + dz * 6), hmapAt(x + dx * 14, z + dz * 14), hmapAt(x + dx * 24, z + dz * 24));
+                if (ahead > 0 && ahead - want < pclimb[p]) want = Math.max(want, ahead + 1.5);
+            }
+            const here = hmapAt(nx, nz);
+            if (here > 0 && here < 1e8 && here - ph0[p] < pclimb[p]) want = Math.max(want, here + 1.5);
+            const ny = want > y ? Math.min(want, y + 2.2) : Math.max(want, y - 0.6);
+
+            page[p]++;
+            if (nx < -DOM_W / 2 || nx > DOM_W / 2 || nz < -DOM_D / 2 || nz > DOM_D / 2 || page[p] > 400 || here > ny + 0.05) {
+                spawn(p, false);
+            } else {
+                hist.copyWithin(base + 3, base, base + T * 3);
+                hist[base] = nx; hist[base + 1] = ny; hist[base + 2] = nz;
+            }
+            // colour by speed relative to the undisturbed wind at that height
+            const s = sp / ((wind.U || 1) * profile(y));
+            hc.copy(slowCol).lerp(theme.accent, Math.max(0, Math.min(1, (s - 0.3) / 1.2)));
+            for (let q = 0; q < T; q++) {
+                const o = (p * T + q) * 6, a = base + q * 3, b = a + 3;
+                pPos[o] = hist[a]; pPos[o + 1] = hist[a + 1]; pPos[o + 2] = hist[a + 2];
+                pPos[o + 3] = hist[b]; pPos[o + 4] = hist[b + 1]; pPos[o + 5] = hist[b + 2];
+                const fa = 1 - q / T, fb = 1 - (q + 1) / T;
+                pCol[o] = bg.r + (hc.r - bg.r) * fa; pCol[o + 1] = bg.g + (hc.g - bg.g) * fa; pCol[o + 2] = bg.b + (hc.b - bg.b) * fa;
+                pCol[o + 3] = bg.r + (hc.r - bg.r) * fb; pCol[o + 4] = bg.g + (hc.g - bg.g) * fb; pCol[o + 5] = bg.b + (hc.b - bg.b) * fb;
+            }
+        }
+        trailGeo.attributes.position.needsUpdate = true;
+        trailGeo.attributes.color.needsUpdate = true;
+    }
+
+    /* ── Walls ────────────────────────────────────────────────────────────── */
+    function wallGeometry(pts, t, h) {
+        const p = [pts[0]];
+        for (let i = 1; i < pts.length; i++) if (Math.hypot(pts[i].x - p[p.length - 1].x, pts[i].z - p[p.length - 1].z) > 0.05) p.push(pts[i]);
+        const n = p.length;
+        const segN = [];
+        for (let i = 0; i < n - 1; i++) {
+            const dx = p[i + 1].x - p[i].x, dz = p[i + 1].z - p[i].z, l = Math.hypot(dx, dz) || 1;
+            segN.push([-dz / l, dx / l]);
+        }
+        const L = [], R = [];
+        for (let i = 0; i < n; i++) {
+            let nx, nz;
+            if (i === 0) [nx, nz] = segN[0];
+            else if (i === n - 1) [nx, nz] = segN[n - 2];
+            else {
+                nx = segN[i - 1][0] + segN[i][0]; nz = segN[i - 1][1] + segN[i][1];
+                const l = Math.hypot(nx, nz) || 1; nx /= l; nz /= l;
+                const d = Math.max(0.4, nx * segN[i][0] + nz * segN[i][1]);
+                nx /= d; nz /= d;
+            }
+            const ox = nx * t / 2, oz = nz * t / 2;
+            L.push([p[i].x + ox, p[i].z + oz]);
+            R.push([p[i].x - ox, p[i].z - oz]);
+        }
+        const out = [];
+        const v = (a, y) => [a[0], y, a[1]];
+        const quad = (a, b, c, d) => out.push(...a, ...b, ...c, ...a, ...c, ...d);
+        for (let i = 0; i < n - 1; i++) {
+            const j = i + 1;
+            quad(v(L[i], h), v(L[j], h), v(R[j], h), v(R[i], h));
+            quad(v(L[i], 0), v(L[j], 0), v(L[j], h), v(L[i], h));
+            quad(v(R[j], 0), v(R[i], 0), v(R[i], h), v(R[j], h));
+        }
+        quad(v(R[0], 0), v(L[0], 0), v(L[0], h), v(R[0], h));
+        quad(v(L[n - 1], 0), v(R[n - 1], 0), v(R[n - 1], h), v(L[n - 1], h));
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+        geo.computeVertexNormals();
+        return geo;
+    }
+    function addWall(pts, height, thick, record = true) {
+        const mesh = new THREE.Mesh(wallGeometry(pts, thick, height), wallMat);
+        const w = { pts, height, thick, mesh };
+        mesh.userData.wall = w;
+        scene.add(mesh);
+        walls.push(w);
+        maskDirty = true;
+        if (record) undoStack.push({ t: 'add', w });
+        return w;
+    }
+    function removeWall(w, record = true) {
+        const i = walls.indexOf(w);
+        if (i < 0) return;
+        walls.splice(i, 1);
+        scene.remove(w.mesh);
+        w.mesh.geometry.dispose();
+        maskDirty = true;
+        if (record) undoStack.push({ t: 'del', w });
+    }
+    function undo() {
+        const a = undoStack.pop();
+        if (!a) return;
+        if (a.t === 'add') removeWall(a.w, false);
+        else if (a.t === 'del') { scene.add(a.w.mesh); walls.push(a.w); maskDirty = true; }
+        else if (a.t === 'clear') a.ws.forEach(w => { scene.add(w.mesh); walls.push(w); maskDirty = true; });
+    }
+
+    /* ── Polyline helpers ─────────────────────────────────────────────────── */
+    function rdp(p, eps) {
+        if (p.length < 3) return p;
+        const a = p[0], b = p[p.length - 1];
+        const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1e-9;
+        let dm = 0, im = 0;
+        for (let i = 1; i < p.length - 1; i++) {
+            const d = Math.abs((p[i].x - a.x) * dz - (p[i].z - a.z) * dx) / l;
+            if (d > dm) { dm = d; im = i; }
+        }
+        if (dm <= eps) return [a, b];
+        return rdp(p.slice(0, im + 1), eps).slice(0, -1).concat(rdp(p.slice(im), eps));
+    }
+    function chaikin(p, n) {
+        for (; n > 0; n--) {
+            const q = [p[0]];
+            for (let i = 0; i < p.length - 1; i++) {
+                const a = p[i], b = p[i + 1];
+                q.push(new THREE.Vector3(a.x * 0.75 + b.x * 0.25, 0, a.z * 0.75 + b.z * 0.25));
+                q.push(new THREE.Vector3(a.x * 0.25 + b.x * 0.75, 0, a.z * 0.25 + b.z * 0.75));
+            }
+            q.push(p[p.length - 1]);
+            p = q;
+        }
+        return p;
+    }
+    function spline(p) {
+        if (p.length < 3) return p;
+        return new THREE.CatmullRomCurve3(p, false, 'centripetal').getPoints(p.length * 14);
+    }
+    const polyLength = (p) => p.reduce((s, q, i) => (i ? s + Math.hypot(q.x - p[i - 1].x, q.z - p[i - 1].z) : 0), 0);
+
+    /* ── Drawing preview ──────────────────────────────────────────────────── */
+    const PREV_MAX = 3000;
+    const prevGeo = new THREE.BufferGeometry();
+    prevGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PREV_MAX * 3), 3));
+    prevGeo.setDrawRange(0, 0);
+    const prevLine = new THREE.Line(prevGeo, previewMat);
+    prevLine.frustumCulled = false;
+    scene.add(prevLine);
+    let drawing = null; // { pts: Vector3[], cursor: Vector3|null, down: bool }
+
+    function updatePreview() {
+        if (!drawing) { prevGeo.setDrawRange(0, 0); return; }
+        let pts = drawing.pts.slice();
+        if (drawing.cursor) pts.push(drawing.cursor);
+        if (style === 'spline') pts = spline(pts);
+        const n = Math.min(pts.length, PREV_MAX), a = prevGeo.attributes.position.array;
+        for (let i = 0; i < n; i++) { a[i * 3] = pts[i].x; a[i * 3 + 1] = 0.6; a[i * 3 + 2] = pts[i].z; }
+        prevGeo.setDrawRange(0, n);
+        prevGeo.attributes.position.needsUpdate = true;
+    }
+    function finishDrawing() {
+        if (!drawing) return;
+        let pts = drawing.pts.slice();
+        drawing = null;
+        updatePreview();
+        if (pts.length < 2) return;
+        if (style === 'pen') pts = chaikin(rdp(pts, 1.0), 2);
+        else if (style === 'spline') pts = spline(pts);
+        if (polyLength(pts) < 3) return;
+        addWall(pts.map(q => new THREE.Vector3(q.x, 0, q.z)), parseFloat($('#wh').value), parseFloat($('#wt').value));
+    }
+    function cancelDrawing() { drawing = null; updatePreview(); }
+
+    /* ── Picking ──────────────────────────────────────────────────────────── */
+    const ray = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    function setRay(e) {
+        const r = renderer.domElement.getBoundingClientRect();
+        ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+        ray.setFromCamera(ndc, cam());
+    }
+    function ground(e) {
+        setRay(e);
+        const v = new THREE.Vector3();
+        return ray.ray.intersectPlane(plane, v) ? v : null;
+    }
+    function pickMass(e) {
+        setRay(e);
+        const hit = ray.intersectObjects(masses.map(m => m.mesh), false)[0];
+        return hit ? hit.object.userData.mass : null;
+    }
+    function pickWall(e) {
+        setRay(e);
+        const hit = ray.intersectObjects(walls.map(w => w.mesh), false)[0];
+        return hit ? hit.object.userData.wall : null;
+    }
+
+    let drag = null;
+    const clampX = (x) => Math.max(-DOM_W / 2 + 25, Math.min(DOM_W / 2 - 25, x));
+    const clampZ = (z) => Math.max(-DOM_D / 2 + 25, Math.min(DOM_D / 2 - 25, z));
+    const minSpacing = () => (view === 'plan' ? 2.2 / camPlan.zoom : 2.2);
+
+    stage.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 || e.target !== renderer.domElement) return;
+        if (tool === 'move') {
+            const m = pickMass(e), p = ground(e);
+            if (!m || !p) return;
+            select(m.i);
+            drag = { m, ox: m.pivot.position.x - p.x, oz: m.pivot.position.z - p.z };
+            interacting = true; applyControls();
+            renderer.domElement.setPointerCapture(e.pointerId);
+        } else if (tool === 'erase') {
+            const w = pickWall(e);
+            if (w) removeWall(w);
+        } else if (tool === 'draw') {
+            const p = ground(e);
+            if (!p) return;
+            interacting = true; applyControls();
+            renderer.domElement.setPointerCapture(e.pointerId);
+            if (style === 'pen') {
+                drawing = { pts: [p], cursor: null, down: true };
+            } else {
+                if (!drawing) drawing = { pts: [], cursor: null, down: false };
+                const last = drawing.pts[drawing.pts.length - 1];
+                if (!last || Math.hypot(p.x - last.x, p.z - last.z) > 0.5) drawing.pts.push(snap(p, e.shiftKey));
+            }
+            updatePreview();
+        }
+    }, true);
+
+    function snap(p, on) {
+        if (!on || !drawing || !drawing.pts.length) return p;
+        const a = drawing.pts[drawing.pts.length - 1];
+        const dx = p.x - a.x, dz = p.z - a.z, l = Math.hypot(dx, dz);
+        const ang = Math.round(Math.atan2(dz, dx) / (Math.PI / 12)) * (Math.PI / 12);
+        return new THREE.Vector3(a.x + Math.cos(ang) * l, 0, a.z + Math.sin(ang) * l);
+    }
+
+    stage.addEventListener('pointermove', (e) => {
+        if (drag) {
+            const p = ground(e);
+            if (!p) return;
+            drag.m.pivot.position.x = clampX(p.x + drag.ox);
+            drag.m.pivot.position.z = clampZ(p.z + drag.oz);
+            maskDirty = true;
+        } else if (drawing && tool === 'draw') {
+            const p = ground(e);
+            if (!p) return;
+            if (style === 'pen') {
+                if (drawing.down) {
+                    const last = drawing.pts[drawing.pts.length - 1];
+                    if (Math.hypot(p.x - last.x, p.z - last.z) >= minSpacing()) drawing.pts.push(p);
+                }
+            } else {
+                drawing.cursor = snap(p, e.shiftKey);
+            }
+            updatePreview();
+        }
+    });
+
+    function endPointer() {
+        if (drag) drag = null;
+        if (drawing && style === 'pen') finishDrawing();
+        if (interacting) { interacting = false; applyControls(); }
+    }
+    stage.addEventListener('pointerup', endPointer);
+    stage.addEventListener('pointercancel', endPointer);
+    stage.addEventListener('dblclick', () => { if (tool === 'draw' && style !== 'pen') finishDrawing(); });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+        const k = e.key.toLowerCase();
+        if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); }
+        else if (k === 'enter') finishDrawing();
+        else if (k === 'escape') cancelDrawing();
+        else if ((k === 'q' || k === 'e') && selected >= 0) {
+            const step = (e.shiftKey ? 5 : 15) * Math.PI / 180 * (k === 'q' ? 1 : -1);
+            masses[selected].pivot.rotation.y += step;
+            maskDirty = true;
+        }
+    });
+
+    /* ── UI wiring ────────────────────────────────────────────────────────── */
+    const HINTS = {
+        move: 'MOVE — drag a mass to reposition it. Q / E rotates.',
+        erase: 'ERASE — click a wall to remove it.',
+        pen: 'DRAW / PEN — drag to sketch a wall.',
+        line: 'DRAW / LINE — click points. Double-click or Enter to finish. Shift snaps 15°.',
+        spline: 'DRAW / SPLINE — click control points. Double-click or Enter to finish.'
+    };
+    function setHud() { $('#hud').textContent = tool === 'draw' ? HINTS[style] : HINTS[tool]; }
+    function setTool(t) {
+        cancelDrawing();
+        tool = t;
+        document.querySelectorAll('#seg-tool button').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+        stage.style.cursor = t === 'move' ? 'default' : 'crosshair';
+        setHud();
+    }
+    function setStyle(s) {
+        cancelDrawing();
+        style = s;
+        document.querySelectorAll('#seg-style button').forEach(b => b.classList.toggle('on', b.dataset.style === s));
+        setTool('draw');
+    }
+    function setView(v) {
+        view = v;
+        document.querySelectorAll('#seg-view button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+        $('#compass').style.display = v === 'plan' ? '' : 'none';
+        applyControls();
+    }
+    document.querySelectorAll('#seg-view button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+    document.querySelectorAll('#seg-tool button').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+    document.querySelectorAll('#seg-style button').forEach(b => b.addEventListener('click', () => setStyle(b.dataset.style)));
+    $('#wh').addEventListener('input', () => { $('#wh-val').textContent = $('#wh').value; });
+    $('#wt').addEventListener('input', () => { $('#wt-val').textContent = $('#wt').value; });
+    ['#ws', '#wd', '#wv'].forEach(id => $(id).addEventListener('input', updateWind));
+    $('#undo').addEventListener('click', undo);
+    $('#clear-walls').addEventListener('click', () => {
+        if (!walls.length) return;
+        const ws = walls.slice();
+        ws.forEach(w => removeWall(w, false));
+        undoStack.push({ t: 'clear', ws });
+    });
+    $('#wp').addEventListener('input', () => {
+        pActive = parseInt($('#wp').value, 10);
+        $('#wp-val').textContent = pActive;
+        trailGeo.setDrawRange(0, pActive * T * 2);
+    });
+    $('#show-wind').addEventListener('change', (e) => { trails.visible = e.target.checked; });
+    $('#show-labels').addEventListener('change', (e) => { masses.forEach(m => { m.label.style.display = e.target.checked ? '' : 'none'; }); });
+    $('#reset-masses').addEventListener('click', () => {
+        masses.forEach(m => { m.pivot.position.copy(m.home); m.pivot.rotation.y = 0; });
+        maskDirty = true;
+    });
+
+    /* ── Program names + selection ────────────────────────────────────────── */
+    let names = [];
+    try { names = JSON.parse(localStorage.getItem('wind_programs') || '[]'); } catch (e) { names = []; }
+    const nameOf = (i) => names[i] || PROGRAMS[i] || ('Program ' + String(i + 1).padStart(2, '0'));
+    function select(i) {
+        selected = i;
+        masses.forEach((m, k) => {
+            m.mat.emissive.copy(k === i ? theme.accent : new THREE.Color(0)).multiplyScalar(k === i ? 0.35 : 1);
+            m.label.classList.toggle('sel', k === i);
+            m.row.classList.toggle('sel', k === i);
+        });
+    }
+
+    /* ── Load the massing model ───────────────────────────────────────────── */
+    readTheme();
+    updateWind();
+    if (location.hash === '#3d') setView('persp');
+    resize();
+    setHud();
+    stage.style.cursor = 'default';
+
+    new GLTFLoader().load('BuildingMassing.glb', (gltf) => {
+        gltf.scene.updateMatrixWorld(true);
+        const meshes = [];
+        gltf.scene.traverse(o => { if (o.isMesh) meshes.push(o); });
+
+        // bake world transforms, then recentre the whole site on the origin in plan
+        const geos = meshes.map(m => m.geometry.clone().applyMatrix4(m.matrixWorld));
+        const all = new THREE.Box3();
+        geos.forEach(geo => { geo.computeBoundingBox(); all.union(geo.boundingBox); });
+        const C = all.getCenter(new THREE.Vector3());
+
+        geos.forEach((geo, i) => {
+            const b = geo.boundingBox;
+            const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+            geo.translate(-cx, 0, -cz);              // pivot at the footprint centre
+
+            const pos = geo.attributes.position, idx = geo.index;
+            const count = idx ? idx.count : pos.count;
+            const tri = new Float32Array(count * 2);
+            const triY = new Float32Array(count / 3 * 2);       // per triangle: average and max height
+            for (let q = 0; q < count; q++) {
+                const v = idx ? idx.getX(q) : q;
+                tri[q * 2] = pos.getX(v); tri[q * 2 + 1] = pos.getZ(v);
+            }
+            for (let q = 0; q < count; q += 3) {
+                let sum = 0, mx = -1e9;
+                for (let a = 0; a < 3; a++) {
+                    const y = pos.getY(idx ? idx.getX(q + a) : q + a);
+                    sum += y; if (y > mx) mx = y;
+                }
+                triY[q / 3 * 2] = sum / 3; triY[q / 3 * 2 + 1] = mx;
+            }
+
+            const color = new THREE.Color().setHSL(i / meshes.length, 0.38, 0.56);
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat));
+            const pivot = new THREE.Group();
+            pivot.position.set(cx - C.x, 0, cz - C.z);
+            pivot.add(mesh);
+            scene.add(pivot);
+
+            const label = document.createElement('div');
+            label.className = 'label';
+            stage.appendChild(label);
+
+            const row = document.createElement('div');
+            row.className = 'prog';
+            row.innerHTML = '<span class="num">' + String(i + 1).padStart(2, '0') + '</span><span class="sw"></span><input type="text" spellcheck="false">';
+            row.querySelector('.sw').style.background = '#' + color.getHexString();
+            const input = row.querySelector('input');
+            input.value = nameOf(i);
+            input.addEventListener('input', () => {
+                names[i] = input.value;
+                m.label.textContent = String(i + 1).padStart(2, '0') + '  ' + input.value;
+                try { localStorage.setItem('wind_programs', JSON.stringify(names)); } catch (e) { /* storage unavailable */ }
+            });
+            row.addEventListener('click', () => select(i));
+            $('#progs').appendChild(row);
+
+            const m = { i, pivot, mesh, mat, tri, triY, top: b.max.y, label, row, home: pivot.position.clone() };
+            mesh.userData.mass = m;
+            label.textContent = String(i + 1).padStart(2, '0') + '  ' + nameOf(i);
+            masses.push(m);
+        });
+
+        $('#loading').remove();
+        select(-1);
+        rebuildMask();
+        resetAll();
+        ready = true;
+    }, undefined, () => { $('#loading').textContent = 'COULD NOT LOAD BuildingMassing.glb'; });
+
+    new MutationObserver(() => { readTheme(); select(selected); })
+        .observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+
+    /* ── Frame loop ───────────────────────────────────────────────────────── */
+    let ready = false, simSteps = 2, simMs = 10;
+    const lv = new THREE.Vector3();
+    function updateLabels() {
+        const w = stage.clientWidth, h = stage.clientHeight, c = cam();
+        for (const m of masses) {
+            if (m.label.style.display === 'none') continue;
+            lv.set(m.pivot.position.x, Math.max(m.top, 0), m.pivot.position.z).project(c);
+            if (lv.z > 1) { m.label.style.visibility = 'hidden'; continue; }
+            m.label.style.visibility = '';
+            m.label.style.transform = 'translate(' + Math.round((lv.x * 0.5 + 0.5) * w) + 'px,' + Math.round((-lv.y * 0.5 + 0.5) * h) + 'px) translate(-50%,-130%)';
+        }
+    }
+    function tick() {
+        requestAnimationFrame(tick);
+        (view === 'plan' ? ctlPlan : ctlPersp).update();
+        if (ready) {
+            if (maskDirty) rebuildMask();
+            const t0 = performance.now();
+            for (let s = 0; s < simSteps; s++) for (const L of layers) stepLayer(L);
+            simMs = simMs * 0.95 + (performance.now() - t0) * 0.05;   // keep the solver inside a frame budget
+            if (simMs > 14 && simSteps > 1) { simSteps--; simMs = 10; }
+            else if (simMs < 6 && simSteps < 3) { simSteps++; simMs = 10; }
+            if (trails.visible) updateParticles();
+            updateLabels();
+        }
+        renderer.render(scene, cam());
+    }
+    tick();
+    </script>
+    <script src="../../assets/js/theme.js"></script>
+</body>
+</html>
