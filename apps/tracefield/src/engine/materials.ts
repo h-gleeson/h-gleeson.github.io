@@ -1,5 +1,6 @@
 import {
   Color,
+  CustomBlending,
   DoubleSide,
   Float32BufferAttribute,
   GreaterDepth,
@@ -8,7 +9,11 @@ import {
   InstancedInterleavedBuffer,
   InterleavedBufferAttribute,
   LessEqualDepth,
+  Matrix4,
+  OneFactor,
+  OneMinusSrcAlphaFactor,
   ShaderMaterial,
+  SrcAlphaFactor,
   Texture,
   Vector2,
   Vector3,
@@ -25,7 +30,49 @@ export const shared = {
   uLineScale: { value: 1 },
   uPersp: { value: 0 },
   uViewDirOrtho: { value: new Vector3(0, 0, 1) },
+  /** Pixel position of the frame centre in the current render target; hatches are anchored to it. */
+  uHatchOrigin: { value: new Vector2(0, 0) },
+  // Shadows
+  uShadowOn: { value: 0 },
+  uShadowMode: { value: 0 }, // 0 graphic, 1 soft
+  uShadowMap: { value: null as Texture | null },
+  uShadowMatrix: { value: new Matrix4() },
+  uShadowColor: { value: new Color('#6f7280') },
+  uShadowOpacity: { value: 0.45 },
+  uShadowRadius: { value: 0 }, // soft blur radius in shadow-map uv
+  uShadowTexel: { value: 0.01 }, // world units per shadow texel
+  uShadowBias: { value: 0.0005 },
+  uShadeFaces: { value: 1 },
 };
+
+/** Shadow lookup shared by object fills and the ground. Returns 0 lit … 1 fully in shadow. */
+const shadowChunk = /* glsl */ `
+uniform float uShadowOn;
+uniform float uShadowMode;
+uniform sampler2DShadow uShadowMap;
+uniform mat4 uShadowMatrix;
+uniform float uShadowRadius;
+uniform float uShadowTexel;
+uniform float uShadowBias;
+const vec2 VOGEL[16] = vec2[16](
+  vec2(0.177, 0.000), vec2(-0.225, 0.208), vec2(0.035, -0.395), vec2(0.288, 0.338),
+  vec2(-0.495, -0.101), vec2(0.460, -0.300), vec2(-0.159, 0.586), vec2(-0.297, -0.565),
+  vec2(0.647, 0.153), vec2(-0.664, 0.275), vec2(0.240, -0.693), vec2(0.331, 0.701),
+  vec2(-0.769, -0.226), vec2(0.775, -0.320), vec2(-0.307, 0.828), vec2(-0.258, -0.894)
+);
+float shadowAt(vec3 worldPos, vec3 n, float ndl) {
+  if (uShadowOn < 0.5) return 0.0;
+  // Normal offset: lift the lookup off the surface, more for surfaces grazing the light.
+  vec3 p = worldPos + n * uShadowTexel * (1.5 + 2.5 * (1.0 - clamp(ndl, 0.0, 1.0)));
+  vec4 sc = uShadowMatrix * vec4(p, 1.0);
+  vec3 uvz = sc.xyz / sc.w;
+  if (uvz.x <= 0.0 || uvz.x >= 1.0 || uvz.y <= 0.0 || uvz.y >= 1.0) return 0.0;
+  float z = min(uvz.z, 1.0) - uShadowBias;
+  if (uShadowMode < 0.5) return 1.0 - texture(uShadowMap, vec3(uvz.xy, z));
+  float lit = 0.0;
+  for (int i = 0; i < 16; i++) lit += texture(uShadowMap, vec3(uvz.xy + VOGEL[i] * uShadowRadius, z));
+  return 1.0 - lit / 16.0;
+}`;
 
 // ---------------------------------------------------------------- fills
 
@@ -50,6 +97,18 @@ void main() {
 }`;
 
 const fillFragment = /* glsl */ `
+${shadowChunk}
+uniform vec3 uShadowColor;
+uniform float uShadowOpacity;
+uniform float uShadeFaces;
+uniform float uReceive;
+uniform float uHatch;
+uniform vec3 uHatchColor;
+uniform float uHatchSpacing;
+uniform float uHatchWidth;
+uniform vec2 uHatchDir;
+uniform vec2 uHatchOrigin;
+uniform float uLineScale;
 uniform vec3 uColor;
 uniform float uOpacity;
 uniform float uToning;
@@ -79,6 +138,33 @@ void main() {
   if (uHasMap > 0.5) base *= texture2D(uMap, vUv);
 #endif
   vec3 col = base.rgb * tone;
+
+  // Hatch, in drawing space: anchored to the frame centre and scaled like lineweights.
+  if (uHatch > 0.5) {
+    vec2 q = (gl_FragCoord.xy - uHatchOrigin) / uLineScale;
+    vec2 r = vec2(dot(q, uHatchDir), dot(q, vec2(-uHatchDir.y, uHatchDir.x)));
+    float sp = max(uHatchSpacing, 0.5);
+    float wpx = uHatchWidth * uLineScale;
+    float cover;
+    if (uHatch > 2.5) {
+      vec2 c = (fract(r / sp + 0.5) - 0.5) * sp * uLineScale;
+      cover = clamp(max(wpx * 0.8, 0.7) - length(c) + 0.5, 0.0, 1.0) * min(wpx / 0.7, 1.0);
+    } else {
+      float d = abs(fract(r.y / sp + 0.5) - 0.5) * sp;
+      if (uHatch > 1.5) d = min(d, abs(fract(r.x / sp + 0.5) - 0.5) * sp);
+      // Hatches thinner than a pixel draw one pixel wide and fainter, instead of breaking up.
+      cover = clamp(max(wpx, 1.0) * 0.5 - d * uLineScale + 0.5, 0.0, 1.0) * min(wpx, 1.0);
+    }
+    col = mix(col, uHatchColor, cover);
+  }
+
+  // Shade and shadow.
+  if (uShadowOn > 0.5 && uReceive > 0.5) {
+    float sh = shadowAt(vWorldPos, n, ndl);
+    if (uShadeFaces > 0.5) sh = max(sh, 1.0 - smoothstep(0.0, 0.04, dot(n, uLightDir)));
+    float k = sh * uShadowOpacity;
+    col = uShadowMode < 0.5 ? mix(col, uShadowColor, k) : mix(col, col * uShadowColor, k);
+  }
   col = mix(col, uHighlight, uSelected * 0.2);
   gl_FragColor = vec4(col, uOpacity * base.a);
 }`;
@@ -91,8 +177,32 @@ export type FillMaterial = ShaderMaterial & {
     uSelected: { value: number };
     uHasMap: { value: number };
     uMap: { value: Texture | null };
+    uReceive: { value: number };
+    uHatch: { value: number };
+    uHatchColor: { value: Color };
+    uHatchSpacing: { value: number };
+    uHatchWidth: { value: number };
+    uHatchDir: { value: Vector2 };
   };
 };
+
+function sharedFillUniforms() {
+  return {
+    uLightDir: shared.uLightDir,
+    uHatchOrigin: shared.uHatchOrigin,
+    uLineScale: shared.uLineScale,
+    uShadowOn: shared.uShadowOn,
+    uShadowMode: shared.uShadowMode,
+    uShadowMap: shared.uShadowMap,
+    uShadowMatrix: shared.uShadowMatrix,
+    uShadowColor: shared.uShadowColor,
+    uShadowOpacity: shared.uShadowOpacity,
+    uShadowRadius: shared.uShadowRadius,
+    uShadowTexel: shared.uShadowTexel,
+    uShadowBias: shared.uShadowBias,
+    uShadeFaces: shared.uShadeFaces,
+  };
+}
 
 export function createFillMaterial(hasNormal: boolean, hasUv: boolean): FillMaterial {
   const defines: Record<string, string> = {};
@@ -113,12 +223,69 @@ export function createFillMaterial(hasNormal: boolean, hasUv: boolean): FillMate
       uSelected: { value: 0 },
       uHasMap: { value: 0 },
       uMap: { value: null },
-      uLightDir: shared.uLightDir,
+      uReceive: { value: 1 },
+      uHatch: { value: 0 },
+      uHatchColor: { value: new Color('#555555') },
+      uHatchSpacing: { value: 8 },
+      uHatchWidth: { value: 0.6 },
+      uHatchDir: { value: new Vector2(1, 0) },
       uAmbient: shared.uAmbient,
       uFlat: shared.uFlat,
       uHighlight: shared.uHighlight,
+      ...sharedFillUniforms(),
     },
   }) as FillMaterial;
+}
+
+// ---------------------------------------------------------------- ground
+
+const groundFragment = /* glsl */ `
+${shadowChunk}
+uniform vec3 uShadowColor;
+uniform float uShadowOpacity;
+uniform vec3 uColor;
+uniform float uShadowOnly;
+uniform vec3 uLightDir;
+varying vec3 vWorldPos;
+void main() {
+  float sh = shadowAt(vWorldPos, vec3(0.0, 1.0, 0.0), max(uLightDir.y, 0.0));
+  float k = sh * uShadowOpacity;
+  if (uShadowOnly > 0.5) {
+    if (k <= 0.002) discard;
+    gl_FragColor = vec4(uShadowColor, k);
+  } else {
+    gl_FragColor = vec4(uShadowMode < 0.5 ? mix(uColor, uShadowColor, k) : mix(uColor, uColor * uShadowColor, k), 1.0);
+  }
+}`;
+
+export type GroundMaterial = ShaderMaterial & { uniforms: { uColor: { value: Color }; uShadowOnly: { value: number } } };
+
+/** The ground plane: a solid colour, or invisible except for the shadows it catches. */
+export function createGroundMaterial(): GroundMaterial {
+  return new ShaderMaterial({
+    vertexShader: /* glsl */ `varying vec3 vWorldPos;
+void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vWorldPos = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: groundFragment,
+    side: DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 4,
+    polygonOffsetUnits: 8,
+    uniforms: {
+      uColor: { value: new Color('#ffffff') },
+      uShadowOnly: { value: 0 },
+      ...sharedFillUniforms(),
+    },
+  }) as GroundMaterial;
+}
+
+/** Depth-only material for the shadow-map pass. */
+export function createShadowDepthMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    vertexShader: /* glsl */ `void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */ `void main() { gl_FragColor = vec4(1.0); }`,
+    side: DoubleSide,
+    colorWrite: false,
+  });
 }
 
 // ---------------------------------------------------------------- lines
@@ -228,6 +395,13 @@ export function createLineMaterial(hidden: boolean): LineMaterial {
     vertexShader: lineVertex,
     fragmentShader: lineFragment,
     transparent: true,
+    // Custom blending keeps anti-aliased edges even when the material is drawn in
+    // the opaque pass (lines set to draw behind every fill).
+    blending: CustomBlending,
+    blendSrc: SrcAlphaFactor,
+    blendDst: OneMinusSrcAlphaFactor,
+    blendSrcAlpha: OneFactor,
+    blendDstAlpha: OneMinusSrcAlphaFactor,
     depthWrite: false,
     depthTest: true,
     depthFunc: hidden ? GreaterDepth : LessEqualDepth,

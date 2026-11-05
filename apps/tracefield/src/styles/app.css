@@ -315,3 +315,48 @@ input[type='range']::-moz-range-thumb { width: 9px; height: 9px; border-radius: 
 
 .row.stacked { grid-template-columns: 1fr; gap: 5px; }
 .row.stacked .row-ctl { width: 100%; }
+
+/* ------------------------------------------------------------ drawing frame (M2) */
+.frame-layer { position: absolute; inset: 0; pointer-events: none; }
+.frame-mask { position: absolute; background: rgba(38, 39, 44, 0.12); }
+.frame-edge { position: absolute; box-shadow: 0 0 0 1px rgba(28, 29, 33, 0.28), 0 6px 22px rgba(0, 0, 0, 0.06); }
+.frame-edge.quiet { box-shadow: 0 0 0 1px rgba(28, 29, 33, 0.14); }
+.tick { position: absolute; width: 12px; height: 12px; border: 0 solid var(--ink); }
+.tick.tl { left: -7px; top: -7px; border-top-width: 1px; border-left-width: 1px; }
+.tick.tr { right: -7px; top: -7px; border-top-width: 1px; border-right-width: 1px; }
+.tick.bl { left: -7px; bottom: -7px; border-bottom-width: 1px; border-left-width: 1px; }
+.tick.br { right: -7px; bottom: -7px; border-bottom-width: 1px; border-right-width: 1px; }
+.frame-label { position: absolute; font: 600 9.5px var(--mono); letter-spacing: 0.08em; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crop-handle { position: absolute; pointer-events: auto; display: grid; place-items: center; }
+.crop-handle.v { cursor: ew-resize; }
+.crop-handle.h { cursor: ns-resize; }
+.crop-handle::after { content: ''; background: var(--ink); border-radius: 2px; opacity: 0.0; transition: opacity 0.12s; }
+.crop-handle.v::after { width: 3px; height: 36px; }
+.crop-handle.h::after { width: 36px; height: 3px; }
+.viewport:hover .crop-handle::after { opacity: 0.35; }
+.crop-handle:hover::after { opacity: 1 !important; background: var(--accent); }
+.crop-preview { position: absolute; outline: 1.5px dashed var(--accent); outline-offset: 0; background: rgba(47, 72, 216, 0.04); }
+.viewport-label { left: auto; right: 34px; top: 14px; }
+.busy-cancel { padding: 2px 8px; border: 1px solid var(--rule-2); border-radius: 10px; font-size: 11px; color: var(--ink-2); }
+.busy-cancel:hover { color: var(--danger); border-color: var(--danger); }
+.menu .menu-export { margin-left: 4px; border: 1px solid var(--accent-line); color: var(--accent-ink); }
+.menu .menu-export:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent-ink); }
+.preset-grid.three { grid-template-columns: repeat(3, 1fr); }
+.inline { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.btn.small { padding: 3px 8px; font-size: 11px; }
+.btn.big { padding: 9px; margin-top: 8px; }
+.hint.error { color: var(--danger); }
+.tabs button { font-size: 11px; }
+
+/* ------------------------------------------------------------ M3: style presets */
+.style-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
+.style-preset { position: relative; display: flex; }
+.style-preset .sp-apply { flex: 1; display: flex; align-items: center; gap: 7px; min-width: 0; text-align: left; padding: 4px 6px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--field); color: var(--ink-2); font-size: 11px; }
+.style-preset .sp-apply span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.style-preset .sp-apply:hover { border-color: var(--ink-3); color: var(--ink); }
+.style-preset.on .sp-apply { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
+.sp-swatch { flex: none; width: 28px; height: 20px; border-radius: 2px; outline: 1px solid var(--rule); }
+.sp-del { position: absolute; top: -5px; right: -5px; width: 15px; height: 15px; padding: 0; border: 1px solid var(--rule-2); border-radius: 50%; background: var(--panel); color: var(--ink-3); font-size: 10px; line-height: 12px; display: none; }
+.style-preset:hover .sp-del { display: block; }
+.sp-del:hover { color: var(--danger); border-color: var(--danger); }
+.btn-row input.text { flex: 1; min-width: 0; }

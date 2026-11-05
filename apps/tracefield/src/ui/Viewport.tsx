@@ -9,6 +9,7 @@ import { registry } from '../import/registry';
 import { buildSampleGlb } from '../import/sample';
 import { restoreAutosave } from '../project/autosave';
 import { store, useStore } from '../state/store';
+import { FrameOverlay } from './FrameOverlay';
 import type { CameraState } from '../state/types';
 
 async function loadSample() {
@@ -26,6 +27,7 @@ async function loadSample() {
 export function Viewport({ onImport }: { onImport: () => void }) {
   const host = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState(false);
+  const [ready, setReady] = useState(false);
   const empty = useStore((s) => s.doc.roots.length === 0);
   const busy = useStore((s) => s.ui.busy);
   const restore = useStore((s) => s.ui.restoreAvailable);
@@ -37,6 +39,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   useEffect(() => {
     const engine = new Engine(host.current!);
     setEngine(engine);
+    setReady(true);
     const detach = attachControls(engine);
     (window as unknown as { tracefield: unknown }).tracefield = { engine, store };
     return () => {
@@ -75,10 +78,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       }}
     >
       <div ref={host} className="viewport-host" />
-      <span className="reg tl" />
-      <span className="reg tr" />
-      <span className="reg bl" />
-      <span className="reg br" />
+      <FrameOverlay engineReady={ready} />
 
       {!empty && <Triad camera={camera} />}
       {!empty && (
@@ -126,6 +126,11 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         <div className="busy" role="status" aria-live="polite">
           <span className="spinner" />
           <span>{busy ? busy.label : `Tracing linework · ${edgeProgress!.done} / ${edgeProgress!.total}`}</span>
+          {busy?.cancel && (
+            <button className="busy-cancel" onClick={busy.cancel}>
+              Cancel
+            </button>
+          )}
           {(busy?.progress !== undefined || (!busy && edgeProgress)) && (
             <span className="progress">
               <span style={{ width: `${Math.round((busy?.progress ?? edgeProgress!.done / Math.max(1, edgeProgress!.total)) * 100)}%` }} />

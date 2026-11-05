@@ -9,6 +9,11 @@
 
 export type FillMode = 'material' | 'color' | 'clay' | 'white' | 'none';
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
+export type HatchMode = 'none' | 'lines' | 'cross' | 'dots';
+/** normal: hidden by geometry in front · front: always on top · behind: under every fill. */
+export type LineOrder = 'normal' | 'front' | 'behind';
+export type ShadowMode = 'off' | 'graphic' | 'soft';
+export type GroundMode = 'off' | 'solid' | 'shadow';
 
 /** Every visual property that can be set globally or overridden per node. */
 export interface GraphicStyle {
@@ -27,6 +32,15 @@ export interface GraphicStyle {
   materialEdgeWidth: number;
   allEdgesWidth: number; // 0 = off; draws every triangle edge
   curveWidth: number;
+  lineOrder: LineOrder;
+  /** Drawing-space hatch over the fill; spacing and weight are px at reference width. */
+  hatch: HatchMode;
+  hatchColor: string;
+  hatchSpacing: number;
+  hatchWidth: number;
+  hatchAngle: number; // degrees
+  castShadow: boolean;
+  receiveShadow: boolean;
 }
 
 export type StyleKey = keyof GraphicStyle;
@@ -116,6 +130,34 @@ export interface DrawingSettings {
   ambient: number;
   /** Lineweights are authored at this output width (px). */
   referenceWidth: number;
+  /** graphic: crisp flat-colour shadows · soft: blurred, multiplied over the fill. */
+  shadows: ShadowMode;
+  shadowColor: string;
+  shadowOpacity: number;
+  /** 0 sharp … 1 very soft (soft mode only). */
+  shadowSoftness: number;
+  /** Faces turned away from the sun take the shadow too (shade and shadow). */
+  shadeFaces: boolean;
+  /** Plane under the model: solid colour, or invisible except for the shadows it catches. */
+  ground: GroundMode;
+  groundColor: string;
+}
+
+/** The drawing frame and PNG output. The frame *is* the drawing: the camera's height is the frame's height. */
+export interface OutputSettings {
+  /** Output size in pixels; their ratio is the frame's aspect. */
+  width: number;
+  height: number;
+  /** Size preset id ('custom' once edited freely). */
+  preset: string;
+  /** Pixels per inch for paper presets and the physical-size readout. */
+  dpi: number;
+  lockAspect: boolean;
+  transparent: boolean;
+  showFrame: boolean;
+  includeGrid: boolean;
+  antialias: 0 | 4 | 8;
+  fileName: string;
 }
 
 export interface ProjectDoc {
@@ -127,11 +169,14 @@ export interface ProjectDoc {
   defaults: GraphicStyle;
   drawing: DrawingSettings;
   views: SavedView[];
+  output: OutputSettings;
 }
 
 export interface BusyState {
   label: string;
   progress?: number;
+  /** Present when the job can be cancelled. */
+  cancel?: () => void;
 }
 
 export interface UIState {

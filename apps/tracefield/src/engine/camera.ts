@@ -43,12 +43,16 @@ export function perspDistance(c: CameraState) {
   return c.height / 2 / Math.tan(MathUtils.degToRad(c.fov) / 2);
 }
 
-/** Apply the document camera to the live three.js cameras. `depth` = scene radius for clip planes. */
-export function applyCamera(c: CameraState, ortho: ObliqueCamera, persp: PerspectiveCamera, aspect: number, depth: number) {
+/**
+ * Apply the document camera to live three.js cameras. `c.height` is the height of the
+ * drawing frame; `viewScale` (= viewport height / frame height) widens the view so the
+ * viewport shows the frame plus its surroundings. `depth` = scene radius for clip planes.
+ */
+export function applyCamera(c: CameraState, ortho: ObliqueCamera, persp: PerspectiveCamera, aspect: number, depth: number, viewScale = 1) {
   const q = orientation(c);
   const target = new Vector3(...c.target);
   if (c.projection === 'ortho') {
-    const h = c.height / 2;
+    const h = (c.height / 2) * viewScale;
     ortho.left = -h * aspect;
     ortho.right = h * aspect;
     ortho.top = h;
@@ -63,7 +67,7 @@ export function applyCamera(c: CameraState, ortho: ObliqueCamera, persp: Perspec
     return ortho;
   }
   const dist = perspDistance(c);
-  persp.fov = c.fov;
+  persp.fov = MathUtils.radToDeg(2 * Math.atan(Math.tan(MathUtils.degToRad(c.fov) / 2) * viewScale));
   persp.aspect = aspect;
   persp.position.copy(target).add(new Vector3(0, 0, dist).applyQuaternion(q));
   persp.quaternion.copy(q);

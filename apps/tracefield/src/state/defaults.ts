@@ -1,3 +1,4 @@
+import { DEFAULT_OUTPUT } from './output';
 import type { CameraState, DrawingSettings, GraphicStyle, Oblique, ProjectDoc } from './types';
 
 export const DEFAULT_STYLE: GraphicStyle = {
@@ -16,6 +17,14 @@ export const DEFAULT_STYLE: GraphicStyle = {
   materialEdgeWidth: 0.8,
   allEdgesWidth: 0,
   curveWidth: 0.7,
+  lineOrder: 'normal',
+  hatch: 'none',
+  hatchColor: '#55585f',
+  hatchSpacing: 8,
+  hatchWidth: 0.6,
+  hatchAngle: 45,
+  castShadow: true,
+  receiveShadow: true,
 };
 
 export const DEFAULT_DRAWING: DrawingSettings = {
@@ -29,6 +38,13 @@ export const DEFAULT_DRAWING: DrawingSettings = {
   sunElevation: 50,
   ambient: 0.6,
   referenceWidth: 1600,
+  shadows: 'off',
+  shadowColor: '#6f7280',
+  shadowOpacity: 0.45,
+  shadowSoftness: 0.35,
+  shadeFaces: true,
+  ground: 'off',
+  groundColor: '#ffffff',
 };
 
 const NO_OBLIQUE: Oblique = { enabled: false, angle: 225, scale: 1 };
@@ -80,6 +96,7 @@ export function createDoc(): ProjectDoc {
     defaults: { ...DEFAULT_STYLE },
     drawing: { ...DEFAULT_DRAWING },
     views: [],
+    output: { ...DEFAULT_OUTPUT },
   };
 }
 
@@ -93,6 +110,7 @@ export function normalizeDoc(raw: Partial<ProjectDoc>): ProjectDoc {
     defaults: { ...base.defaults, ...raw.defaults },
     drawing: { ...base.drawing, ...raw.drawing },
     views: raw.views ?? [],
+    output: { ...base.output, ...raw.output },
     nodes: raw.nodes ?? {},
     roots: raw.roots ?? [],
     models: raw.models ?? {},

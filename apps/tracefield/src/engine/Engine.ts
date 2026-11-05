@@ -3,6 +3,13 @@ import {
   BufferGeometry,
   Color,
   ColorManagement,
+  DepthTexture,
+  LessEqualCompare,
+  LinearFilter,
+  OrthographicCamera,
+  PlaneGeometry,
+  ShaderMaterial,
+  UnsignedIntType,
   GridHelper,
   Group,
   InstancedBufferGeometry,
@@ -19,6 +26,7 @@ import {
   Vector2,
   Vector3,
   WebGLRenderer,
+  WebGLRenderTarget,
   LinearSRGBColorSpace,
 } from 'three';
 import { acceleratedRaycast, computeBoundsTree } from 'three-mesh-bvh';
@@ -26,8 +34,19 @@ import { registry } from '../import/registry';
 import { descendants, ancestors, isLockedInTree, resolveStyle } from '../state/scene';
 import { store } from '../state/store';
 import type { CameraState, ProjectDoc, UIState } from '../state/types';
-import { applyCamera, basis, framePoints, ObliqueCamera, shearOf } from './camera';
-import { createEdgeGeometry, createFillMaterial, createLineMaterial, shared, type FillMaterial, type LineMaterial } from './materials';
+import { aspectOf, validateSize } from '../state/output';
+import { applyCamera, framePoints, ObliqueCamera, shearOf } from './camera';
+import {
+  createEdgeGeometry,
+  createFillMaterial,
+  createGroundMaterial,
+  createLineMaterial,
+  createShadowDepthMaterial,
+  shared,
+  type FillMaterial,
+  type GroundMaterial,
+  type LineMaterial,
+} from './materials';
 
 ColorManagement.enabled = false;
 (BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
@@ -46,7 +65,10 @@ interface RenderObject {
   hidden: Mesh | null;
   lineMat: LineMaterial;
   hiddenMat: LineMaterial;
+  cast: boolean;
 }
+
+const HATCH: Record<string, number> = { none: 0, lines: 1, cross: 2, dots: 3 };
 
 /**
  * The 3D view. Mirrors the document into a three.js scene: one Group per
@@ -73,6 +95,12 @@ export class Engine {
   private unsub: (() => void)[] = [];
   private resizeObs: ResizeObserver;
   private boundsCache: Box3 | null = null;
+  private ground: Mesh | null = null;
+  private groundMat: GroundMaterial | null = null;
+  private shadowRT: WebGLRenderTarget | null = null;
+  private shadowCam = new OrthographicCamera();
+  private shadowDepthMat: ShaderMaterial | null = null;
+  private shadowDirty = true;
   cssW = 1;
   cssH = 1;
   onRender: (() => void) | null = null;
@@ -105,6 +133,10 @@ export class Engine {
     this.resizeObs.disconnect();
     for (const id of [...this.robjs.keys()]) this.dropRObj(id);
     this.edgeGeoms.forEach((g) => g.dispose());
+    this.ground?.geometry.dispose();
+    this.groundMat?.dispose();
+    this.shadowRT?.dispose();
+    this.shadowDepthMat?.dispose();
     this.renderer.dispose();
     this.canvas.remove();
   }
@@ -120,6 +152,7 @@ export class Engine {
     if (structural || ui.selection !== this.lastUI?.selection || ui.isolated !== this.lastUI?.isolated || doc.defaults !== prev?.defaults || doc.drawing !== prev?.drawing)
       this.syncStyles(doc, ui);
     if (structural || doc.drawing.showGrid !== prev?.drawing.showGrid) this.syncGrid(doc);
+    if (structural || doc.drawing !== prev?.drawing) this.syncGround(doc);
     this.lastDoc = doc;
     this.lastUI = ui;
     if (ui.fitRequest !== this.lastFit) {
@@ -159,6 +192,7 @@ export class Engine {
     // Keep children in document order (affects transparent sorting ties only).
     this.world.updateMatrixWorld(true);
     this.boundsCache = null;
+    this.shadowDirty = true;
 
     let tris = 0, edges = 0;
     for (const r of this.robjs.values()) {
@@ -182,7 +216,7 @@ export class Engine {
     const d = model?.drawables[index];
     if (!d) return;
     if (!r) {
-      r = { id, key, host, body: null, fillMats: [], lines: null, hidden: null, lineMat: createLineMaterial(false), hiddenMat: createLineMaterial(true) };
+      r = { id, key, host, body: null, fillMats: [], lines: null, hidden: null, lineMat: createLineMaterial(false), hiddenMat: createLineMaterial(true), cast: true };
       this.robjs.set(id, r);
     }
     if (!r.body) {
@@ -289,7 +323,15 @@ export class Engine {
         }
         m.colorWrite = !none;
         m.depthWrite = !none && !transparent;
+        u.uReceive.value = s.receiveShadow ? 1 : 0;
+        u.uHatch.value = HATCH[s.hatch] ?? 0;
+        u.uHatchColor.value.set(s.hatchColor);
+        u.uHatchSpacing.value = s.hatchSpacing;
+        u.uHatchWidth.value = s.hatchWidth;
+        const ha = MathUtils.degToRad(s.hatchAngle);
+        u.uHatchDir.value.set(Math.cos(ha), Math.sin(ha));
       });
+      r.cast = s.castShadow && !isLine;
       const crease = s.allEdgesWidth > 0 ? 2 : Math.cos(MathUtils.degToRad(s.creaseAngle));
       const [dash, gap, dotted] = DASH[s.lineStyle] ?? DASH.solid;
       for (const [m, hidden] of [[r.lineMat, false], [r.hiddenMat, true]] as const) {
@@ -314,8 +356,24 @@ export class Engine {
         }
       }
       if (r.lines) r.lines.visible = s.showLines || isLine;
-      if (r.hidden) r.hidden.visible = (s.showLines || isLine) && dr.hiddenLines;
+      if (r.hidden) r.hidden.visible = (s.showLines || isLine) && dr.hiddenLines && s.lineOrder === 'normal';
+      // Draw order. "behind" moves the lines into the opaque pass, before every fill.
+      const order = s.lineOrder;
+      const lm = r.lineMat;
+      const transparent = order !== 'behind';
+      if (lm.transparent !== transparent) {
+        lm.transparent = transparent;
+        lm.needsUpdate = true;
+      }
+      lm.depthTest = order === 'normal';
+      if (r.lines) r.lines.renderOrder = order === 'front' ? 20 : order === 'behind' ? -1 : 10;
     }
+    shared.uShadowOn.value = dr.shadows === 'off' ? 0 : 1;
+    shared.uShadowMode.value = dr.shadows === 'soft' ? 1 : 0;
+    shared.uShadowColor.value.set(dr.shadowColor);
+    shared.uShadowOpacity.value = dr.shadowOpacity;
+    shared.uShadeFaces.value = dr.shadeFaces ? 1 : 0;
+    this.shadowDirty = true;
     const el = MathUtils.degToRad(dr.sunElevation), az = MathUtils.degToRad(dr.sunAzimuth);
     shared.uLightDir.value.set(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)).normalize();
     shared.uAmbient.value = dr.ambient;
@@ -342,6 +400,128 @@ export class Engine {
     (this.grid.material as LineBasicMaterial).depthWrite = false;
     this.grid.raycast = () => {};
     this.scene.add(this.grid);
+  }
+
+  // ------------------------------------------------------------ ground & shadows
+
+  private syncGround(doc: ProjectDoc) {
+    const dr = doc.drawing;
+    if (dr.ground === 'off') {
+      if (this.ground) this.ground.visible = false;
+      return;
+    }
+    if (!this.ground) {
+      this.groundMat = createGroundMaterial();
+      this.ground = new Mesh(new PlaneGeometry(1, 1), this.groundMat);
+      this.ground.rotation.x = -Math.PI / 2;
+      this.ground.renderOrder = -2;
+      this.ground.raycast = () => {};
+      this.ground.frustumCulled = false;
+      this.scene.add(this.ground);
+    }
+    const b = this.sceneBounds();
+    const size = b.isEmpty() ? 20 : Math.max(...b.getSize(new Vector3()).toArray());
+    const c = b.isEmpty() ? new Vector3() : b.getCenter(new Vector3());
+    // Large enough that its edge stays out of view at any normal framing.
+    this.ground.scale.set(size * 60, size * 60, 1);
+    this.ground.position.set(c.x, b.isEmpty() ? 0 : b.min.y, c.z);
+    this.ground.visible = true;
+    const shadowOnly = dr.ground === 'shadow';
+    const m = this.groundMat!;
+    m.uniforms.uColor.value.set(dr.groundColor);
+    m.uniforms.uShadowOnly.value = shadowOnly ? 1 : 0;
+    if (m.transparent !== shadowOnly) {
+      m.transparent = shadowOnly;
+      m.needsUpdate = true;
+    }
+    m.depthWrite = !shadowOnly;
+  }
+
+  /**
+   * Directional shadow map, fitted to the bounds of the shadow-casting objects
+   * as seen from the sun. Re-rendered only when the scene, styles or light
+   * change, not per frame: the camera does not affect it.
+   */
+  private renderShadowMap(doc: ProjectDoc) {
+    this.shadowDirty = false;
+    if (doc.drawing.shadows === 'off') return;
+    const casters = [...this.robjs.values()].filter((r) => r.cast && r.body instanceof Mesh && isShown(r.host));
+    const size = Math.min(4096, this.renderer.capabilities.maxTextureSize);
+    if (!this.shadowRT) {
+      const dt = new DepthTexture(size, size);
+      dt.type = UnsignedIntType;
+      dt.compareFunction = LessEqualCompare;
+      dt.minFilter = dt.magFilter = LinearFilter;
+      this.shadowRT = new WebGLRenderTarget(size, size, { depthBuffer: true, depthTexture: dt });
+      this.shadowDepthMat = createShadowDepthMaterial();
+      shared.uShadowMap.value = dt;
+    }
+    const L = shared.uLightDir.value;
+    this.world.updateMatrixWorld(true);
+    const box = new Box3();
+    const tmp = new Box3();
+    for (const r of casters) {
+      const g = r.body!.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      box.union(tmp.copy(g.boundingBox!).applyMatrix4(r.body!.matrixWorld));
+    }
+    const cam = this.shadowCam;
+    const center = box.isEmpty() ? new Vector3() : box.getCenter(new Vector3());
+    const radius = box.isEmpty() ? 1 : Math.max(box.getSize(new Vector3()).length() / 2, 1e-6);
+    cam.position.copy(center).addScaledVector(L, radius * 3);
+    cam.up.set(0, Math.abs(L.y) > 0.99 ? 0 : 1, Math.abs(L.y) > 0.99 ? 1 : 0);
+    cam.lookAt(center);
+    cam.updateMatrixWorld(true);
+    // Tight fit of the casters' corners in light space.
+    const inv = cam.matrixWorldInverse;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    const v = new Vector3();
+    for (const r of casters) {
+      const bb = r.body!.geometry.boundingBox!;
+      for (let i = 0; i < 8; i++) {
+        v.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(r.body!.matrixWorld).applyMatrix4(inv);
+        x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x);
+        y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+        z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z);
+      }
+    }
+    if (!casters.length) { x0 = y0 = -1; x1 = y1 = 1; z0 = -radius * 4; z1 = -radius * 2; }
+    const pad = Math.max(x1 - x0, y1 - y0) * 0.02 + 1e-6;
+    cam.left = x0 - pad; cam.right = x1 + pad; cam.bottom = y0 - pad; cam.top = y1 + pad;
+    cam.near = Math.max(1e-6, -z1 - pad); cam.far = -z0 + pad;
+    cam.updateProjectionMatrix();
+    const extent = Math.max(cam.right - cam.left, cam.top - cam.bottom);
+    const texel = extent / size;
+    shared.uShadowTexel.value = texel;
+    shared.uShadowBias.value = (1.5 * texel) / (cam.far - cam.near);
+    shared.uShadowRadius.value = (Math.pow(doc.drawing.shadowSoftness, 1.5) * radius * 0.08) / extent;
+    shared.uShadowMatrix.value
+      .set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
+      .multiply(cam.projectionMatrix)
+      .multiply(cam.matrixWorldInverse);
+
+    // Depth-only pass with just the casters.
+    const restore: [Object3D, boolean][] = [];
+    const hide = (o: Object3D | null | undefined) => {
+      if (!o) return;
+      restore.push([o, o.visible]);
+      o.visible = false;
+    };
+    for (const r of this.robjs.values()) {
+      hide(r.lines);
+      hide(r.hidden);
+      if (!casters.includes(r)) hide(r.body);
+    }
+    hide(this.grid);
+    hide(this.ground);
+    const prevTarget = this.renderer.getRenderTarget();
+    this.scene.overrideMaterial = this.shadowDepthMat;
+    this.renderer.setRenderTarget(this.shadowRT);
+    this.renderer.clear(true, true, false);
+    if (casters.length) this.renderer.render(this.scene, cam);
+    this.scene.overrideMaterial = null;
+    this.renderer.setRenderTarget(prevTarget);
+    for (const [o, vis] of restore) o.visible = vis;
   }
 
   // ------------------------------------------------------------ bounds & framing
@@ -392,13 +572,14 @@ export class Engine {
         descendants(doc, id).forEach((d) => only!.add(d));
       }
     }
-    const f = framePoints(doc.camera, this.corners(only), this.cssW / this.cssH);
+    this.updateFrame(aspectOf(doc.output));
+    const f = framePoints(doc.camera, this.corners(only), aspectOf(doc.output), 1.1);
     if (!f) return;
     store.setDoc((d) => ({ ...d, camera: { ...d.camera, ...f } }), { history: false });
   }
 
   worldPerPixel(c: CameraState = store.get().doc.camera) {
-    return c.height / this.cssH;
+    return c.height / this.frame.h;
   }
 
   // ------------------------------------------------------------ picking
@@ -433,6 +614,7 @@ export class Engine {
     this.cssW = Math.max(1, Math.floor(r.width));
     this.cssH = Math.max(1, Math.floor(r.height));
     this.renderer.setSize(this.cssW, this.cssH, false);
+    this.updateFrame(aspectOf(store.get().doc.output));
     this.canvas.style.width = `${this.cssW}px`;
     this.canvas.style.height = `${this.cssH}px`;
     this.invalidate();
@@ -446,25 +628,70 @@ export class Engine {
     });
   }
 
-  render() {
-    const { doc } = store.get();
+  // ------------------------------------------------------------ frame
+
+  /** Drawing frame in viewport CSS pixels: the export aspect, fitted inside the viewport with a margin. */
+  frame: Frame = { x: 0, y: 0, w: 1, h: 1 };
+  private frameListeners = new Set<(f: Frame) => void>();
+
+  onFrame(fn: (f: Frame) => void) {
+    this.frameListeners.add(fn);
+    fn(this.frame);
+    return () => {
+      this.frameListeners.delete(fn);
+    };
+  }
+
+  private updateFrame(aspect: number) {
+    const mx = FRAME_MARGIN.side, top = FRAME_MARGIN.top, bottom = FRAME_MARGIN.bottom;
+    const aw = Math.max(16, this.cssW - mx * 2), ah = Math.max(16, this.cssH - top - bottom);
+    let w = aw, h = aw / aspect;
+    if (h > ah) {
+      h = ah;
+      w = ah * aspect;
+    }
+    const f = { x: Math.round((this.cssW - w) / 2), y: Math.round(top + (ah - h) / 2), w: Math.round(w), h: Math.round(h) };
+    const old = this.frame;
+    if (f.x === old.x && f.y === old.y && f.w === old.w && f.h === old.h) return;
+    this.frame = f;
+    this.frameListeners.forEach((l) => l(f));
+  }
+
+  // ------------------------------------------------------------ render
+
+  private sceneRadius(c: CameraState) {
     const b = this.sceneBounds();
-    const radius = b.isEmpty() ? 1000 : (b.getCenter(new Vector3()).distanceTo(new Vector3(...doc.camera.target)) + b.getSize(new Vector3()).length() / 2) * 4 + 1;
-    this.camera = applyCamera(doc.camera, this.ortho, this.persp, this.cssW / this.cssH, radius);
-    const persp = doc.camera.projection === 'persp';
-    shared.uPersp.value = persp ? 1 : 0;
-    const [sx, sy] = shearOf(doc.camera);
+    return b.isEmpty() ? 1000 : (b.getCenter(new Vector3()).distanceTo(new Vector3(...c.target)) + b.getSize(new Vector3()).length() / 2) * 4 + 1;
+  }
+
+  /** Uniforms that depend on the camera and the pixel grid being drawn into. */
+  private setViewUniforms(c: CameraState, resolutionX: number, resolutionY: number, lineScale: number, hatchOrigin: [number, number]) {
+    shared.uHatchOrigin.value.set(hatchOrigin[0], hatchOrigin[1]);
+    shared.uPersp.value = c.projection === 'persp' ? 1 : 0;
+    const [sx, sy] = shearOf(c);
     shared.uViewDirOrtho.value.set(sx, sy, 1).normalize();
+    shared.uResolution.value.set(resolutionX, resolutionY);
+    shared.uLineScale.value = lineScale;
+  }
+
+  render() {
+    if (this.exporting) return;
+    const { doc } = store.get();
+    this.updateFrame(aspectOf(doc.output));
+    const f = this.frame;
+    // The camera frames the drawing frame; the viewport sees a little more around it.
+    this.camera = applyCamera(doc.camera, this.ortho, this.persp, this.cssW / this.cssH, this.sceneRadius(doc.camera), this.cssH / f.h);
     const pr = this.renderer.getPixelRatio();
-    shared.uResolution.value.set(this.cssW * pr, this.cssH * pr);
-    // Lineweights are authored at the reference width: a viewport that wide shows them 1:1.
-    shared.uLineScale.value = (this.cssW * pr) / doc.drawing.referenceWidth;
+    // Lineweights are authored at the reference width and scale with the frame, exactly as in the export.
+    // gl_FragCoord is bottom-up; the hatch origin is the frame centre.
+    this.setViewUniforms(doc.camera, this.cssW * pr, this.cssH * pr, (f.w * pr) / doc.drawing.referenceWidth, [(f.x + f.w / 2) * pr, (this.cssH - f.y - f.h / 2) * pr]);
+    if (this.shadowDirty) this.renderShadowMap(doc);
     this.renderer.setClearColor(doc.drawing.background, 1);
     this.renderer.render(this.scene, this.camera);
     this.onRender?.();
   }
 
-  /** Small JPEG of the current view for the saved-view strip. */
+  /** Small JPEG of the frame for the saved-view strip. */
   thumbnail(w = 176, h = 112): string {
     // Capture the drawing as it will look, without the selection highlight.
     const { doc, ui } = store.get();
@@ -478,20 +705,134 @@ export class Engine {
     c.width = w;
     c.height = h;
     const ctx = c.getContext('2d')!;
-    const src = this.canvas;
-    const scale = Math.max(w / src.width, h / src.height);
+    const pr = this.renderer.getPixelRatio();
+    const f = this.frame;
+    const fx = f.x * pr, fy = f.y * pr, fw = f.w * pr, fh = f.h * pr;
+    const scale = Math.max(w / fw, h / fh);
     const sw = w / scale, sh = h / scale;
-    ctx.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, w, h);
+    ctx.drawImage(this.canvas, fx + (fw - sw) / 2, fy + (fh - sh) / 2, sw, sh, 0, 0, w, h);
     return c.toDataURL('image/jpeg', 0.82);
   }
 
-  /** Screen-space axis directions for the orientation gizmo. */
-  axisDirections(): { x: Vector2; y: Vector2; z: Vector2 } {
-    const c = store.get().doc.camera;
-    const { right, up, back } = basis(c);
-    const [sx, sy] = shearOf(c);
-    const proj = (v: Vector3) => new Vector2(v.dot(right) - sx * v.dot(back), v.dot(up) - sy * v.dot(back));
-    return { x: proj(new Vector3(1, 0, 0)), y: proj(new Vector3(0, 1, 0)), z: proj(new Vector3(0, 0, 1)) };
+  // ------------------------------------------------------------ export
+
+  private exporting = false;
+
+  /**
+   * Render the drawing frame to a PNG at full output size. Large outputs are
+   * rendered as tiles (each a slice of the same camera via setViewOffset) and
+   * stitched on a 2D canvas, so the size is limited by the browser canvas,
+   * not the GPU texture limit. Lines are drawn at output width / reference
+   * width, matching the viewport.
+   */
+  async exportPNG(onProgress: (p: number) => void, signal: { cancelled: boolean }): Promise<Blob> {
+    const { doc, ui } = store.get();
+    const o = doc.output;
+    const W = Math.round(o.width), H = Math.round(o.height);
+    const problem = validateSize(W, H);
+    if (problem) throw new Error(problem);
+    const gl = this.renderer.getContext();
+    if (gl.isContextLost()) throw new Error('The graphics context was lost. Reload the page and try again.');
+    const maxRb = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number;
+    const tile = Math.min(4096, maxRb, this.renderer.capabilities.maxTextureSize);
+    const samples = Math.min(o.antialias, this.renderer.capabilities.maxSamples);
+
+    const out = document.createElement('canvas');
+    out.width = W;
+    out.height = H;
+    const ctx = out.getContext('2d');
+    if (!ctx) throw new Error(`Could not allocate a ${W} × ${H} canvas. Try a smaller size.`);
+
+    this.exporting = true;
+    const gridWas = this.grid?.visible;
+    if (this.grid) this.grid.visible = o.includeGrid;
+    this.syncStyles(doc, { ...ui, selection: [] });
+    const ortho = new ObliqueCamera();
+    const persp = new PerspectiveCamera();
+    const cam = applyCamera(doc.camera, ortho, persp, W / H, this.sceneRadius(doc.camera), 1);
+    const rt = new WebGLRenderTarget(tile, tile, { samples, depthBuffer: true });
+    const pixels = new Uint8Array(tile * tile * 4);
+    this.renderShadowMap(doc);
+    const cols = Math.ceil(W / tile), rows = Math.ceil(H / tile);
+    try {
+      let done = 0;
+      for (let ty = 0; ty < rows; ty++) {
+        for (let tx = 0; tx < cols; tx++) {
+          if (signal.cancelled) throw new ExportCancelled();
+          const x = tx * tile, y = ty * tile;
+          const w = Math.min(tile, W - x), h = Math.min(tile, H - y);
+          cam.setViewOffset(W, H, x, y, w, h);
+          rt.setSize(w, h);
+          // Tile (x, y) is top-down; gl_FragCoord inside the tile is bottom-up.
+          this.setViewUniforms(doc.camera, w, h, W / doc.drawing.referenceWidth, [W / 2 - x, y + h - H / 2]);
+          this.renderer.setRenderTarget(rt);
+          this.renderer.setClearColor(doc.drawing.background, o.transparent ? 0 : 1);
+          this.renderer.clear(true, true, true);
+          this.renderer.render(this.scene, cam);
+          this.renderer.readRenderTargetPixels(rt, 0, 0, w, h, pixels);
+          this.renderer.setRenderTarget(null);
+          const img = ctx.createImageData(w, h);
+          copyFlipped(pixels, img.data, w, h, o.transparent);
+          ctx.putImageData(img, x, y);
+          onProgress(++done / (cols * rows));
+          // Yield so the progress bar paints and cancel stays responsive.
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+      if (gl.isContextLost()) throw new Error('The graphics context was lost during export. Try a smaller size.');
+      return await new Promise<Blob>((resolve, reject) =>
+        out.toBlob((b) => (b ? resolve(b) : reject(new Error('The browser could not encode the PNG (it may be too large).'))), 'image/png'),
+      );
+    } finally {
+      rt.dispose();
+      this.renderer.setRenderTarget(null);
+      if (this.grid && gridWas !== undefined) this.grid.visible = gridWas;
+      this.exporting = false;
+      this.syncStyles(store.get().doc, store.get().ui);
+      this.invalidate();
+    }
+  }
+}
+
+export class ExportCancelled extends Error {
+  constructor() {
+    super('Export cancelled');
+  }
+}
+
+export interface Frame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export const FRAME_MARGIN = { side: 32, top: 34, bottom: 30 };
+
+/** WebGL rows are bottom-up; canvas rows are top-down. Transparent output is un-premultiplied. */
+function copyFlipped(src: Uint8Array, dst: Uint8ClampedArray, w: number, h: number, transparent: boolean) {
+  const row = w * 4;
+  for (let y = 0; y < h; y++) {
+    const s = (h - 1 - y) * row, d = y * row;
+    if (!transparent) {
+      dst.set(src.subarray(s, s + row), d);
+      for (let i = d + 3; i < d + row; i += 4) dst[i] = 255;
+      continue;
+    }
+    for (let i = 0; i < row; i += 4) {
+      const a = src[s + i + 3];
+      if (a > 0 && a < 255) {
+        const k = 255 / a;
+        dst[d + i] = Math.min(255, src[s + i] * k);
+        dst[d + i + 1] = Math.min(255, src[s + i + 1] * k);
+        dst[d + i + 2] = Math.min(255, src[s + i + 2] * k);
+      } else {
+        dst[d + i] = src[s + i];
+        dst[d + i + 1] = src[s + i + 1];
+        dst[d + i + 2] = src[s + i + 2];
+      }
+      dst[d + i + 3] = a;
+    }
   }
 }
 

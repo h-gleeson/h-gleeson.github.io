@@ -5,10 +5,12 @@ import { registry } from '../import/registry';
 import { CAMERA_PRESETS } from '../state/defaults';
 import { ancestors, resolveStyle, styleSource, worldMatrix } from '../state/scene';
 import { useStore } from '../state/store';
-import type { FillMode, GraphicStyle, LineStyle, StyleKey } from '../state/types';
+import type { FillMode, GraphicStyle, GroundMode, HatchMode, LineOrder, LineStyle, ShadowMode, StyleKey } from '../state/types';
 import { ColorField, Icon, NumberField, Row, Section, Segmented, Slider, Toggle } from './controls';
+import { OutputTab } from './OutputTab';
+import { StylePresets } from './StylePresets';
 
-type Tab = 'style' | 'object' | 'drawing' | 'view';
+type Tab = 'style' | 'object' | 'drawing' | 'view' | 'output';
 
 export function Inspector() {
   const [tab, setTab] = useState<Tab>('style');
@@ -16,8 +18,9 @@ export function Inspector() {
   const tabs: { id: Tab; label: string; hint: string }[] = [
     { id: 'style', label: 'Style', hint: 'Fill and linework for the selection, or drawing defaults' },
     { id: 'object', label: 'Object', hint: 'Name, source, visibility, position' },
-    { id: 'drawing', label: 'Drawing', hint: 'Background, hidden lines, light, lineweight scale' },
+    { id: 'drawing', label: 'Drawing', hint: 'Style presets, shadows, ground, hidden lines, light' },
     { id: 'view', label: 'View', hint: 'Projection, orientation, framing' },
+    { id: 'output', label: 'Output', hint: 'Drawing frame, background, lineweight scale, PNG export' },
   ];
   return (
     <aside className="panel right">
@@ -34,6 +37,7 @@ export function Inspector() {
         {tab === 'object' && <ObjectTab />}
         {tab === 'drawing' && <DrawingTab />}
         {tab === 'view' && <ViewTab />}
+        {tab === 'output' && <OutputTab />}
       </div>
     </aside>
   );
@@ -129,6 +133,34 @@ function StyleTab() {
           </>
         )}
       </Section>
+      {eff.fillMode !== 'none' && (
+        <Section title="Hatch">
+          {field(
+            'hatch',
+            'Pattern',
+            <Segmented<HatchMode>
+              value={eff.hatch}
+              onChange={(v) => set('hatch', v)}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'lines', label: 'Lines', title: 'Parallel lines' },
+                { value: 'cross', label: 'Cross', title: 'Crosshatch' },
+                { value: 'dots', label: 'Dots', title: 'Stipple grid' },
+              ]}
+            />,
+            'Drawn in drawing space, scaled with lineweights',
+            true,
+          )}
+          {eff.hatch !== 'none' && (
+            <>
+              {field('hatchColor', 'Colour', <ColorField value={eff.hatchColor} onChange={(v) => set('hatchColor', v)} />)}
+              {field('hatchSpacing', 'Spacing', <Slider value={eff.hatchSpacing} min={2} max={40} step={0.5} precision={1} unit="px" onChange={(v) => set('hatchSpacing', v)} />, 'Distance between hatch lines, px at the reference width')}
+              {field('hatchWidth', 'Weight', <Slider value={eff.hatchWidth} min={0.1} max={4} step={0.05} unit="px" onChange={(v) => set('hatchWidth', v)} />)}
+              {eff.hatch !== 'dots' && field('hatchAngle', 'Angle', <Slider value={eff.hatchAngle} min={0} max={180} step={1} precision={0} unit="°" onChange={(v) => set('hatchAngle', v)} />)}
+            </>
+          )}
+        </Section>
+      )}
       <Section title="Linework">
         {field('showLines', 'Draw lines', <Toggle value={eff.showLines} onChange={(v) => set('showLines', v)} />)}
         {eff.showLines && (
@@ -148,7 +180,22 @@ function StyleTab() {
                 ]}
               />,
             )}
-            <div className="sub-label">Lineweights · px at {doc.drawing.referenceWidth}px wide</div>
+            {field(
+              'lineOrder',
+              'Draw order',
+              <Segmented<LineOrder>
+                value={eff.lineOrder}
+                onChange={(v) => set('lineOrder', v)}
+                options={[
+                  { value: 'normal', label: 'Normal', title: 'Hidden where other geometry is in front' },
+                  { value: 'front', label: 'On top', title: 'Always visible, drawn over every fill' },
+                  { value: 'behind', label: 'Behind', title: 'Drawn under every fill: only shows where nothing covers it' },
+                ]}
+              />,
+              'How these lines are occluded',
+              true,
+            )}
+            <div className="sub-label">Lineweights · px at a {doc.drawing.referenceWidth}px-wide frame</div>
             {field('silhouetteWidth', 'Silhouette', <Slider value={eff.silhouetteWidth} min={0} max={8} step={0.05} unit="px" onChange={(v) => set('silhouetteWidth', v)} />, 'Outline where the surface turns away from you')}
             {field('creaseWidth', 'Creases', <Slider value={eff.creaseWidth} min={0} max={8} step={0.05} unit="px" onChange={(v) => set('creaseWidth', v)} />, 'Sharp edges sharper than the crease angle')}
             {field('creaseAngle', 'Crease angle', <Slider value={eff.creaseAngle} min={1} max={120} step={0.5} precision={1} unit="°" onChange={(v) => set('creaseAngle', v)} />, 'Raise to quiet curved surfaces')}
@@ -158,6 +205,11 @@ function StyleTab() {
             {field('curveWidth', 'Curves', <Slider value={eff.curveWidth} min={0} max={8} step={0.05} unit="px" onChange={(v) => set('curveWidth', v)} />, 'Imported polylines')}
           </>
         )}
+      </Section>
+      <Section title="Shadows">
+        {field('castShadow', 'Casts shadow', <Toggle value={eff.castShadow} onChange={(v) => set('castShadow', v)} />)}
+        {field('receiveShadow', 'Receives shadow', <Toggle value={eff.receiveShadow} onChange={(v) => set('receiveShadow', v)} />, 'Shows shadows cast on it, and shade on faces away from the sun')}
+        {doc.drawing.shadows === 'off' && <p className="hint">Shadows are off for the drawing. Turn them on in the Drawing tab.</p>}
       </Section>
       {sel.length > 0 && (
         <div className="pad">
@@ -290,15 +342,59 @@ function DrawingTab() {
   const set = actions.setDrawing;
   return (
     <>
-      <Section title="Sheet">
-        <Row label="Background">
-          <ColorField value={dr.background} onChange={(v) => set('background', v)} />
-        </Row>
+      <Section title="Style presets">
+        <StylePresets />
+      </Section>
+      <Section title="Shadows">
+        <Segmented<ShadowMode>
+          value={dr.shadows}
+          onChange={(v) => set('shadows', v)}
+          options={[
+            { value: 'off', label: 'Off' },
+            { value: 'graphic', label: 'Graphic', title: 'Crisp shadows in a flat colour' },
+            { value: 'soft', label: 'Soft', title: 'Blurred shadows that darken the fill' },
+          ]}
+        />
+        {dr.shadows !== 'off' && (
+          <>
+            <Row label="Colour">
+              <ColorField value={dr.shadowColor} onChange={(v) => set('shadowColor', v)} />
+            </Row>
+            <Row label="Opacity">
+              <Slider value={dr.shadowOpacity} min={0} max={1} step={0.01} onChange={(v) => set('shadowOpacity', v)} />
+            </Row>
+            {dr.shadows === 'soft' && (
+              <Row label="Softness">
+                <Slider value={dr.shadowSoftness} min={0} max={1} step={0.01} onChange={(v) => set('shadowSoftness', v)} />
+              </Row>
+            )}
+            <Row label="Shade faces" title="Faces turned away from the sun take the shadow colour too (shade and shadow)">
+              <Toggle value={dr.shadeFaces} onChange={(v) => set('shadeFaces', v)} />
+            </Row>
+            <p className="hint">The sun is set under Light below. Objects cast and receive by default; change that per object in the Style tab.</p>
+          </>
+        )}
+      </Section>
+      <Section title="Ground">
+        <Segmented<GroundMode>
+          value={dr.ground}
+          onChange={(v) => set('ground', v)}
+          options={[
+            { value: 'off', label: 'Off' },
+            { value: 'solid', label: 'Solid', title: 'A coloured plane at the base of the model' },
+            { value: 'shadow', label: 'Shadow only', title: 'Invisible except for the shadows it catches (works with a transparent export)' },
+          ]}
+        />
+        {dr.ground === 'solid' && (
+          <Row label="Colour">
+            <ColorField value={dr.groundColor} onChange={(v) => set('groundColor', v)} />
+          </Row>
+        )}
+        {dr.ground === 'shadow' && dr.shadows === 'off' && <p className="hint">Turn shadows on to see anything on a shadow-only ground.</p>}
+      </Section>
+      <Section title="Viewport">
         <Row label="Grid" title="Ground grid at the base of the model (G)">
           <Toggle value={dr.showGrid} onChange={(v) => set('showGrid', v)} />
-        </Row>
-        <Row label="Lineweight ref." title="Lineweights are authored at this output width. A viewport this wide shows them 1:1; exports will scale from it.">
-          <NumberField value={dr.referenceWidth} step={10} min={200} max={20000} precision={0} unit="px" onChange={(v) => set('referenceWidth', Math.round(v))} />
         </Row>
       </Section>
       <Section title="Hidden lines">
@@ -316,7 +412,7 @@ function DrawingTab() {
           </>
         )}
       </Section>
-      <Section title="Light for face toning">
+      <Section title="Light · toning and shadows">
         <Row label="Sun azimuth">
           <Slider value={dr.sunAzimuth} min={0} max={360} step={1} precision={0} unit="°" onChange={(v) => set('sunAzimuth', v)} />
         </Row>

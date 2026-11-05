@@ -1,5 +1,9 @@
+import { Vector3 } from 'three';
+import { basis } from '../engine/camera';
 import { getEngine } from '../engine/engineRef';
+import { applyPreset as applySizePreset, aspectOf, MAX_SIDE, SIZE_PRESETS } from '../state/output';
 import { CAMERA_PRESETS } from '../state/defaults';
+import { presetStyle, type StylePreset } from '../state/stylePresets';
 import {
   deleteNodes,
   descendants,
@@ -14,7 +18,7 @@ import {
   visibleTreeOrder,
 } from '../state/scene';
 import { store, uid } from '../state/store';
-import type { CameraState, DrawingSettings, GraphicStyle, StyleKey } from '../state/types';
+import type { CameraState, DrawingSettings, GraphicStyle, OutputSettings, StyleKey } from '../state/types';
 
 const sel = () => store.get().ui.selection;
 const doc = () => store.get().doc;
@@ -166,6 +170,20 @@ export const actions = {
     store.setDoc((d) => resetToImported(d, ids));
     store.status('Restored imported names, positions and materials');
   },
+  /** Apply a drawing-style preset to the defaults and drawing settings. Object overrides stay unless asked. */
+  applyStylePreset(p: StylePreset, clearOverrides = false) {
+    const { defaults, drawing } = presetStyle(p);
+    store.setDoc((d) => {
+      let nodes = d.nodes;
+      if (clearOverrides) {
+        nodes = { ...d.nodes };
+        for (const id in nodes) if (Object.keys(nodes[id].style).length) nodes[id] = { ...nodes[id], style: {} };
+      }
+      return { ...d, nodes, defaults, drawing: { ...d.drawing, ...drawing } };
+    });
+    const overrides = Object.values(doc().nodes).filter((n) => Object.keys(n.style).length).length;
+    store.status(`Applied “${p.name}”${!clearOverrides && overrides ? ` · ${overrides} object${overrides > 1 ? 's keep their' : ' keeps its'} own overrides` : ''}`);
+  },
   setDrawing<K extends keyof DrawingSettings>(key: K, value: DrawingSettings[K]) {
     store.setDoc((d) => ({ ...d, drawing: { ...d.drawing, [key]: value } }), { coalesce: `drawing-${String(key)}` });
   },
@@ -203,6 +221,86 @@ export const actions = {
     const ids = sel();
     if (ids.length) getEngine()?.fit(ids);
     else getEngine()?.fit();
+  },
+
+  // ---------------------------------------------------------- drawing frame & output
+  setOutput(patch: Partial<OutputSettings>, coalesce = Object.keys(patch).join()) {
+    store.setDoc((d) => ({ ...d, output: { ...d.output, ...patch } }), { coalesce: `output-${coalesce}` });
+  },
+  applySizePreset(id: string) {
+    store.setDoc((d) => ({ ...d, output: applySizePreset(d.output, id) }));
+  },
+  setDpi(dpi: number) {
+    store.setDoc((d) => {
+      const isPaper = SIZE_PRESETS.find((p) => p.id === d.output.preset)?.group === 'paper';
+      return { ...d, output: isPaper ? applySizePreset(d.output, d.output.preset, dpi) : { ...d.output, dpi } };
+    });
+  },
+  /** Edit one side; with the aspect locked the other side follows. */
+  setOutputSide(side: 'width' | 'height', value: number) {
+    const v = Math.max(16, Math.min(MAX_SIDE, Math.round(value)));
+    store.setDoc(
+      (d) => {
+        const o = d.output;
+        const a = aspectOf(o);
+        const next = side === 'width' ? { width: v, height: o.lockAspect ? Math.max(16, Math.round(v / a)) : o.height } : { height: v, width: o.lockAspect ? Math.max(16, Math.round(v * a)) : o.width };
+        // A locked aspect keeps paper/screen proportions; only the pixel count changes, so keep the preset name.
+        return { ...d, output: { ...o, ...next, preset: o.lockAspect ? o.preset : 'custom' } };
+      },
+      { coalesce: `output-size-${side}` },
+    );
+  },
+  swapOrientation() {
+    store.setDoc((d) => {
+      const o = d.output;
+      const id = o.preset.endsWith('L') ? o.preset.slice(0, -1) + 'P' : o.preset.endsWith('P') ? o.preset.slice(0, -1) + 'L' : 'custom';
+      const known = SIZE_PRESETS.some((p) => p.id === id);
+      return { ...d, output: { ...o, width: o.height, height: o.width, preset: known ? id : 'custom' } };
+    });
+  },
+  /**
+   * Crop by moving frame edges. Deltas are in viewport CSS pixels, positive
+   * right/down. The drawing stays where it is on the sheet: the camera target
+   * moves by half the change, and pixel density is kept so the output grows or
+   * shrinks with the crop.
+   */
+  cropFrame(edges: { left?: number; right?: number; top?: number; bottom?: number }) {
+    const engine = getEngine();
+    if (!engine) return;
+    store.setDoc((d) => {
+      const c = d.camera, o = d.output;
+      const wpp = c.height / engine.frame.h;
+      const worldW0 = c.height * aspectOf(o);
+      const dl = (edges.left ?? 0) * wpp, dr = (edges.right ?? 0) * wpp;
+      const dt = (edges.top ?? 0) * wpp, db = (edges.bottom ?? 0) * wpp;
+      const minWorld = c.height * 0.05;
+      const worldW = Math.max(minWorld, worldW0 - dl + dr);
+      const worldH = Math.max(minWorld, c.height + dt * -1 + db);
+      const { right, up } = basis(c);
+      // Centre moves by the mean of the two edges' movements (y is down on screen).
+      const shiftX = (dl + dr) / 2;
+      const shiftY = -(dt + db) / 2;
+      const t = new Vector3(...c.target).addScaledVector(right, shiftX).addScaledVector(up, shiftY);
+      const pxPerWorld = o.width / worldW0;
+      const width = Math.max(16, Math.min(MAX_SIDE, Math.round(worldW * pxPerWorld)));
+      const height = Math.max(16, Math.min(MAX_SIDE, Math.round(worldH * pxPerWorld)));
+      return {
+        ...d,
+        // In perspective, widen the field of view instead of dollying, so the crop never changes the perspective.
+        camera: {
+          ...c,
+          height: worldH,
+          target: [t.x, t.y, t.z],
+          fov: c.projection === "persp" ? (2 * Math.atan(Math.tan((c.fov * Math.PI) / 360) * (worldH / c.height)) * 180) / Math.PI : c.fov,
+        },
+        output: { ...o, width, height, preset: 'custom', lockAspect: false },
+      };
+    });
+  },
+  /** Make lineweights literal pixels at the current output size. */
+  matchReferenceToOutput() {
+    store.setDoc((d) => ({ ...d, drawing: { ...d.drawing, referenceWidth: d.output.width } }));
+    store.status(`Lineweights now mean exact pixels in a ${store.get().doc.output.width}px-wide export`);
   },
 
   // ---------------------------------------------------------- saved views

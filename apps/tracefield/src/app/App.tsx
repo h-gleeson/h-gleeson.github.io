@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { importFiles } from '../import/importFiles';
 import { hasAutosave, startAutosave } from '../project/autosave';
+import { exportPNG } from '../project/exportImage';
 import { newProject, openProjectFile, saveProject } from '../project/projectFile';
 import { store, useStore } from '../state/store';
 import { Icon } from '../ui/controls';
@@ -88,6 +89,9 @@ export function App() {
           <span className="menu-sep" />
           <button onClick={() => importRef.current?.click()} title="Import GLB, glTF, OBJ, STL, FBX (Ctrl+I)">
             Import…
+          </button>
+          <button className="menu-export" onClick={exportPNG} disabled={!hasContent} title="Export the drawing frame as PNG (Ctrl+E)">
+            Export PNG
           </button>
           <span className="menu-sep" />
           <button className="icon" disabled={!canUndo} onClick={store.undo} title="Undo (Ctrl+Z)">

@@ -1,6 +1,7 @@
 import { CAMERA_PRESETS } from '../state/defaults';
 import { store } from '../state/store';
 import { newProject, saveProject } from '../project/projectFile';
+import { exportPNG } from '../project/exportImage';
 import { actions } from './actions';
 
 export interface Shortcut {
@@ -16,6 +17,7 @@ export const SHORTCUTS: { group: string; items: Shortcut[] }[] = [
       { keys: 'Ctrl+I', label: 'Import model' },
       { keys: 'Ctrl+O', label: 'Open project' },
       { keys: 'Ctrl+S', label: 'Save project' },
+      { keys: 'Ctrl+E', label: 'Export PNG' },
       { keys: 'Ctrl+Z / Ctrl+Shift+Z', label: 'Undo / redo' },
     ],
   },
@@ -65,6 +67,7 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
       if (k === 'z') return run(e.shiftKey ? store.redo : store.undo);
       if (k === 'y') return run(store.redo);
       if (k === 's') return run(saveProject);
+      if (k === 'e') return run(exportPNG);
       if (k === 'o') return run(handlers.openProject);
       if (k === 'i') return run(handlers.openImport);
       if (k === 'g') return run(e.shiftKey ? actions.ungroup : actions.group);
