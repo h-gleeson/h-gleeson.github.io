@@ -333,9 +333,31 @@
         });
     }
 
+    /* Lazy art: while <html> has .lazy-art, cards.css hides every card's
+       artwork until the card gets .art-in. Each rail flags cards as they
+       come within ~2 cards of its visible edge, so a long rail only
+       downloads what's near the viewport. Runs after rollVariants, so a
+       card fetches just the variant it's showing. */
+    function watchArt(rail) {
+        var cards = rail.querySelectorAll('.card');
+        if (!('IntersectionObserver' in window)) {
+            cards.forEach(function (c) { c.classList.add('art-in'); });
+            return;
+        }
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (!e.isIntersecting) return;
+                e.target.classList.add('art-in');
+                io.unobserve(e.target);
+            });
+        }, { root: rail, rootMargin: '0px 600px' });
+        cards.forEach(function (c) { io.observe(c); });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         resolveArt();
         rollVariants();
+        document.querySelectorAll('.card-rail').forEach(watchArt);
         document.querySelectorAll('.card-rail').forEach(initRail);
     });
 })();

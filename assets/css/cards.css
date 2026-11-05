@@ -186,6 +186,10 @@
     overflow: hidden;
 }
 
+/* Lazy art: hold back artwork until cards.js marks the card .art-in.
+   Specific enough to beat .card.full-art .card-art too. */
+.lazy-art .card:not(.art-in) .card-art { background-image: none; }
+
 /* ── Body: description ─────────────────────────────────────────────── */
 
 .card-body {

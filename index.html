@@ -11,6 +11,7 @@
     <script>
         (function () {
             var root = document.documentElement;
+            root.classList.add('lazy-art');   // cards.js loads card art as it nears view
             if (localStorage.getItem('theme') === 'light') {
                 root.classList.add('light-mode');
             }
@@ -72,7 +73,7 @@
                     <div class="card-rail" role="group" aria-label="Projects">
 
                         <a href="projects/palace" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/palace_reg.png'); --art-full: url('assets/images/cards/palace_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/palace_reg.jpg'); --art-full: url('assets/images/cards/palace_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Palace of All Trades</h3>
                                 </div>
@@ -85,7 +86,7 @@
                         </a>
 
                         <a href="projects/hybrid" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/hybrid_reg.png'); --art-full: url('assets/images/cards/hybrid_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/hybrid_reg.jpg'); --art-full: url('assets/images/cards/hybrid_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Hybrid of Lincoln Heights</h3>
                                 </div>
@@ -98,7 +99,7 @@
                         </a>
 
                         <a href="projects/stonehenge" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/stonehenge_reg.png'); --art-full: url('assets/images/cards/stonehenge_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/stonehenge_reg.jpg'); --art-full: url('assets/images/cards/stonehenge_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Stonehenge Nighttime Studies</h3>
                                 </div>
@@ -111,7 +112,7 @@
                         </a>
 
                         <a href="projects/vertical_village" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/vertical_village_reg.png'); --art-full: url('assets/images/cards/vertical_village_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/vertical_village_reg.jpg'); --art-full: url('assets/images/cards/vertical_village_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Vertical Village</h3>
                                 </div>
@@ -124,7 +125,7 @@
                         </a>
 
                         <a href="projects/dirtpolitics" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/dirtpolitics_reg.png'); --art-full: url('assets/images/cards/dirtpolitics_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/dirtpolitics_reg.jpg'); --art-full: url('assets/images/cards/dirtpolitics_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Dirt Politics</h3>
                                 </div>
@@ -137,7 +138,7 @@
                         </a>
 
                         <a href="projects/landscape" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/landscape_reg.png'); --art-full: url('assets/images/cards/landscape_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/landscape_reg.jpg'); --art-full: url('assets/images/cards/landscape_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Landscape Drawings</h3>
                                 </div>
@@ -150,7 +151,7 @@
                         </a>
 
                         <a href="projects/media_museum" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/media_museum_reg.png'); --art-full: url('assets/images/cards/media_museum_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/media_museum_reg.jpg'); --art-full: url('assets/images/cards/media_museum_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Last Archive</h3>
                                 </div>
@@ -201,7 +202,7 @@
                     <div class="card-rail" role="group" aria-label="Writings">
 
                         <a href="writings/studio-album-by-war-1975/" class="card">
-                            <div class="card-art" style="--art: url('writings/covers/studio-album-by-war-1975.png'); --art-full: url('assets/images/cards/writing1_full.png')"></div>
+                            <div class="card-art" style="--art: url('writings/covers/studio-album-by-war-1975.png'); --art-full: url('assets/images/cards/writing1_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Studio Album by War — 1975</h3>
                                 </div>
@@ -239,8 +240,8 @@
                     </div>
                     <div class="card-rail" role="group" aria-label="Experiments">
 
-                        <a href="experiments/cards/" class="card" data-variant="regular">
-                            <div class="card-art" style="--art: url('assets/images/cards/card-workshop.svg')"></div>
+                        <a href="experiments/cards/" class="card">
+                            <div class="card-art" style="--art: url('assets/images/cards/cardworkshop_reg.jpg'); --art-full: url('assets/images/cards/cardworkshop_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Card workshop</h3>
                                 </div>
@@ -253,7 +254,7 @@
                         </a>
 
                         <a href="experiments/media/index.html" class="card">
-                            <div class="card-art" style="--art: url('assets/images/cards/experiment1_reg.png'); --art-full: url('assets/images/cards/experiment1_full.png')"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/experiment1_reg.jpg'); --art-full: url('assets/images/cards/experiment1_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">The Last Archive — Interactive Diagram</h3>
                                 </div>
@@ -266,7 +267,7 @@
                         </a>
 
                         <a href="experiments/wind_simulation/index.html" class="card">
-                            <div class="card-art"></div>
+                            <div class="card-art" style="--art: url('assets/images/cards/windsimulation_reg.jpg'); --art-full: url('assets/images/cards/windsimulation_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Wind Simulation</h3>
                                 </div>
