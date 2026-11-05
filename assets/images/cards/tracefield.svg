@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1400" preserveAspectRatio="xMidYMid slice">
+  <!-- Tracefield card art: an isometric study, drawn as linework on paper. -->
+  <rect width="1000" height="1400" fill="#f3f1ec"/>
+  <g stroke="#d9d6ce" stroke-width="2">
+    <path d="M0 200H1000M0 400H1000M0 600H1000M0 800H1000M0 1000H1000M0 1200H1000M200 0V1400M400 0V1400M600 0V1400M800 0V1400"/>
+  </g>
+  <g fill="none" stroke="#1c1d21" stroke-linejoin="round" stroke-linecap="round" transform="translate(500 760)">
+    <!-- ground slab -->
+    <path d="M-390 0 0 225 390 0 0-225Z" fill="#e6e2d9" stroke-width="5"/>
+    <path d="M-390 0v26L0 251l390-225V0" stroke-width="5"/>
+    <path d="M0 225v26" stroke-width="3"/>
+    <!-- lower volume -->
+    <path d="M-250 -20 0 124 250 -20 0-164Z" fill="#ffffff" stroke-width="3"/>
+    <path d="M-250-20v-190L0-66v190" fill="#ebe8e1" stroke-width="5"/>
+    <path d="M0 124V-66l250-144v190" fill="#ffffff" stroke-width="5"/>
+    <path d="M-250-210 0-354l250 144L0-66Z" fill="#ffffff" stroke-width="5"/>
+    <!-- glazing mullions -->
+    <path d="M40 101V-89M80 78V-112M120 55V-135M160 32V-158M200 9V-181" stroke-width="2.5"/>
+    <!-- upper volume -->
+    <path d="M-60-300 90-213 240-300 90-387Z" fill="#ffffff" stroke-width="3"/>
+    <path d="M-60-300v-150L90-363v150" fill="#ebe8e1" stroke-width="5"/>
+    <path d="M90-213v-150l150-87v150" fill="#ffffff" stroke-width="5"/>
+    <path d="M-60-450 90-537l150 87L90-363Z" fill="#ffffff" stroke-width="5"/>
+    <!-- roof fins -->
+    <path d="M-30-468 120-381M0-485l150 87M30-502l150 87M60-520l150 87" stroke-width="2.5"/>
+    <!-- hidden edges -->
+    <path d="M-250-20 0-164 250-20" stroke="#8c8f96" stroke-width="2.5" stroke-dasharray="14 10"/>
+  </g>
+  <!-- exploded part and leader in accent -->
+  <g fill="none" stroke="#2f48d8" stroke-width="3" stroke-linecap="round" transform="translate(500 760)">
+    <path d="M-60-450 90-537l150 87" stroke-dasharray="4 12" transform="translate(0 -170)"/>
+    <path d="M-60-620v170M240-620v170" stroke-dasharray="4 12"/>
+    <path d="M-60-620 90-707l150 87L90-533Z" fill="#ffffff" stroke-width="4"/>
+  </g>
+  <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="30" fill="#55585f" letter-spacing="4">
+    <text x="80" y="1290">ISO · 45° / 35.26°</text>
+    <text x="80" y="1330" fill="#2f48d8">TRACEFIELD</text>
+  </g>
+</svg>
