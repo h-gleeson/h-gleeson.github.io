@@ -8,9 +8,11 @@ import { useStore } from '../state/store';
 import type { FillMode, GraphicStyle, GroundMode, HatchMode, LineOrder, LineStyle, ShadowMode, StyleKey } from '../state/types';
 import { ColorField, Icon, NumberField, Row, Section, Segmented, Slider, Toggle } from './controls';
 import { OutputTab } from './OutputTab';
+import { ExplodeTab } from './ExplodeTab';
+import { AnnotateTab } from './AnnotateTab';
 import { StylePresets } from './StylePresets';
 
-type Tab = 'style' | 'object' | 'drawing' | 'view' | 'output';
+type Tab = 'style' | 'object' | 'drawing' | 'explode' | 'labels' | 'view' | 'output';
 
 export function Inspector() {
   const [tab, setTab] = useState<Tab>('style');
@@ -19,6 +21,8 @@ export function Inspector() {
     { id: 'style', label: 'Style', hint: 'Fill and linework for the selection, or drawing defaults' },
     { id: 'object', label: 'Object', hint: 'Name, source, visibility, position' },
     { id: 'drawing', label: 'Drawing', hint: 'Style presets, shadows, ground, hidden lines, light' },
+    { id: 'explode', label: 'Explode', hint: 'Exploded drawing: auto-explode, move parts, connectors, saved states' },
+    { id: 'labels', label: 'Labels', hint: 'Annotations: labels with leaders, tag columns, numbered key' },
     { id: 'view', label: 'View', hint: 'Projection, orientation, framing' },
     { id: 'output', label: 'Output', hint: 'Drawing frame, background, lineweight scale, PNG export' },
   ];
@@ -36,6 +40,8 @@ export function Inspector() {
         {tab === 'style' && <StyleTab key={sel.join()} />}
         {tab === 'object' && <ObjectTab />}
         {tab === 'drawing' && <DrawingTab />}
+        {tab === 'explode' && <ExplodeTab />}
+        {tab === 'labels' && <AnnotateTab />}
         {tab === 'view' && <ViewTab />}
         {tab === 'output' && <OutputTab />}
       </div>

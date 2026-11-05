@@ -58,6 +58,7 @@ export function attachControls(engine: Engine): () => void {
     const wasClick = !moved && button === 0;
     mode = 'none';
     if (!wasClick) return;
+    if (store.get().ui.label) store.setUI({ label: null });
     const { doc, ui } = store.get();
     let id = engine.pick(e.clientX, e.clientY);
     if (id && e.altKey) id = doc.nodes[id]?.parent ?? id;

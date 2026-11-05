@@ -6,6 +6,8 @@ import {
   DepthTexture,
   LessEqualCompare,
   LinearFilter,
+  Matrix3,
+  Matrix4,
   OrthographicCamera,
   PlaneGeometry,
   ShaderMaterial,
@@ -35,6 +37,9 @@ import { descendants, ancestors, isLockedInTree, resolveStyle } from '../state/s
 import { store } from '../state/store';
 import type { CameraState, ProjectDoc, UIState } from '../state/types';
 import { aspectOf, validateSize } from '../state/output';
+import { connectorSegments } from '../state/explode';
+import { drawPrims, layoutAnnotations, measureText, type LayoutResult, type Pt } from '../annotate/layout';
+import type { Annotation } from '../state/types';
 import { applyCamera, framePoints, ObliqueCamera, shearOf } from './camera';
 import {
   createEdgeGeometry,
@@ -101,6 +106,9 @@ export class Engine {
   private shadowCam = new OrthographicCamera();
   private shadowDepthMat: ShaderMaterial | null = null;
   private shadowDirty = true;
+  private connectors: Mesh | null = null;
+  private connectorMat: LineMaterial | null = null;
+  private renderListeners = new Set<() => void>();
   cssW = 1;
   cssH = 1;
   onRender: (() => void) | null = null;
@@ -137,6 +145,8 @@ export class Engine {
     this.groundMat?.dispose();
     this.shadowRT?.dispose();
     this.shadowDepthMat?.dispose();
+    this.connectors?.geometry.dispose();
+    this.connectorMat?.dispose();
     this.renderer.dispose();
     this.canvas.remove();
   }
@@ -147,12 +157,15 @@ export class Engine {
     const { doc, ui } = store.get();
     if (doc === this.lastDoc && ui === this.lastUI) return;
     const prev = this.lastDoc;
-    const structural = !prev || doc.nodes !== prev.nodes || doc.roots !== prev.roots;
+    const tree = !prev || doc.nodes !== prev.nodes || doc.roots !== prev.roots;
+    const exploded = !prev || doc.explode !== prev.explode;
+    const structural = tree || exploded;
     if (structural) this.syncStructure(doc);
     if (structural || ui.selection !== this.lastUI?.selection || ui.isolated !== this.lastUI?.isolated || doc.defaults !== prev?.defaults || doc.drawing !== prev?.drawing)
       this.syncStyles(doc, ui);
-    if (structural || doc.drawing.showGrid !== prev?.drawing.showGrid) this.syncGrid(doc);
+    if (tree || doc.drawing.showGrid !== prev?.drawing.showGrid) this.syncGrid(doc);
     if (structural || doc.drawing !== prev?.drawing) this.syncGround(doc);
+    if (structural || ui.isolated !== this.lastUI?.isolated) this.syncConnectors(doc, ui);
     this.lastDoc = doc;
     this.lastUI = ui;
     if (ui.fitRequest !== this.lastFit) {
@@ -164,7 +177,11 @@ export class Engine {
 
   private syncStructure(doc: ProjectDoc) {
     const seen = new Set<string>();
-    const walk = (id: string, parent: Object3D) => {
+    const ex = doc.explode;
+    const local = new Matrix4();
+    const lin = new Matrix3();
+    const off = new Vector3();
+    const walk = (id: string, parent: Object3D, parentWorld: Matrix4) => {
       const n = doc.nodes[id];
       if (!n) return;
       seen.add(id);
@@ -175,14 +192,24 @@ export class Engine {
         g.userData.nodeId = id;
         this.groups.set(id, g);
       }
-      g.matrix.fromArray(n.matrix);
+      local.fromArray(n.matrix);
+      g.matrix.copy(local);
+      // Exploded: a world-space move, expressed in the parent's frame so the
+      // node also carries everything its exploded ancestors did.
+      const o = ex.offsets[id];
+      if (o && ex.amount > 0 && (o[0] || o[1] || o[2]) && Math.abs(parentWorld.determinant()) > 1e-18) {
+        lin.setFromMatrix4(parentWorld).invert();
+        off.set(o[0], o[1], o[2]).multiplyScalar(ex.amount).applyMatrix3(lin);
+        g.matrix.premultiply(new Matrix4().makeTranslation(off.x, off.y, off.z));
+      }
       g.matrixWorldNeedsUpdate = true;
+      const assembledWorld = parentWorld.clone().multiply(local);
       if (g.parent !== parent) parent.add(g);
       if (n.geom) this.ensureRObj(id, `${n.geom.model}|${n.geom.index}`, n.geom.model, n.geom.index, g);
       else this.dropRObj(id);
-      n.children.forEach((c) => walk(c, g!));
+      n.children.forEach((c) => walk(c, g!, assembledWorld));
     };
-    doc.roots.forEach((r) => walk(r, this.world));
+    doc.roots.forEach((r) => walk(r, this.world, new Matrix4()));
     for (const [id, g] of this.groups) {
       if (seen.has(id)) continue;
       g.removeFromParent();
@@ -402,6 +429,130 @@ export class Engine {
     this.scene.add(this.grid);
   }
 
+  // ------------------------------------------------------------ exploded drawing
+
+  /** Connector lines from each moved part's assembled anchors to where they are now. */
+  private syncConnectors(doc: ProjectDoc, ui: UIState) {
+    const isoSet = ui.isolated ? new Set(ui.isolated.flatMap((id) => [id, ...descendants(doc, id), ...ancestors(doc, id)])) : null;
+    const shown = (id: string) => {
+      let n = doc.nodes[id];
+      if (isoSet && !isoSet.has(id)) return false;
+      while (n) {
+        if (!n.visible) return false;
+        n = n.parent ? doc.nodes[n.parent] : (undefined as any);
+      }
+      return true;
+    };
+    const segs = connectorSegments(doc, shown);
+    if (this.connectors) {
+      this.connectors.removeFromParent();
+      this.connectors.geometry.dispose();
+      this.connectors = null;
+    }
+    if (!segs.length) return;
+    const count = segs.length / 6;
+    const geom = createEdgeGeometry({
+      segments: new Float32Array(segs),
+      n1: new Int8Array(count * 3),
+      n2: new Int8Array(count * 3),
+      kind: new Uint8Array(count).fill(3),
+      count,
+    });
+    if (!this.connectorMat) this.connectorMat = createLineMaterial(false);
+    const e = doc.explode;
+    const u = this.connectorMat.uniforms;
+    u.uSilW.value = u.uCreaseW.value = u.uOpenW.value = u.uMatW.value = u.uAllW.value = 0;
+    u.uCurveW.value = e.connectorWidth;
+    u.uColor.value.set(e.connectorColor);
+    const [dash, gap, dotted] = DASH[e.connectorStyle] ?? DASH.solid;
+    u.uDash.value = dash;
+    u.uGap.value = gap;
+    u.uDotted.value = dotted;
+    this.connectorMat.depthTest = e.connectorOccluded;
+    this.connectors = new Mesh(geom, this.connectorMat);
+    this.connectors.frustumCulled = false;
+    this.connectors.matrixAutoUpdate = false;
+    this.connectors.renderOrder = 12;
+    this.connectors.raycast = () => {};
+    this.scene.add(this.connectors);
+  }
+
+  // ------------------------------------------------------------ annotations
+
+  /** An annotation's anchor in world space: its node-local point through the node's current (exploded) transform. */
+  anchorWorld(a: Annotation): Vector3 | null {
+    const g = this.groups.get(a.node);
+    if (!g || !isShown(g)) return null;
+    this.world.updateMatrixWorld();
+    return new Vector3(...a.anchor).applyMatrix4(g.matrixWorld);
+  }
+
+  /** World point → node-local point, for storing an anchor. */
+  toNodeLocal(id: string, world: Vector3): [number, number, number] | null {
+    const g = this.groups.get(id);
+    if (!g) return null;
+    this.world.updateMatrixWorld();
+    const v = world.clone().applyMatrix4(g.matrixWorld.clone().invert());
+    return [v.x, v.y, v.z];
+  }
+
+  /** Surface point and node under the cursor. */
+  pickPoint(clientX: number, clientY: number): { id: string; point: Vector3 } | null {
+    const { doc } = store.get();
+    const candidates = this.visibleBodies().filter((b) => b instanceof Mesh && !isLockedInTree(doc, b.userData.nodeId));
+    const hit = this.ray(clientX, clientY).intersectObjects(candidates, false)[0];
+    return hit ? { id: hit.object.userData.nodeId as string, point: hit.point.clone() } : null;
+  }
+
+  /** Visible node ids, as currently drawn (hidden and isolated-out nodes excluded). */
+  isNodeShown(id: string) {
+    const g = this.groups.get(id);
+    return !!g && isShown(g);
+  }
+
+  /**
+   * Lay out annotations for a frame of W × H px, given a world → frame-pixel
+   * projection. The viewport overlay and the PNG export both call this.
+   */
+  layoutLabels(project: (v: Vector3) => Pt | null, W: number, H: number, doc: ProjectDoc = store.get().doc): LayoutResult {
+    const k = W / doc.drawing.referenceWidth;
+    let rect: { x0: number; y0: number; x1: number; y1: number } | null = null;
+    if (doc.annotations.items.length && doc.annotations.settings.layout !== 'free') {
+      for (const v of this.corners()) {
+        const q = project(v);
+        if (!q) continue;
+        rect = rect ? { x0: Math.min(rect.x0, q[0]), y0: Math.min(rect.y0, q[1]), x1: Math.max(rect.x1, q[0]), y1: Math.max(rect.y1, q[1]) } : { x0: q[0], y0: q[1], x1: q[0], y1: q[1] };
+      }
+    }
+    return layoutAnnotations({
+      doc,
+      frameW: W,
+      frameH: H,
+      scale: k,
+      anchorOf: (a) => {
+        const w = this.anchorWorld(a);
+        return w ? project(w) : null;
+      },
+      modelRect: rect,
+      measure: measureText,
+      background: doc.drawing.background,
+    });
+  }
+
+  /** Viewport CSS position of a world point, using the camera of the last render. */
+  project(p: Vector3): { x: number; y: number; behind: boolean } {
+    const v = p.clone().project(this.camera);
+    return { x: ((v.x + 1) / 2) * this.cssW, y: ((1 - v.y) / 2) * this.cssH, behind: v.z > 1 || v.z < -1 };
+  }
+
+  /** Called after every viewport render (overlays that track the scene). */
+  onAfterRender(fn: () => void) {
+    this.renderListeners.add(fn);
+    return () => {
+      this.renderListeners.delete(fn);
+    };
+  }
+
   // ------------------------------------------------------------ ground & shadows
 
   private syncGround(doc: ProjectDoc) {
@@ -514,6 +665,7 @@ export class Engine {
     }
     hide(this.grid);
     hide(this.ground);
+    hide(this.connectors);
     const prevTarget = this.renderer.getRenderTarget();
     this.scene.overrideMaterial = this.shadowDepthMat;
     this.renderer.setRenderTarget(this.shadowRT);
@@ -689,6 +841,7 @@ export class Engine {
     this.renderer.setClearColor(doc.drawing.background, 1);
     this.renderer.render(this.scene, this.camera);
     this.onRender?.();
+    this.renderListeners.forEach((l) => l());
   }
 
   /** Small JPEG of the frame for the saved-view strip. */
@@ -780,6 +933,17 @@ export class Engine {
         }
       }
       if (gl.isContextLost()) throw new Error('The graphics context was lost during export. Try a smaller size.');
+      // Labels are vector-drawn on top at full resolution, with the same layout as the viewport.
+      if (doc.annotations.settings.show && doc.annotations.items.length) {
+        cam.clearViewOffset();
+        cam.updateMatrixWorld();
+        const project = (v: Vector3): Pt | null => {
+          const q = v.clone().project(cam);
+          if (q.z < -1 || q.z > 1) return null;
+          return [((q.x + 1) / 2) * W, ((1 - q.y) / 2) * H];
+        };
+        drawPrims(ctx, this.layoutLabels(project, W, H).prims);
+      }
       return await new Promise<Blob>((resolve, reject) =>
         out.toBlob((b) => (b ? resolve(b) : reject(new Error('The browser could not encode the PNG (it may be too large).'))), 'image/png'),
       );

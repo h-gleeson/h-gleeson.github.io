@@ -346,7 +346,7 @@ input[type='range']::-moz-range-thumb { width: 9px; height: 9px; border-radius: 
 .btn.small { padding: 3px 8px; font-size: 11px; }
 .btn.big { padding: 9px; margin-top: 8px; }
 .hint.error { color: var(--danger); }
-.tabs button { font-size: 11px; }
+
 
 /* ------------------------------------------------------------ M3: style presets */
 .style-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
@@ -360,3 +360,48 @@ input[type='range']::-moz-range-thumb { width: 9px; height: 9px; border-radius: 
 .style-preset:hover .sp-del { display: block; }
 .sp-del:hover { color: var(--danger); border-color: var(--danger); }
 .btn-row input.text { flex: 1; min-width: 0; }
+
+/* ------------------------------------------------------------ M4: exploded drawings */
+.gizmo { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.gizmo-axis { pointer-events: auto; cursor: grab; }
+.gizmo-axis line { stroke: currentColor; stroke-width: 2; }
+.gizmo-axis line.hit { stroke: transparent; stroke-width: 14; }
+.gizmo-axis polygon { fill: currentColor; }
+.gizmo-axis text { fill: currentColor; font: 700 9.5px var(--mono); text-anchor: middle; }
+.gizmo-axis:hover line:not(.hit) { stroke-width: 3; }
+.gizmo .ax-x { color: #c8442f; }
+.gizmo .ax-y { color: #3c8c4a; }
+.gizmo .ax-z { color: var(--accent); }
+.gizmo-plane { pointer-events: auto; cursor: move; fill: rgba(255, 255, 255, 0.9); stroke: var(--ink); stroke-width: 1.2; }
+.gizmo-plane:hover { fill: var(--accent-soft); stroke: var(--accent); }
+.gizmo-anchor { pointer-events: auto; cursor: crosshair; fill: #fff; stroke: var(--accent); stroke-width: 1.6; }
+.gizmo-anchor:hover { fill: var(--accent); }
+.anchor-list { margin-top: 6px; }
+.anchor-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 4px; align-items: center; margin-bottom: 4px; }
+.state-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.state-row .text { flex: 1; min-width: 0; }
+.state-name { flex: 1; min-width: 0; display: flex; justify-content: space-between; gap: 8px; text-align: left; padding: 5px 7px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--field); color: var(--ink-2); font-size: 11px; }
+.state-name:hover { border-color: var(--ink-3); color: var(--ink); }
+.state-name span { color: var(--ink-3); }
+.btn.wide { width: 100%; }
+.gizmo-pivot { fill: var(--ink); pointer-events: none; }
+
+/* ------------------------------------------------------------ M5: annotations */
+.labels { position: absolute; pointer-events: none; overflow: visible; }
+.label-hit { pointer-events: all; fill: transparent; cursor: grab; }
+.label-hit:hover { fill: var(--accent-soft); }
+.label-hit.key { cursor: move; }
+.anchor-hit { pointer-events: all; fill: rgba(255, 255, 255, 0.01); stroke: transparent; stroke-width: 1.4; cursor: crosshair; }
+.anchor-hit.on, .anchor-hit:hover { stroke: var(--accent); }
+.anchor-hit:hover { fill: var(--accent-soft); }
+.label-sel { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 2; pointer-events: none; }
+.label-edit { position: absolute; z-index: 5; padding: 2px 4px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--field); color: var(--ink); outline: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
+.label-list { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; }
+.label-item { display: flex; align-items: center; gap: 2px; }
+.label-item > button:first-child { flex: 1; min-width: 0; display: flex; gap: 8px; text-align: left; padding: 4px 7px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--field); color: var(--ink-2); font-size: 11px; }
+.label-item > button:first-child span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.label-item > button:first-child b { color: var(--ink-3); font: 600 10px var(--mono); min-width: 14px; }
+.label-item.on > button:first-child { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
+.select { width: 100%; padding: 4px 6px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--field); color: var(--ink); font: inherit; font-size: 11px; }
+.tabs { padding: 0 4px; }
+.tabs button { flex: 1 1 auto; padding: 13px 3px 11px; font-size: 10.5px; white-space: nowrap; }

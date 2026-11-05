@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Vector3 } from 'three';
 import { actions } from '../app/actions';
+import { explodeActions } from '../app/explodeActions';
 import { basis, shearOf, toPlane } from '../engine/camera';
 import { CAMERA_PRESETS, DEFAULT_CAMERA } from '../state/defaults';
 import { useStore } from '../state/store';
@@ -43,6 +44,8 @@ export function ViewStrip() {
   const views = useStore((s) => s.doc.views);
   const showGrid = useStore((s) => s.doc.drawing.showGrid);
   const hasSel = useStore((s) => s.ui.selection.length > 0);
+  const tool = useStore((s) => s.ui.tool);
+  const exploded = useStore((s) => s.doc.explode.amount > 0.5 && Object.keys(s.doc.explode.offsets).length > 0);
   const [renaming, setRenaming] = useState<string | null>(null);
 
   return (
@@ -129,6 +132,18 @@ export function ViewStrip() {
           </button>
           <button className={`icon-btn ${showGrid ? 'on' : ''}`} onClick={() => actions.setDrawing('showGrid', !showGrid)} title="Ground grid (G)">
             {Icon.grid}
+          </button>
+          <button className={`icon-btn ${tool === 'move' ? 'on' : ''}`} onClick={explodeActions.toggleMoveTool} title="Move tool: drag parts apart (W)">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 1.5v13M1.5 8h13M8 1.5 6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2" />
+            </svg>
+          </button>
+          <button className={`icon-btn ${exploded ? 'on' : ''}`} onClick={explodeActions.toggleExploded} title="Assembled ↔ exploded (E)">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round">
+              <path d="M3 11.5 8 14l5-2.5L8 9z" />
+              <path d="M3 6 8 8.5 13 6 8 3.5z" />
+              <path d="M8 1v1.5M8 8.5v.5" strokeDasharray="1.2 1.2" />
+            </svg>
           </button>
         </div>
         <span className="vs-readout" title="Azimuth · elevation">

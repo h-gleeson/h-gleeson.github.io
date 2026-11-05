@@ -1,5 +1,42 @@
 import { DEFAULT_OUTPUT } from './output';
-import type { CameraState, DrawingSettings, GraphicStyle, Oblique, ProjectDoc } from './types';
+import type { AnnotationSettings, CameraState, DrawingSettings, ExplodeSettings, GraphicStyle, Oblique, ProjectDoc } from './types';
+
+export const DEFAULT_LABELS: AnnotationSettings = {
+  show: true,
+  mode: 'leaders',
+  layout: 'free',
+  font: 'sans',
+  size: 15,
+  weight: 500,
+  color: '#1b1c1f',
+  casing: 'upper',
+  tracking: 0.06,
+  halo: true,
+  leaderColor: '#1b1c1f',
+  leaderWidth: 0.7,
+  leaderEnd: 'dot',
+  elbow: true,
+  gap: 48,
+  keyPos: [0.04, 0.06],
+};
+
+export const DEFAULT_EXPLODE: ExplodeSettings = {
+  amount: 1,
+  offsets: {},
+  anchors: {},
+  parts: [],
+  mode: 'axial',
+  axis: 'y',
+  direction: 1,
+  spacing: 0.25,
+  scale: 1,
+  connectors: true,
+  connectorColor: '#1b1c1f',
+  connectorWidth: 0.6,
+  connectorStyle: 'dashed',
+  connectorOccluded: true,
+  states: [],
+};
 
 export const DEFAULT_STYLE: GraphicStyle = {
   fillMode: 'material',
@@ -97,6 +134,8 @@ export function createDoc(): ProjectDoc {
     drawing: { ...DEFAULT_DRAWING },
     views: [],
     output: { ...DEFAULT_OUTPUT },
+    explode: structuredClone(DEFAULT_EXPLODE),
+    annotations: { settings: { ...DEFAULT_LABELS }, items: [] },
   };
 }
 
@@ -111,6 +150,8 @@ export function normalizeDoc(raw: Partial<ProjectDoc>): ProjectDoc {
     drawing: { ...base.drawing, ...raw.drawing },
     views: raw.views ?? [],
     output: { ...base.output, ...raw.output },
+    explode: { ...base.explode, ...raw.explode },
+    annotations: { settings: { ...base.annotations.settings, ...raw.annotations?.settings }, items: raw.annotations?.items ?? [] },
     nodes: raw.nodes ?? {},
     roots: raw.roots ?? [],
     models: raw.models ?? {},

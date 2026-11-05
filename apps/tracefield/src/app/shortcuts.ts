@@ -3,6 +3,8 @@ import { store } from '../state/store';
 import { newProject, saveProject } from '../project/projectFile';
 import { exportPNG } from '../project/exportImage';
 import { actions } from './actions';
+import { explodeActions } from './explodeActions';
+import { annotateActions } from './annotateActions';
 
 export interface Shortcut {
   keys: string;
@@ -48,6 +50,9 @@ export const SHORTCUTS: { group: string; items: Shortcut[] }[] = [
       { keys: 'Shift+L', label: 'Lock view orientation' },
       { keys: 'Shift+V', label: 'Save current view' },
       { keys: 'G', label: 'Ground grid' },
+      { keys: 'E', label: 'Assembled ↔ exploded' },
+      { keys: 'W', label: 'Move tool (exploded drawings)' },
+      { keys: 'T', label: 'Label selection (or main parts)' },
       { keys: '?', label: 'This list' },
     ],
   },
@@ -78,7 +83,11 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
     }
     if (e.altKey && k === 'h') return run(actions.showAll);
     if (e.altKey) return;
-    if (k === 'delete' || k === 'backspace') return run(actions.delete);
+    if (k === 'delete' || k === 'backspace') {
+      const label = store.get().ui.label;
+      return run(label ? () => annotateActions.remove(label) : actions.delete);
+    }
+    if (k === 'escape' && store.get().ui.label) return run(() => store.setUI({ label: null }));
     if (k === 'escape') {
       if (store.get().ui.isolated) return run(() => store.setUI({ isolated: null }));
       return run(actions.clearSelection);
@@ -96,6 +105,9 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
     if (k === 'o') return run(actions.toggleProjection);
     if (k === 'g') return run(() => actions.setDrawing('showGrid', !store.get().doc.drawing.showGrid));
     if (k === 'v' && e.shiftKey) return run(() => actions.saveView());
+    if (k === 'e') return run(explodeActions.toggleExploded);
+    if (k === 'w') return run(explodeActions.toggleMoveTool);
+    if (k === 't') return run(annotateActions.labelSelection);
     if (e.key === '?') return run(handlers.toggleHelp);
     const preset = CAMERA_PRESETS.find((p) => p.key === e.key);
     if (preset) return run(() => actions.applyPreset(preset.id));

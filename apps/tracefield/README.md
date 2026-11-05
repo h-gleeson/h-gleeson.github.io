@@ -25,8 +25,9 @@ src/
               model registry, edge-extraction Web Worker, built-in sample model
   engine/     three.js renderer: scene sync, fill + screen-space line shaders,
               camera rig (ortho / oblique / perspective), navigation and picking
+  annotate/   label layout shared by the viewport (SVG) and PNG export (canvas)
   project/    .tracefield file format, IndexedDB autosave and restore
-  app/        App shell, command layer (actions), keyboard shortcuts
+  app/        App shell, command layer (actions, explodeActions, annotateActions), keyboard shortcuts
   ui/         Scene panel, Inspector, view strip, viewport overlays, shared controls
 ```
 
@@ -48,6 +49,12 @@ src/
 
 **Style presets** (Drawing tab) replace the object defaults and the graphic drawing settings (background, hidden lines, shadows, ground, toning). They leave composition alone: grid, sun direction and lineweight reference. Per-object overrides are kept unless "Clear object overrides" is on. Presets you save are stored in this browser (localStorage) and shared by every project.
 
+**Exploded drawings never touch the assembled model.** `doc.explode.offsets` holds a world-space move per node. While syncing, the engine turns each move into a translation in the parent's frame (`parentWorld⁻¹ · offset`), so a node carries everything its exploded ancestors did, plus its own move. `amount` (0 … 1) scales every offset, which drives the Assembled ↔ Exploded toggle (E), its animation and the Blend slider. Picking, fit, shadows and export all see the exploded scene with no special cases.
+
+*Auto-explode* picks its parts from the selection: the children of a single group, several selected items, or with nothing selected, the first level of the model that branches. Axial mode ranks parts by their base along the axis, so things standing on the same floor share a level, and moves each level one step further. Radial mode pushes parts away from the centre, perpendicular to the axis. Spacing is a share of the parts' overall size, so it works at any unit scale. The arrangement is remembered, and the controls re-arrange those parts live. The *move tool* (W) puts axis arrows and a view-plane handle on the selection. Each drag adds to the parts' own offsets and is one undo step. *Connectors* run from each moved part's anchors in the assembled position to the same anchors now. By default a moved group gets one connector through the centre of each of its pieces. Wrapper groups with a single child are looked through, and groups of more than 40 pieces fall back to one central connector. *Customise* turns these into explicit anchors: fractions of the part's assembled bounding box, edited by dragging dots or typing values. Connectors are drawn with the same screen-space line shader as the linework. *Exploded states* are named snapshots of offsets and anchors, saved in the project.
+
+**Labels are laid out once and drawn twice.** `annotate/layout.ts` turns the annotations into simple primitives (lines, circles, arrowheads, text with an optional halo) in *frame pixels*, with sizes in px at the reference width, like lineweights. The viewport draws those primitives as SVG over the frame. The export draws the same primitives with Canvas 2D on the stitched full-resolution image, using the export camera's projection. Labels are therefore vector-sharp at any output size and land in the same place as on screen. Each anchor is stored in its node's *local* space and goes through the node's current transform, so labels follow moves and exploded positions. Text follows the object's name unless it has its own text, and casing is applied at draw time. Layouts: *free* (leader ends stored as frame fractions), *tag columns* left, right or both sides of the model's projected bounds (sorted by anchor height and spread so leaders don't cross; dragging one freezes the columns into free positions), and a *numbered key* (tags on the anchors plus a draggable legend). New labels start in the both-sides arrangement, then are free.
+
 **The camera** is stored as azimuth / elevation / target / frame height, plus projection, FOV and oblique settings. Oblique views (cabinet, cavalier, plan oblique) are an orthographic projection with a shear of view-space x/y by depth. Camera navigation is not part of undo: undo and redo keep the current view.
 
 **Project format (`.tracefield`).** A single binary file: header, then a JSON manifest (the full document), then the original bytes of every referenced model file in order. Opening re-parses those bytes and nodes re-attach by drawable index, which is deterministic for the same bytes. It has no temporary paths or blob URLs, so the file is portable. Autosave writes the same pieces to IndexedDB: model bytes once per model, then the document a moment after each change.
@@ -67,6 +74,11 @@ src/
 - **Transparent and see-through fills** cast full shadows. Line-only objects (fill None) still cast if *Casts shadow* is on.
 - **Hatches are screen-aligned**, not mapped onto surfaces. That suits drawing conventions (poché, tone), but a hatch won't follow a façade's perspective.
 - **Style presets saved in the browser** don't travel with a `.tracefield` file. The project keeps the applied look, but not the preset list.
+- **Explode offsets are keyed by node.** Duplicating a moved part gives an assembled copy, and ungrouping a moved group drops that group's move. Its children return to where their own offsets put them.
+- **Connectors are straight segments** between matching anchors. There are no elbows or leader-style routing yet, and they don't stop at part surfaces: "Hidden by parts" relies on depth to hide the inner stretch.
+- **Gizmo moves are in world axes**, not the part's local axes. In perspective, view-plane drags are scaled at the target distance, so parts far from the target move faster or slower than the cursor.
+- **Label fonts are system fonts** (font stacks such as Helvetica / Arial or Futura / Century Gothic). A project opened on a machine without the first font falls back to the next. Export uses the same fonts the viewport shows, so what you see is what you get on that machine.
+- **Label collisions** are only resolved in the column layouts. Free labels can overlap each other or the model, and leaders in columns can cross the drawing. Saved-view thumbnails don't include labels.
 - **Projects from milestone 1** reopen fine, but their saved camera heights referred to the whole viewport, so the framing may look slightly tighter until you re-fit.
 
 ## Done
@@ -74,9 +86,9 @@ src/
 - **M1:** GLB/glTF (plus OBJ/STL/FBX) import with the hierarchy preserved; scene tree; selection; per-node style overrides with inheritance; linework; camera presets; saved views; projects and autosave.
 - **M2:** drawing frame (screen and A-series presets, DPI, width/height with aspect lock, rotate, drag-to-crop); lineweight reference scale tied to the output; tiled high-resolution PNG export (coloured or transparent background, antialiasing, progress, cancel, size checks).
 - **M3:** graphic and soft shadows with per-object cast/receive and shade faces; solid or shadow-only ground; line, cross and dot hatches; per-object line draw order; eight built-in style presets plus saved ones.
+- **M4:** exploded drawings: axial and radial auto-explode with spacing and scale; move gizmo (axis and view plane); assembled ↔ exploded toggle with animation and blend; connector lines with draggable, editable anchors; saved exploded states.
+- **M5:** annotations: labels from object names (or custom text); leaders with draggable, re-targetable anchors, dot/arrow/tick ends and elbows; free, tag-column and numbered-key layouts; font, size, weight, colour, casing, tracking and halo, with per-label overrides; vector-drawn into the PNG export.
 
 ## Roadmap (remaining features)
 
-- **M4 — exploded drawings:** viewport move gizmo, axial and radial auto-explode, spacing and scale controls, connector lines with editable anchors, saved exploded states, assembled ↔ exploded compare.
-- **M5 — annotations:** labels from object names, leaders with draggable anchors, font, size, weight, colour and casing controls, a tag layout beside the model.
 - **Also:** box selection; perspective near-plane line splitting; KTX2 textures.

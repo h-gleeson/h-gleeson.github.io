@@ -10,6 +10,8 @@ import { buildSampleGlb } from '../import/sample';
 import { restoreAutosave } from '../project/autosave';
 import { store, useStore } from '../state/store';
 import { FrameOverlay } from './FrameOverlay';
+import { MoveGizmo } from './MoveGizmo';
+import { AnnotationOverlay } from './AnnotationOverlay';
 import type { CameraState } from '../state/types';
 
 async function loadSample() {
@@ -79,6 +81,8 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     >
       <div ref={host} className="viewport-host" />
       <FrameOverlay engineReady={ready} />
+      <AnnotationOverlay engineReady={ready} />
+      <MoveGizmo engineReady={ready} />
 
       {!empty && <Triad camera={camera} />}
       {!empty && (

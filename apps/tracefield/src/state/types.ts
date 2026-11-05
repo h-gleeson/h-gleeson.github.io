@@ -160,6 +160,96 @@ export interface OutputSettings {
   fileName: string;
 }
 
+export type Vec3 = [number, number, number];
+
+/** A named snapshot of an exploded arrangement. */
+export interface ExplodeState {
+  id: string;
+  name: string;
+  offsets: Record<string, Vec3>;
+  anchors: Record<string, Vec3[]>;
+}
+
+/**
+ * Exploded drawing. Offsets are world-space moves per node, applied on top of
+ * the assembled model (which is never changed). A node moves with its exploded
+ * ancestors, then by its own offset. `amount` blends assembled (0) → exploded (1).
+ */
+export interface ExplodeSettings {
+  amount: number;
+  offsets: Record<string, Vec3>;
+  /** Connector anchors per node, as fractions (0…1) of the node's assembled bounding box. None = one at the centre. */
+  anchors: Record<string, Vec3[]>;
+  /** Parts of the last auto-explode; the explode controls re-arrange these live. */
+  parts: string[];
+  mode: 'axial' | 'radial';
+  axis: 'x' | 'y' | 'z';
+  direction: 1 | -1;
+  /** Gap per step, as a fraction of the parts' overall size. */
+  spacing: number;
+  /** Spread in proportion to distance: 1 = none, 2 = double every distance. */
+  scale: number;
+  connectors: boolean;
+  connectorColor: string;
+  connectorWidth: number;
+  connectorStyle: LineStyle;
+  /** Connectors are hidden where parts cover them (otherwise drawn on top). */
+  connectorOccluded: boolean;
+  states: ExplodeState[];
+}
+
+export type LabelFont = 'sans' | 'grotesk' | 'geometric' | 'serif' | 'mono';
+export type LabelCasing = 'asis' | 'upper' | 'lower' | 'title';
+export type LeaderEnd = 'dot' | 'arrow' | 'tick' | 'none';
+/** free: labels where you put them · left/right/both: tag columns beside the model. */
+export type LabelLayout = 'free' | 'left' | 'right' | 'both';
+
+/** One label: a point on an object, a leader, and text. */
+export interface Annotation {
+  id: string;
+  node: string;
+  /** Custom text; null follows the object's name. */
+  text: string | null;
+  /** Anchor point in the node's local space, so it follows moves and explodes. */
+  anchor: Vec3;
+  /** Leader end in the frame, as fractions of its width and height (free layout). */
+  pos: [number, number];
+  size?: number;
+  weight?: number;
+  color?: string;
+}
+
+export interface AnnotationSettings {
+  show: boolean;
+  /** leaders: text with leader lines · key: numbered tags at the anchors and a legend. */
+  mode: 'leaders' | 'key';
+  layout: LabelLayout;
+  font: LabelFont;
+  /** px at the reference width, like lineweights. */
+  size: number;
+  weight: number;
+  color: string;
+  casing: LabelCasing;
+  /** Letter spacing, em. */
+  tracking: number;
+  /** Knock the drawing out behind the text in the background colour. */
+  halo: boolean;
+  leaderColor: string;
+  leaderWidth: number;
+  leaderEnd: LeaderEnd;
+  /** Leaders end in a short horizontal shoulder. */
+  elbow: boolean;
+  /** Distance from the model to the tag columns, px at reference width. */
+  gap: number;
+  /** Legend position for the numbered key, frame fractions (top-left of the list). */
+  keyPos: [number, number];
+}
+
+export interface Annotations {
+  settings: AnnotationSettings;
+  items: Annotation[];
+}
+
 export interface ProjectDoc {
   name: string;
   models: Record<string, ModelRecord>;
@@ -170,6 +260,8 @@ export interface ProjectDoc {
   drawing: DrawingSettings;
   views: SavedView[];
   output: OutputSettings;
+  explode: ExplodeSettings;
+  annotations: Annotations;
 }
 
 export interface BusyState {
@@ -189,5 +281,9 @@ export interface UIState {
   status: { text: string; kind: 'info' | 'error' } | null;
   restoreAvailable: boolean;
   fitRequest: number;
+  /** Viewport tool: select only, or show the move gizmo on the selection. */
+  tool: 'select' | 'move';
+  /** Selected annotation (labels are selected separately from scene nodes). */
+  label: string | null;
   stats: { objects: number; triangles: number; edges: number };
 }
