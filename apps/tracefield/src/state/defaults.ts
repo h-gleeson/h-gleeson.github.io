@@ -1,5 +1,17 @@
 import { DEFAULT_OUTPUT } from './output';
-import type { AnnotationSettings, CameraState, DrawingSettings, ExplodeSettings, GraphicStyle, Oblique, ProjectDoc } from './types';
+import type { SectionSettings, AnnotationSettings, CameraState, DrawingSettings, ExplodeSettings, GraphicStyle, Oblique, ProjectDoc } from './types';
+
+export const DEFAULT_SECTION: SectionSettings = {
+  enabled: false,
+  placed: false,
+  orient: 'plan',
+  azimuth: 0,
+  elevation: 90,
+  flip: false,
+  offset: 0,
+  caps: true,
+  cutLines: true,
+};
 
 export const DEFAULT_LABELS: AnnotationSettings = {
   show: true,
@@ -62,6 +74,16 @@ export const DEFAULT_STYLE: GraphicStyle = {
   hatchAngle: 45,
   castShadow: true,
   receiveShadow: true,
+  cutSolid: false,
+  cutFill: true,
+  cutFillColor: '#1b1c1f',
+  cutHatch: 'none',
+  cutHatchColor: '#ffffff',
+  cutHatchSpacing: 6,
+  cutHatchWidth: 0.5,
+  cutHatchAngle: 45,
+  cutLineColor: '#1b1c1f',
+  cutLineWidth: 2.2,
 };
 
 export const DEFAULT_DRAWING: DrawingSettings = {
@@ -136,7 +158,16 @@ export function createDoc(): ProjectDoc {
     output: { ...DEFAULT_OUTPUT },
     explode: structuredClone(DEFAULT_EXPLODE),
     annotations: { settings: { ...DEFAULT_LABELS }, items: [] },
+    section: { ...DEFAULT_SECTION },
   };
+}
+
+/** Projects saved before cut styles were per object kept one poché style on the section: carry it over as the default. */
+function legacyCutStyle(sec: any): Partial<GraphicStyle> {
+  if (!sec || sec.pocheColor === undefined) return {};
+  const out: Partial<GraphicStyle> = { cutFillColor: sec.pocheColor, cutHatch: sec.pocheHatch, cutHatchColor: sec.pocheHatchColor, cutHatchSpacing: sec.pocheHatchSpacing, cutHatchAngle: sec.pocheHatchAngle, cutLineColor: sec.cutColor, cutLineWidth: sec.cutWidth };
+  for (const k of Object.keys(out) as (keyof GraphicStyle)[]) if (out[k] === undefined) delete out[k];
+  return out;
 }
 
 /** Fill in fields missing from documents saved by older versions. */
@@ -146,11 +177,12 @@ export function normalizeDoc(raw: Partial<ProjectDoc>): ProjectDoc {
     ...base,
     ...raw,
     camera: { ...base.camera, ...raw.camera, oblique: { ...base.camera.oblique, ...raw.camera?.oblique } },
-    defaults: { ...base.defaults, ...raw.defaults },
+    defaults: { ...base.defaults, ...legacyCutStyle(raw.section), ...raw.defaults },
     drawing: { ...base.drawing, ...raw.drawing },
     views: raw.views ?? [],
     output: { ...base.output, ...raw.output },
     explode: { ...base.explode, ...raw.explode },
+    section: { ...base.section, ...raw.section },
     annotations: { settings: { ...base.annotations.settings, ...raw.annotations?.settings }, items: raw.annotations?.items ?? [] },
     nodes: raw.nodes ?? {},
     roots: raw.roots ?? [],

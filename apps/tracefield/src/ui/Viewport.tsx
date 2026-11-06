@@ -12,6 +12,7 @@ import { store, useStore } from '../state/store';
 import { FrameOverlay } from './FrameOverlay';
 import { MoveGizmo } from './MoveGizmo';
 import { AnnotationOverlay } from './AnnotationOverlay';
+import { SectionGizmo } from './SectionGizmo';
 import type { CameraState } from '../state/types';
 
 async function loadSample() {
@@ -81,6 +82,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     >
       <div ref={host} className="viewport-host" />
       <FrameOverlay engineReady={ready} />
+      <SectionGizmo engineReady={ready} />
       <AnnotationOverlay engineReady={ready} />
       <MoveGizmo engineReady={ready} />
 

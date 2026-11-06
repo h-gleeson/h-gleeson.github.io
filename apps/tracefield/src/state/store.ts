@@ -39,6 +39,7 @@ const initialUI: UIState = {
   fitRequest: 0,
   tool: 'select',
   label: null,
+  sectionHandle: true,
   stats: { objects: 0, triangles: 0, edges: 0 },
 };
 

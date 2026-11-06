@@ -97,7 +97,7 @@ export const BUILT_IN_PRESETS: StylePreset[] = [
     name: 'Blueprint',
     hint: 'Linework only, white on deep blue',
     builtIn: true,
-    defaults: { fillMode: 'none', lineColor: '#f2f4ff', silhouetteWidth: 1.4, creaseWidth: 0.8 },
+    defaults: { fillMode: 'none', lineColor: '#f2f4ff', silhouetteWidth: 1.4, creaseWidth: 0.8, cutFillColor: '#f2f4ff', cutLineColor: '#f2f4ff', cutHatchColor: '#1f3a8f' },
     drawing: { background: '#1f3a8f', hiddenLines: true, hiddenColor: '#7f93d6', hiddenWidth: 0.45 },
   },
 ];

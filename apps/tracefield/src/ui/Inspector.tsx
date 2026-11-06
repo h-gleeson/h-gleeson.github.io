@@ -10,6 +10,7 @@ import { ColorField, Icon, NumberField, Row, Section, Segmented, Slider, Toggle 
 import { OutputTab } from './OutputTab';
 import { ExplodeTab } from './ExplodeTab';
 import { AnnotateTab } from './AnnotateTab';
+import { SectionPanel } from './SectionPanel';
 import { StylePresets } from './StylePresets';
 
 type Tab = 'style' | 'object' | 'drawing' | 'explode' | 'labels' | 'view' | 'output';
@@ -23,7 +24,7 @@ export function Inspector() {
     { id: 'drawing', label: 'Drawing', hint: 'Style presets, shadows, ground, hidden lines, light' },
     { id: 'explode', label: 'Explode', hint: 'Exploded drawing: auto-explode, move parts, connectors, saved states' },
     { id: 'labels', label: 'Labels', hint: 'Annotations: labels with leaders, tag columns, numbered key' },
-    { id: 'view', label: 'View', hint: 'Projection, orientation, framing' },
+    { id: 'view', label: 'View', hint: 'Projection, orientation, framing, plan / section cut' },
     { id: 'output', label: 'Output', hint: 'Drawing frame, background, lineweight scale, PNG export' },
   ];
   return (
@@ -216,6 +217,42 @@ function StyleTab() {
         {field('castShadow', 'Casts shadow', <Toggle value={eff.castShadow} onChange={(v) => set('castShadow', v)} />)}
         {field('receiveShadow', 'Receives shadow', <Toggle value={eff.receiveShadow} onChange={(v) => set('receiveShadow', v)} />, 'Shows shadows cast on it, and shade on faces away from the sun')}
         {doc.drawing.shadows === 'off' && <p className="hint">Shadows are off for the drawing. Turn them on in the Drawing tab.</p>}
+      </Section>
+      <Section title="Section cut">
+        {field('cutSolid', 'Cut as one solid', <Toggle value={eff.cutSolid} onChange={(v) => set('cutSolid', v)} />, 'Fill everything inside this group as a single solid, for objects modelled as separate surfaces (outer wall, inner wall, rim, base). Open surfaces in the same group are already combined automatically.')}
+        {field('cutFill', 'Fill cut', <Toggle value={eff.cutFill} onChange={(v) => set('cutFill', v)} />, 'Poché where the section plane cuts through this object')}
+        {eff.cutFill && (
+          <>
+            {field('cutFillColor', 'Poché colour', <ColorField value={eff.cutFillColor} onChange={(v) => set('cutFillColor', v)} />)}
+            {field(
+              'cutHatch',
+              'Pattern',
+              <Segmented<HatchMode>
+                value={eff.cutHatch}
+                onChange={(v) => set('cutHatch', v)}
+                options={[
+                  { value: 'none', label: 'Solid' },
+                  { value: 'lines', label: 'Lines' },
+                  { value: 'cross', label: 'Cross' },
+                  { value: 'dots', label: 'Dots' },
+                ]}
+              />,
+              'Hatch over the poché, drawn in drawing space',
+              true,
+            )}
+            {eff.cutHatch !== 'none' && (
+              <>
+                {field('cutHatchColor', 'Hatch colour', <ColorField value={eff.cutHatchColor} onChange={(v) => set('cutHatchColor', v)} />)}
+                {field('cutHatchSpacing', 'Spacing', <Slider value={eff.cutHatchSpacing} min={2} max={40} step={0.5} precision={1} unit="px" onChange={(v) => set('cutHatchSpacing', v)} />)}
+                {field('cutHatchWidth', 'Hatch weight', <Slider value={eff.cutHatchWidth} min={0.1} max={4} step={0.05} unit="px" onChange={(v) => set('cutHatchWidth', v)} />)}
+                {eff.cutHatch !== 'dots' && field('cutHatchAngle', 'Angle', <Slider value={eff.cutHatchAngle} min={0} max={180} step={1} precision={0} unit="°" onChange={(v) => set('cutHatchAngle', v)} />)}
+              </>
+            )}
+          </>
+        )}
+        {field('cutLineWidth', 'Cut line', <Slider value={eff.cutLineWidth} min={0} max={10} step={0.05} unit="px" onChange={(v) => set('cutLineWidth', v)} />, 'Weight of the line where the plane meets this object, px at reference width. 0 = none')}
+        {eff.cutLineWidth > 0 && field('cutLineColor', 'Cut line colour', <ColorField value={eff.cutLineColor} onChange={(v) => set('cutLineColor', v)} />)}
+        {!doc.section.enabled && <p className="hint">The section cut is off. Turn it on in the View tab (X) to see these.</p>}
       </Section>
       {sel.length > 0 && (
         <div className="pad">
@@ -464,6 +501,7 @@ function ViewTab() {
           ))}
         </div>
       </Section>
+      <SectionPanel />
       <Section title="Orientation" right={<Toggle value={locked} onChange={actions.toggleViewLock} label="Lock" title="Lock orientation (Shift+L)" />}>
         <Row label="Azimuth">
           <Slider value={c.azimuth} min={0} max={360} step={0.5} precision={2} unit="°" onChange={(v) => !locked && set({ azimuth: v })} />

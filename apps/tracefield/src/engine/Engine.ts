@@ -9,7 +9,9 @@ import {
   Matrix3,
   Matrix4,
   OrthographicCamera,
+  Plane,
   PlaneGeometry,
+  Quaternion,
   ShaderMaterial,
   UnsignedIntType,
   GridHelper,
@@ -35,9 +37,10 @@ import { acceleratedRaycast, computeBoundsTree } from 'three-mesh-bvh';
 import { registry } from '../import/registry';
 import { descendants, ancestors, isLockedInTree, resolveStyle } from '../state/scene';
 import { store } from '../state/store';
-import type { CameraState, ProjectDoc, UIState } from '../state/types';
+import type { CameraState, GraphicStyle, ProjectDoc, UIState } from '../state/types';
 import { aspectOf, validateSize } from '../state/output';
 import { connectorSegments } from '../state/explode';
+import { sectionNormal } from '../state/section';
 import { drawPrims, layoutAnnotations, measureText, type LayoutResult, type Pt } from '../annotate/layout';
 import type { Annotation } from '../state/types';
 import { applyCamera, framePoints, ObliqueCamera, shearOf } from './camera';
@@ -47,6 +50,8 @@ import {
   createGroundMaterial,
   createLineMaterial,
   createShadowDepthMaterial,
+  createCapMaterial,
+  createCapStencilMaterial,
   shared,
   type FillMaterial,
   type GroundMaterial,
@@ -71,6 +76,19 @@ interface RenderObject {
   lineMat: LineMaterial;
   hiddenMat: LineMaterial;
   cast: boolean;
+  fillNone: boolean;
+  /** Section caps: stencil-parity pass (shares the body geometry) and the cap quad on the plane. */
+  capStencil: Mesh | null;
+}
+
+/** A solid for section poché: one or more meshes whose faces are counted together. */
+interface CapUnit {
+  key: string;
+  /** Node whose style colours the poché (the group, for combined solids). */
+  styleId: string;
+  members: RenderObject[];
+  box: Box3;
+  cut: boolean;
 }
 
 const HATCH: Record<string, number> = { none: 0, lines: 1, cross: 2, dots: 3 };
@@ -109,12 +127,20 @@ export class Engine {
   private connectors: Mesh | null = null;
   private connectorMat: LineMaterial | null = null;
   private renderListeners = new Set<() => void>();
+  private capStencilMat = createCapStencilMaterial();
+  private capQuad = new PlaneGeometry(1, 1);
+  /** Poché caps, one per cut solid. */
+  private caps = new Map<string, { mesh: Mesh; mat: FillMaterial }>();
+  private openCache = new Map<string, boolean>();
+  /** One cut-line mesh per distinct (colour, weight), so objects can have their own cut lineweights. */
+  private cutLines: { mesh: Mesh; mat: LineMaterial }[] = [];
+  readonly clipPlane = new Plane(new Vector3(0, 1, 0), 0);
   cssW = 1;
   cssH = 1;
   onRender: (() => void) | null = null;
 
   constructor(private container: HTMLElement) {
-    this.renderer = new WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+    this.renderer = new WebGLRenderer({ antialias: true, alpha: false, stencil: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
     this.renderer.toneMapping = NoToneMapping;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -147,6 +173,10 @@ export class Engine {
     this.shadowDepthMat?.dispose();
     this.connectors?.geometry.dispose();
     this.connectorMat?.dispose();
+    this.capStencilMat.dispose();
+    this.capQuad.dispose();
+    this.caps.forEach((c) => c.mat.dispose());
+    this.clearCutLines();
     this.renderer.dispose();
     this.canvas.remove();
   }
@@ -166,6 +196,7 @@ export class Engine {
     if (tree || doc.drawing.showGrid !== prev?.drawing.showGrid) this.syncGrid(doc);
     if (structural || doc.drawing !== prev?.drawing) this.syncGround(doc);
     if (structural || ui.isolated !== this.lastUI?.isolated) this.syncConnectors(doc, ui);
+    if (structural || doc.section !== prev?.section || doc.defaults !== prev?.defaults || ui.isolated !== this.lastUI?.isolated) this.syncSection(doc);
     this.lastDoc = doc;
     this.lastUI = ui;
     if (ui.fitRequest !== this.lastFit) {
@@ -243,7 +274,7 @@ export class Engine {
     const d = model?.drawables[index];
     if (!d) return;
     if (!r) {
-      r = { id, key, host, body: null, fillMats: [], lines: null, hidden: null, lineMat: createLineMaterial(false), hiddenMat: createLineMaterial(true), cast: true };
+      r = { id, key, host, body: null, fillMats: [], lines: null, hidden: null, lineMat: createLineMaterial(false), hiddenMat: createLineMaterial(true), cast: true, fillNone: false, capStencil: null };
       this.robjs.set(id, r);
     }
     if (!r.body) {
@@ -288,6 +319,7 @@ export class Engine {
     r.body?.removeFromParent();
     r.lines?.removeFromParent();
     r.hidden?.removeFromParent();
+    r.capStencil?.removeFromParent();
     r.fillMats.forEach((m) => m.dispose());
     r.lineMat.dispose();
     r.hiddenMat.dispose();
@@ -359,6 +391,7 @@ export class Engine {
         u.uHatchDir.value.set(Math.cos(ha), Math.sin(ha));
       });
       r.cast = s.castShadow && !isLine;
+      r.fillNone = s.fillMode === 'none';
       const crease = s.allEdgesWidth > 0 ? 2 : Math.cos(MathUtils.degToRad(s.creaseAngle));
       const [dash, gap, dotted] = DASH[s.lineStyle] ?? DASH.solid;
       for (const [m, hidden] of [[r.lineMat, false], [r.hiddenMat, true]] as const) {
@@ -427,6 +460,228 @@ export class Engine {
     (this.grid.material as LineBasicMaterial).depthWrite = false;
     this.grid.raycast = () => {};
     this.scene.add(this.grid);
+  }
+
+  // ------------------------------------------------------------ section cut
+
+  /**
+   * Plans and sections. Every material discards the cut-away side (shader
+   * clipping), each cut solid gets a poché cap via a per-object stencil parity
+   * pass, and the exact intersection of the plane with every triangle is drawn
+   * as a heavy cut line.
+   */
+  private syncSection(doc: ProjectDoc) {
+    const sec = doc.section;
+    const n = sectionNormal(sec);
+    this.clipPlane.set(n, -sec.offset);
+    shared.uClipOn.value = sec.enabled ? 1 : 0;
+    shared.uClipPlane.value.set(n.x, n.y, n.z, -sec.offset);
+    this.shadowDirty = true;
+    this.world.updateMatrixWorld(true);
+
+    const q = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), n);
+    const box = new Box3();
+    const cut: { mesh: Mesh; color: string; width: number }[] = [];
+    const styles = new Map<string, GraphicStyle>();
+    const style = (id: string) => {
+      let st = styles.get(id);
+      if (!st) styles.set(id, (st = resolveStyle(doc, id)));
+      return st;
+    };
+
+    // 1. Cut lines per mesh, and group meshes into solids for the poché.
+    const units = new Map<string, CapUnit>();
+    for (const r of this.robjs.values()) {
+      if (r.capStencil) r.capStencil.visible = false;
+      const mesh = r.body instanceof Mesh ? r.body : null;
+      if (!sec.enabled || !mesh || !isShown(r.host)) continue;
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      box.copy(mesh.geometry.boundingBox!).applyMatrix4(mesh.matrixWorld);
+      const on = box.intersectsPlane(this.clipPlane);
+      const st = style(r.id);
+      if (on && st.cutLineWidth > 0) cut.push({ mesh, color: st.cutLineColor, width: st.cutLineWidth });
+      if (!sec.caps) continue;
+      const { key, styleId } = this.capUnitOf(doc, r, style);
+      let u = units.get(key);
+      if (!u) units.set(key, (u = { key, styleId, members: [], box: new Box3(), cut: false }));
+      u.members.push(r);
+      u.box.union(box);
+      if (on) u.cut = true;
+    }
+
+    // 2. One cap per cut solid. Every member joins the stencil count, including
+    //    parts the plane misses (a pot's base closes the wall the cut runs through).
+    let i = 0;
+    const live = new Set<string>();
+    for (const u of units.values()) {
+      if (!u.cut) continue;
+      const st = style(u.styleId);
+      if (!st.cutFill || u.members.every((m) => m.fillNone)) continue;
+      let cap = this.caps.get(u.key);
+      if (!cap) {
+        const mat = createCapMaterial();
+        const mesh = new Mesh(this.capQuad, mat);
+        mesh.raycast = () => {};
+        mesh.frustumCulled = false;
+        this.scene.add(mesh);
+        this.caps.set(u.key, (cap = { mesh, mat }));
+      }
+      live.add(u.key);
+      const cu = cap.mat.uniforms;
+      cu.uColor.value.set(st.cutFillColor);
+      cu.uHatch.value = HATCH[st.cutHatch] ?? 0;
+      cu.uHatchColor.value.set(st.cutHatchColor);
+      cu.uHatchSpacing.value = st.cutHatchSpacing;
+      cu.uHatchWidth.value = st.cutHatchWidth;
+      const ha = MathUtils.degToRad(st.cutHatchAngle);
+      cu.uHatchDir.value.set(Math.cos(ha), Math.sin(ha));
+      // Stencil pass for every member of the solid, then the cap (which clears the stencil).
+      for (const m of u.members) {
+        if (!m.capStencil) {
+          m.capStencil = new Mesh((m.body as Mesh).geometry, this.capStencilMat);
+          m.capStencil.matrixAutoUpdate = false;
+          m.capStencil.raycast = () => {};
+          m.capStencil.frustumCulled = false;
+          m.host.add(m.capStencil);
+        }
+        m.capStencil.renderOrder = 100 + i * 2;
+        m.capStencil.visible = true;
+      }
+      cap.mesh.renderOrder = 101 + i * 2;
+      i++;
+      const c = u.box.getCenter(new Vector3());
+      c.addScaledVector(n, -(n.dot(c) - sec.offset));
+      cap.mesh.position.copy(c);
+      cap.mesh.quaternion.copy(q);
+      const size = u.box.getSize(new Vector3()).length() * 1.2 + 1e-6;
+      cap.mesh.scale.set(size, size, 1);
+      cap.mesh.updateMatrixWorld();
+      cap.mesh.visible = true;
+    }
+    for (const [key, cap] of this.caps) {
+      if (live.has(key)) continue;
+      cap.mesh.removeFromParent();
+      cap.mat.dispose();
+      this.caps.delete(key);
+    }
+    this.syncCutLines(sec.enabled && sec.cutLines ? cut : [], doc);
+  }
+
+  /**
+   * The solid a mesh is filled with:
+   *  - the topmost group set to "Cut as one solid" above it (or itself);
+   *  - otherwise, if the mesh is an open surface, all open surfaces sharing its parent group;
+   *  - otherwise the mesh alone (closed meshes stay separate so overlaps don't cancel).
+   */
+  private capUnitOf(doc: ProjectDoc, r: RenderObject, style: (id: string) => GraphicStyle): { key: string; styleId: string } {
+    const chain = [...ancestors(doc, r.id)].reverse();
+    chain.push(r.id);
+    for (const id of chain) if (style(id).cutSolid) return { key: `solid:${id}`, styleId: id };
+    const parent = doc.nodes[r.id]?.parent;
+    if (parent && this.isOpenSurface(r.key)) return { key: `open:${parent}`, styleId: parent };
+    return { key: `mesh:${r.id}`, styleId: r.id };
+  }
+
+  /** True if the mesh has boundary (open) edges, from the edge worker's classification. */
+  private isOpenSurface(key: string): boolean {
+    const hit = this.openCache.get(key);
+    if (hit !== undefined) return hit;
+    const [model, index] = key.split('|');
+    const e = registry.get(model)?.edges[+index];
+    if (!e) return false; // not analysed yet; re-synced when the edge worker finishes
+    let open = false;
+    for (let k = 0; k < e.count; k++) if (e.kind[k] === 1) { open = true; break; }
+    this.openCache.set(key, open);
+    return open;
+  }
+
+  private clearCutLines() {
+    for (const c of this.cutLines) {
+      c.mesh.removeFromParent();
+      c.mesh.geometry.dispose();
+      c.mat.dispose();
+    }
+    this.cutLines = [];
+  }
+
+  /**
+   * Intersection of the cut plane with every triangle of the cut meshes, in
+   * world space, batched by line style (colour + weight).
+   */
+  private syncCutLines(items: { mesh: Mesh; color: string; width: number }[], _doc: ProjectDoc) {
+    this.clearCutLines();
+    if (!items.length) return;
+    const groups = new Map<string, { color: string; width: number; out: number[] }>();
+    for (const it of items) {
+      const key = `${it.color}|${it.width}`;
+      if (!groups.has(key)) groups.set(key, { color: it.color, width: it.width, out: [] });
+      this.intersect(it.mesh, groups.get(key)!.out);
+    }
+    for (const g of groups.values()) {
+      if (!g.out.length) continue;
+      const count = g.out.length / 6;
+      const geom = createEdgeGeometry({ segments: new Float32Array(g.out), n1: new Int8Array(count * 3), n2: new Int8Array(count * 3), kind: new Uint8Array(count).fill(3), count });
+      const mat = createLineMaterial(false);
+      // Cut lines lie on the plane itself: never clip them.
+      mat.uniforms.uClipOn = { value: 0 };
+      const u = mat.uniforms;
+      u.uSilW.value = u.uCreaseW.value = u.uOpenW.value = u.uMatW.value = u.uAllW.value = 0;
+      u.uCurveW.value = g.width;
+      u.uColor.value.set(g.color);
+      u.uDepthBias.value = 1e-4;
+      const mesh = new Mesh(geom, mat);
+      mesh.frustumCulled = false;
+      mesh.matrixAutoUpdate = false;
+      // Heavier lines draw last, so they win where cut lines of different weights meet.
+      mesh.renderOrder = 11 + Math.min(0.9, g.width / 100);
+      mesh.raycast = () => {};
+      this.scene.add(mesh);
+      this.cutLines.push({ mesh, mat });
+    }
+  }
+
+  /** Append the plane ∩ triangles of one mesh (world-space segments) to `out`. */
+  private intersect(m: Mesh, out: number[]) {
+    const local = new Plane();
+    const inv = new Matrix4();
+    const a = new Vector3(), b = new Vector3(), c = new Vector3();
+    const pts: Vector3[] = [new Vector3(), new Vector3()];
+    {
+      const g = m.geometry;
+      const pos = g.attributes.position;
+      if (!pos) return;
+      inv.copy(m.matrixWorld).invert();
+      local.copy(this.clipPlane).applyMatrix4(inv);
+      const idx = g.index;
+      const tris = idx ? idx.count / 3 : pos.count / 3;
+      const nx = local.normal.x, ny = local.normal.y, nz = local.normal.z, w = local.constant;
+      for (let t = 0; t < tris; t++) {
+        const i0 = idx ? idx.getX(t * 3) : t * 3, i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+        a.fromBufferAttribute(pos, i0);
+        b.fromBufferAttribute(pos, i1);
+        c.fromBufferAttribute(pos, i2);
+        const da = nx * a.x + ny * a.y + nz * a.z + w, db = nx * b.x + ny * b.y + nz * b.z + w, dc = nx * c.x + ny * c.y + nz * c.z + w;
+        const pa = da >= 0, pb = db >= 0, pc = dc >= 0;
+        if (pa === pb && pb === pc) continue;
+        let k = 0;
+        const edge = (p: Vector3, q: Vector3, dp: number, dq: number) => {
+          if (dp >= 0 === dq >= 0 || k > 1) return;
+          pts[k++].copy(p).lerp(q, dp / (dp - dq));
+        };
+        edge(a, b, da, db);
+        edge(b, c, db, dc);
+        edge(c, a, dc, da);
+        if (k < 2) continue;
+        pts[0].applyMatrix4(m.matrixWorld);
+        pts[1].applyMatrix4(m.matrixWorld);
+        out.push(pts[0].x, pts[0].y, pts[0].z, pts[1].x, pts[1].y, pts[1].z);
+      }
+    }
+  }
+
+  /** True if a world point is on the kept side of the cut (or there is no cut). */
+  private keptBySection(p: Vector3) {
+    return !store.get().doc.section.enabled || this.clipPlane.distanceToPoint(p) <= 1e-9;
   }
 
   // ------------------------------------------------------------ exploded drawing
@@ -500,7 +755,9 @@ export class Engine {
   pickPoint(clientX: number, clientY: number): { id: string; point: Vector3 } | null {
     const { doc } = store.get();
     const candidates = this.visibleBodies().filter((b) => b instanceof Mesh && !isLockedInTree(doc, b.userData.nodeId));
-    const hit = this.ray(clientX, clientY).intersectObjects(candidates, false)[0];
+    const rc = this.ray(clientX, clientY);
+    if (store.get().doc.section.enabled) (rc as any).firstHitOnly = false;
+    const hit = rc.intersectObjects(candidates, false).find((h) => this.keptBySection(h.point));
     return hit ? { id: hit.object.userData.nodeId as string, point: hit.point.clone() } : null;
   }
 
@@ -661,11 +918,14 @@ export class Engine {
     for (const r of this.robjs.values()) {
       hide(r.lines);
       hide(r.hidden);
+      hide(r.capStencil);
       if (!casters.includes(r)) hide(r.body);
     }
     hide(this.grid);
     hide(this.ground);
+    this.caps.forEach((c) => hide(c.mesh));
     hide(this.connectors);
+    this.cutLines.forEach((c) => hide(c.mesh));
     const prevTarget = this.renderer.getRenderTarget();
     this.scene.overrideMaterial = this.shadowDepthMat;
     this.renderer.setRenderTarget(this.shadowRT);
@@ -755,7 +1015,9 @@ export class Engine {
   pick(clientX: number, clientY: number): string | null {
     const { doc } = store.get();
     const candidates = this.visibleBodies().filter((b) => !isLockedInTree(doc, b.userData.nodeId));
-    const hits = this.ray(clientX, clientY).intersectObjects(candidates, false);
+    const rc = this.ray(clientX, clientY);
+    if (store.get().doc.section.enabled) (rc as any).firstHitOnly = false;
+    const hits = rc.intersectObjects(candidates, false).filter((h) => this.keptBySection(h.point));
     return (hits[0]?.object.userData.nodeId as string) ?? null;
   }
 
@@ -903,7 +1165,7 @@ export class Engine {
     const ortho = new ObliqueCamera();
     const persp = new PerspectiveCamera();
     const cam = applyCamera(doc.camera, ortho, persp, W / H, this.sceneRadius(doc.camera), 1);
-    const rt = new WebGLRenderTarget(tile, tile, { samples, depthBuffer: true });
+    const rt = new WebGLRenderTarget(tile, tile, { samples, depthBuffer: true, stencilBuffer: true });
     const pixels = new Uint8Array(tile * tile * 4);
     this.renderShadowMap(doc);
     const cols = Math.ceil(W / tile), rows = Math.ceil(H / tile);

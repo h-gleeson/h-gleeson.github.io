@@ -41,6 +41,24 @@ export interface GraphicStyle {
   hatchAngle: number; // degrees
   castShadow: boolean;
   receiveShadow: boolean;
+  // Section cut: how this object looks where the plane cuts it.
+  /**
+   * On a group: everything inside is filled as one solid, even if its parts are
+   * separate open surfaces (outer wall, inner wall, rim, base). Open surfaces
+   * that share a parent group are combined automatically.
+   */
+  cutSolid: boolean;
+  /** Fill the cut solid (poché). */
+  cutFill: boolean;
+  cutFillColor: string;
+  cutHatch: HatchMode;
+  cutHatchColor: string;
+  cutHatchSpacing: number; // px at reference width
+  cutHatchWidth: number;
+  cutHatchAngle: number; // degrees
+  cutLineColor: string;
+  /** Weight of the line where the plane meets the geometry, px at reference width. 0 = none. */
+  cutLineWidth: number;
 }
 
 export type StyleKey = keyof GraphicStyle;
@@ -116,6 +134,28 @@ export interface SavedView {
   name: string;
   camera: CameraState;
   thumb?: string;
+  /** The section cut in effect when the view was saved (plans and sections recall their cut). */
+  section?: SectionSettings;
+}
+
+/**
+ * A section cut. The plane's normal points toward the side that is cut away,
+ * given as azimuth / elevation like the camera, so "look at the cut" is the
+ * camera at the same angles. Points p with dot(n, p) > offset are removed.
+ */
+export interface SectionSettings {
+  enabled: boolean;
+  /** False until the cut has been positioned once (the first cut starts at a sensible height). */
+  placed: boolean;
+  orient: 'plan' | 'x' | 'z' | 'custom';
+  azimuth: number;
+  elevation: number;
+  flip: boolean;
+  /** Plane position along the normal, world units (for a plan: the cut height). */
+  offset: number;
+  /** Master switches; the poché and cut-line look is per object (style keys cut*). */
+  caps: boolean;
+  cutLines: boolean;
 }
 
 export interface DrawingSettings {
@@ -262,6 +302,7 @@ export interface ProjectDoc {
   output: OutputSettings;
   explode: ExplodeSettings;
   annotations: Annotations;
+  section: SectionSettings;
 }
 
 export interface BusyState {
@@ -285,5 +326,7 @@ export interface UIState {
   tool: 'select' | 'move';
   /** Selected annotation (labels are selected separately from scene nodes). */
   label: string | null;
+  /** Show the section plane and its drag handle in the viewport. */
+  sectionHandle: boolean;
   stats: { objects: number; triangles: number; edges: number };
 }

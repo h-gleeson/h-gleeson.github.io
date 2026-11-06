@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Vector3 } from 'three';
 import { actions } from '../app/actions';
 import { explodeActions } from '../app/explodeActions';
+import { sectionActions } from '../app/sectionActions';
 import { basis, shearOf, toPlane } from '../engine/camera';
 import { CAMERA_PRESETS, DEFAULT_CAMERA } from '../state/defaults';
 import { useStore } from '../state/store';
@@ -45,6 +46,7 @@ export function ViewStrip() {
   const showGrid = useStore((s) => s.doc.drawing.showGrid);
   const hasSel = useStore((s) => s.ui.selection.length > 0);
   const tool = useStore((s) => s.ui.tool);
+  const cut = useStore((s) => s.doc.section.enabled);
   const exploded = useStore((s) => s.doc.explode.amount > 0.5 && Object.keys(s.doc.explode.offsets).length > 0);
   const [renaming, setRenaming] = useState<string | null>(null);
 
@@ -132,6 +134,13 @@ export function ViewStrip() {
           </button>
           <button className={`icon-btn ${showGrid ? 'on' : ''}`} onClick={() => actions.setDrawing('showGrid', !showGrid)} title="Ground grid (G)">
             {Icon.grid}
+          </button>
+          <button className={`icon-btn ${cut ? 'on' : ''}`} onClick={sectionActions.toggle} title="Plan / section cut (X)">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round">
+              <path d="M2.5 5.5 8 2.5l5.5 3v5L8 13.5l-5.5-3z" strokeDasharray="1.6 1.4" />
+              <path d="M1 8.5h14" strokeWidth="1.8" />
+              <path d="M2.5 10.5 8 13.5l5.5-3V8.5h-11z" fill="currentColor" stroke="none" opacity="0.35" />
+            </svg>
           </button>
           <button className={`icon-btn ${tool === 'move' ? 'on' : ''}`} onClick={explodeActions.toggleMoveTool} title="Move tool: drag parts apart (W)">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">

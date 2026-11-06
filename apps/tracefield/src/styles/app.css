@@ -405,3 +405,12 @@ input[type='range']::-moz-range-thumb { width: 9px; height: 9px; border-radius: 
 .select { width: 100%; padding: 4px 6px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--field); color: var(--ink); font: inherit; font-size: 11px; }
 .tabs { padding: 0 4px; }
 .tabs button { flex: 1 1 auto; padding: 13px 3px 11px; font-size: 10.5px; white-space: nowrap; }
+
+/* ------------------------------------------------------------ section cut */
+.section-plane { fill: rgba(47, 72, 216, 0.05); stroke: var(--accent); stroke-width: 1; stroke-dasharray: 5 4; pointer-events: none; }
+.section-handle { pointer-events: auto; cursor: ns-resize; color: var(--accent); }
+.section-handle line { stroke: currentColor; stroke-width: 2; }
+.section-handle line.hit { stroke: transparent; stroke-width: 16; }
+.section-handle polygon, .section-handle circle { fill: currentColor; }
+.section-handle:hover line:not(.hit) { stroke-width: 3; }
+.section-readout { font: 600 10px var(--mono); fill: var(--accent-ink); pointer-events: none; }

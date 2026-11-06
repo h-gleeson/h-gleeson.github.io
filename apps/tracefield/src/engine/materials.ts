@@ -12,8 +12,13 @@ import {
   Matrix4,
   OneFactor,
   OneMinusSrcAlphaFactor,
+  AlwaysStencilFunc,
+  InvertStencilOp,
+  NotEqualStencilFunc,
   ShaderMaterial,
   SrcAlphaFactor,
+  Vector4,
+  ZeroStencilOp,
   Texture,
   Vector2,
   Vector3,
@@ -43,7 +48,16 @@ export const shared = {
   uShadowTexel: { value: 0.01 }, // world units per shadow texel
   uShadowBias: { value: 0.0005 },
   uShadeFaces: { value: 1 },
+  // Section cut: discard where dot(n, p) + w > 0 (xyz = n, w = -offset).
+  uClipOn: { value: 0 },
+  uClipPlane: { value: new Vector4(0, 1, 0, 0) },
 };
+
+const clipPars = /* glsl */ `
+uniform float uClipOn;
+uniform vec4 uClipPlane;`;
+const clipTest = /* glsl */ `
+  if (uClipOn > 0.5 && dot(uClipPlane.xyz, vWorldPos) + uClipPlane.w > 0.0) discard;`;
 
 /** Shadow lookup shared by object fills and the ground. Returns 0 lit … 1 fully in shadow. */
 const shadowChunk = /* glsl */ `
@@ -98,6 +112,7 @@ void main() {
 
 const fillFragment = /* glsl */ `
 ${shadowChunk}
+${clipPars}
 uniform vec3 uShadowColor;
 uniform float uShadowOpacity;
 uniform float uShadeFaces;
@@ -127,6 +142,9 @@ varying vec3 vNormal;
 varying vec2 vUv;
 #endif
 void main() {
+#ifndef NO_CLIP
+${clipTest}
+#endif
   vec3 n = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
 #ifdef HAS_NORMAL
   if (uFlat < 0.5) n = normalize(vNormal) * (gl_FrontFacing ? 1.0 : -1.0);
@@ -201,11 +219,14 @@ function sharedFillUniforms() {
     uShadowTexel: shared.uShadowTexel,
     uShadowBias: shared.uShadowBias,
     uShadeFaces: shared.uShadeFaces,
+    uClipOn: shared.uClipOn,
+    uClipPlane: shared.uClipPlane,
   };
 }
 
-export function createFillMaterial(hasNormal: boolean, hasUv: boolean): FillMaterial {
+export function createFillMaterial(hasNormal: boolean, hasUv: boolean, noClip = false): FillMaterial {
   const defines: Record<string, string> = {};
+  if (noClip) defines.NO_CLIP = '';
   if (hasNormal) defines.HAS_NORMAL = '';
   if (hasUv) defines.HAS_UV = '';
   return new ShaderMaterial({
@@ -241,6 +262,7 @@ export function createFillMaterial(hasNormal: boolean, hasUv: boolean): FillMate
 
 const groundFragment = /* glsl */ `
 ${shadowChunk}
+${clipPars}
 uniform vec3 uShadowColor;
 uniform float uShadowOpacity;
 uniform vec3 uColor;
@@ -248,6 +270,7 @@ uniform float uShadowOnly;
 uniform vec3 uLightDir;
 varying vec3 vWorldPos;
 void main() {
+${clipTest}
   float sh = shadowAt(vWorldPos, vec3(0.0, 1.0, 0.0), max(uLightDir.y, 0.0));
   float k = sh * uShadowOpacity;
   if (uShadowOnly > 0.5) {
@@ -278,14 +301,63 @@ void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vWorldPos = wp.xyz; g
   }) as GroundMaterial;
 }
 
-/** Depth-only material for the shadow-map pass. */
+const clippedVertex = /* glsl */ `varying vec3 vWorldPos;
+void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vWorldPos = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`;
+const clippedOnlyFragment = /* glsl */ `${clipPars}
+varying vec3 vWorldPos;
+void main() {
+${clipTest}
+  gl_FragColor = vec4(1.0);
+}`;
+
+/** Depth-only material for the shadow-map pass (cut-away geometry casts no shadow). */
 export function createShadowDepthMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    vertexShader: /* glsl */ `void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: /* glsl */ `void main() { gl_FragColor = vec4(1.0); }`,
+    vertexShader: clippedVertex,
+    fragmentShader: clippedOnlyFragment,
     side: DoubleSide,
     colorWrite: false,
+    uniforms: { uClipOn: shared.uClipOn, uClipPlane: shared.uClipPlane },
   });
+}
+
+/**
+ * Section caps, pass 1: every remaining face of one object flips the stencil.
+ * Behind each pixel of the cut plane, an odd number of faces means the pixel
+ * is inside the solid. Parity ignores face winding, so it works on imported
+ * meshes with inconsistent normals (they must be closed).
+ */
+export function createCapStencilMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    vertexShader: clippedVertex,
+    fragmentShader: clippedOnlyFragment,
+    side: DoubleSide,
+    colorWrite: false,
+    depthWrite: false,
+    depthTest: false,
+    stencilWrite: true,
+    stencilFunc: AlwaysStencilFunc,
+    stencilFail: InvertStencilOp,
+    stencilZFail: InvertStencilOp,
+    stencilZPass: InvertStencilOp,
+    uniforms: { uClipOn: shared.uClipOn, uClipPlane: shared.uClipPlane },
+  });
+}
+
+/** Section caps, pass 2: a quad on the cut plane, drawn where the stencil is odd, which also resets it. */
+export function createCapMaterial(): FillMaterial {
+  const m = createFillMaterial(false, false, true);
+  m.stencilWrite = true;
+  m.stencilRef = 0;
+  m.stencilFunc = NotEqualStencilFunc;
+  m.stencilFail = ZeroStencilOp;
+  m.stencilZFail = ZeroStencilOp;
+  m.stencilZPass = ZeroStencilOp;
+  m.polygonOffsetFactor = 0;
+  m.polygonOffsetUnits = 1;
+  m.uniforms.uToning.value = 0;
+  m.uniforms.uReceive.value = 0;
+  return m;
 }
 
 // ---------------------------------------------------------------- lines
@@ -310,6 +382,8 @@ uniform float uCreaseCos;
 uniform float uHidden;
 uniform float uHiddenW;
 uniform float uDepthBias;
+uniform float uClipOn;
+uniform vec4 uClipPlane;
 varying float vAlong;
 varying float vSide;
 varying float vHalfW;
@@ -337,8 +411,17 @@ void main() {
   w *= uLineScale;
   if (w <= 0.0) { hide(); return; }
 
-  vec4 cs = projectionMatrix * modelViewMatrix * vec4(iStart, 1.0);
-  vec4 ce = projectionMatrix * modelViewMatrix * vec4(iEnd, 1.0);
+  // Section cut: drop the cut-away part of the segment (trimmed exactly at the plane).
+  vec3 p0 = iStart, p1 = iEnd;
+  if (uClipOn > 0.5) {
+    float d0 = dot(uClipPlane.xyz, (modelMatrix * vec4(p0, 1.0)).xyz) + uClipPlane.w;
+    float d1 = dot(uClipPlane.xyz, (modelMatrix * vec4(p1, 1.0)).xyz) + uClipPlane.w;
+    if (d0 > 0.0 && d1 > 0.0) { hide(); return; }
+    if (d0 > 0.0) p0 = mix(p0, p1, d0 / (d0 - d1));
+    else if (d1 > 0.0) p1 = mix(p1, p0, d1 / (d1 - d0));
+  }
+  vec4 cs = projectionMatrix * modelViewMatrix * vec4(p0, 1.0);
+  vec4 ce = projectionMatrix * modelViewMatrix * vec4(p1, 1.0);
   // Clip against the near plane so perspective segments behind the eye do not explode.
   float ds = cs.z + cs.w, de = ce.z + ce.w;
   if (ds < 0.0 && de < 0.0) { hide(); return; }
@@ -426,6 +509,8 @@ export function createLineMaterial(hidden: boolean): LineMaterial {
       uDash: { value: hidden ? 4 : 0 },
       uGap: { value: hidden ? 3 : 0 },
       uDotted: { value: 0 },
+      uClipOn: shared.uClipOn,
+      uClipPlane: shared.uClipPlane,
     },
   }) as LineMaterial;
 }

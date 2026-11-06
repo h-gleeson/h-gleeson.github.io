@@ -307,17 +307,20 @@ export const actions = {
   saveView(name?: string) {
     const d = doc();
     const thumb = getEngine()?.thumbnail();
-    const v = { id: uid('v'), name: name?.trim() || `View ${d.views.length + 1}`, camera: structuredClone(d.camera), thumb };
+    const v = { id: uid('v'), name: name?.trim() || `View ${d.views.length + 1}`, camera: structuredClone(d.camera), section: structuredClone(d.section), thumb };
     store.setDoc((x) => ({ ...x, views: [...x.views, v] }));
     store.status(`Saved “${v.name}”`);
   },
   applyView(id: string) {
     const v = doc().views.find((x) => x.id === id);
-    if (v) actions.setCamera(structuredClone(v.camera), true);
+    if (!v) return;
+    actions.setCamera(structuredClone(v.camera), true);
+    // Views saved with a section bring their cut back (and views saved without one turn it off).
+    if (v.section) store.setDoc((d) => ({ ...d, section: structuredClone(v.section!) }));
   },
   updateView(id: string) {
     const thumb = getEngine()?.thumbnail();
-    store.setDoc((d) => ({ ...d, views: d.views.map((v) => (v.id === id ? { ...v, camera: structuredClone(d.camera), thumb } : v)) }));
+    store.setDoc((d) => ({ ...d, views: d.views.map((v) => (v.id === id ? { ...v, camera: structuredClone(d.camera), section: structuredClone(d.section), thumb } : v)) }));
     store.status('View updated to the current camera');
   },
   renameView(id: string, name: string) {

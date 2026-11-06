@@ -5,6 +5,7 @@ import { exportPNG } from '../project/exportImage';
 import { actions } from './actions';
 import { explodeActions } from './explodeActions';
 import { annotateActions } from './annotateActions';
+import { sectionActions } from './sectionActions';
 
 export interface Shortcut {
   keys: string;
@@ -53,6 +54,7 @@ export const SHORTCUTS: { group: string; items: Shortcut[] }[] = [
       { keys: 'E', label: 'Assembled ↔ exploded' },
       { keys: 'W', label: 'Move tool (exploded drawings)' },
       { keys: 'T', label: 'Label selection (or main parts)' },
+      { keys: 'X', label: 'Plan / section cut on · off' },
       { keys: '?', label: 'This list' },
     ],
   },
@@ -108,6 +110,7 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
     if (k === 'e') return run(explodeActions.toggleExploded);
     if (k === 'w') return run(explodeActions.toggleMoveTool);
     if (k === 't') return run(annotateActions.labelSelection);
+    if (k === 'x') return run(sectionActions.toggle);
     if (e.key === '?') return run(handlers.toggleHelp);
     const preset = CAMERA_PRESETS.find((p) => p.key === e.key);
     if (preset) return run(() => actions.applyPreset(preset.id));
