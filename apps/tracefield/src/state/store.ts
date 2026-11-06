@@ -38,6 +38,8 @@ const initialUI: UIState = {
   restoreAvailable: false,
   fitRequest: 0,
   tool: 'select',
+  matchSource: null,
+  matchGroups: { fill: true, lines: true, hatch: true, shadows: true, cut: true },
   label: null,
   sectionHandle: true,
   stats: { objects: 0, triangles: 0, edges: 0 },

@@ -14,7 +14,7 @@ let anim = 0;
 
 /** Exploded-drawing commands. */
 export const explodeActions = {
-  setTool(tool: 'select' | 'move') {
+  setTool(tool: 'select' | 'move' | 'match') {
     store.setUI({ tool });
   },
   toggleMoveTool() {

@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 import { store } from '../state/store';
+import { matchActions } from '../app/matchActions';
 import { basis } from './camera';
 import type { Engine } from './Engine';
 
@@ -9,6 +10,7 @@ const round = (v: number) => Math.round(v * 100) / 100;
  * Viewport navigation.
  *  Left drag: orbit · Right / middle / Shift+left drag: pan · Wheel: zoom at cursor
  *  Click: select object · Ctrl/Shift+click: add/remove · Alt+click: select its parent group
+ *  Match tool: click the source, then targets — whole groups (Alt+click: just that mesh)
  */
 export function attachControls(engine: Engine): () => void {
   const el = engine.canvas;
@@ -61,6 +63,8 @@ export function attachControls(engine: Engine): () => void {
     if (store.get().ui.label) store.setUI({ label: null });
     const { doc, ui } = store.get();
     let id = engine.pick(e.clientX, e.clientY);
+    // Match tool works on whole groups by default; Alt+click narrows it to the one mesh.
+    if (ui.tool === 'match') return matchActions.click(id && !e.altKey ? doc.nodes[id]?.parent ?? id : id, e.ctrlKey || e.metaKey);
     if (id && e.altKey) id = doc.nodes[id]?.parent ?? id;
     const additive = e.ctrlKey || e.metaKey || e.shiftKey;
     if (!id) {

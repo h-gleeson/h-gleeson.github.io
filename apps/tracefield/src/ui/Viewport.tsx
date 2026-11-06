@@ -13,6 +13,7 @@ import { FrameOverlay } from './FrameOverlay';
 import { MoveGizmo } from './MoveGizmo';
 import { AnnotationOverlay } from './AnnotationOverlay';
 import { SectionGizmo } from './SectionGizmo';
+import { MatchBar } from './MatchBar';
 import type { CameraState } from '../state/types';
 
 async function loadSample() {
@@ -37,6 +38,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   const isolated = useStore((s) => s.ui.isolated);
   const camera = useStore((s) => s.doc.camera);
   const bg = useStore((s) => s.doc.drawing.background);
+  const matching = useStore((s) => s.ui.tool === 'match');
   const [edgeProgress, setEdgeProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
 
   return (
     <div
-      className="viewport"
+      className={`viewport${matching ? ' matching' : ''}`}
       style={{ background: bg }}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) {
@@ -85,6 +87,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       <SectionGizmo engineReady={ready} />
       <AnnotationOverlay engineReady={ready} />
       <MoveGizmo engineReady={ready} />
+      <MatchBar />
 
       {!empty && <Triad camera={camera} />}
       {!empty && (

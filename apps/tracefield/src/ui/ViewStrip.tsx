@@ -3,6 +3,8 @@ import { Vector3 } from 'three';
 import { actions } from '../app/actions';
 import { explodeActions } from '../app/explodeActions';
 import { sectionActions } from '../app/sectionActions';
+import { matchActions } from '../app/matchActions';
+import { EyedropperIcon } from './MatchBar';
 import { basis, shearOf, toPlane } from '../engine/camera';
 import { CAMERA_PRESETS, DEFAULT_CAMERA } from '../state/defaults';
 import { useStore } from '../state/store';
@@ -146,6 +148,9 @@ export function ViewStrip() {
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 1.5v13M1.5 8h13M8 1.5 6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2" />
             </svg>
+          </button>
+          <button className={`icon-btn ${tool === 'match' ? 'on' : ''}`} onClick={matchActions.toggle} title="Match properties: copy one object's fill, lines, hatch and cut style to others (M)">
+            <EyedropperIcon />
           </button>
           <button className={`icon-btn ${exploded ? 'on' : ''}`} onClick={explodeActions.toggleExploded} title="Assembled ↔ exploded (E)">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round">

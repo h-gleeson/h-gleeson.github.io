@@ -6,6 +6,7 @@ import { actions } from './actions';
 import { explodeActions } from './explodeActions';
 import { annotateActions } from './annotateActions';
 import { sectionActions } from './sectionActions';
+import { matchActions } from './matchActions';
 
 export interface Shortcut {
   keys: string;
@@ -53,6 +54,7 @@ export const SHORTCUTS: { group: string; items: Shortcut[] }[] = [
       { keys: 'G', label: 'Ground grid' },
       { keys: 'E', label: 'Assembled ↔ exploded' },
       { keys: 'W', label: 'Move tool (exploded drawings)' },
+      { keys: 'M', label: 'Match properties (copy one object’s style to others)' },
       { keys: 'T', label: 'Label selection (or main parts)' },
       { keys: 'X', label: 'Plan / section cut on · off' },
       { keys: '?', label: 'This list' },
@@ -90,6 +92,7 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
       return run(label ? () => annotateActions.remove(label) : actions.delete);
     }
     if (k === 'escape' && store.get().ui.label) return run(() => store.setUI({ label: null }));
+    if (k === 'escape' && store.get().ui.tool === 'match') return run(matchActions.exit);
     if (k === 'escape') {
       if (store.get().ui.isolated) return run(() => store.setUI({ isolated: null }));
       return run(actions.clearSelection);
@@ -109,6 +112,7 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
     if (k === 'v' && e.shiftKey) return run(() => actions.saveView());
     if (k === 'e') return run(explodeActions.toggleExploded);
     if (k === 'w') return run(explodeActions.toggleMoveTool);
+    if (k === 'm') return run(matchActions.toggle);
     if (k === 't') return run(annotateActions.labelSelection);
     if (k === 'x') return run(sectionActions.toggle);
     if (e.key === '?') return run(handlers.toggleHelp);

@@ -322,8 +322,11 @@ export interface UIState {
   status: { text: string; kind: 'info' | 'error' } | null;
   restoreAvailable: boolean;
   fitRequest: number;
-  /** Viewport tool: select only, or show the move gizmo on the selection. */
-  tool: 'select' | 'move';
+  /** Viewport tool: select only, the move gizmo on the selection, or match properties. */
+  tool: 'select' | 'move' | 'match';
+  /** Match properties: the object being copied from, and which property groups to copy. */
+  matchSource: string | null;
+  matchGroups: Record<'fill' | 'lines' | 'hatch' | 'shadows' | 'cut', boolean>;
   /** Selected annotation (labels are selected separately from scene nodes). */
   label: string | null;
   /** Show the section plane and its drag handle in the viewport. */
