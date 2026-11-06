@@ -8,12 +8,13 @@ import { useStore } from '../state/store';
 import type { FillMode, GraphicStyle, GroundMode, HatchMode, LineOrder, LineStyle, ShadowMode, StyleKey } from '../state/types';
 import { ColorField, Icon, NumberField, Row, Section, Segmented, Slider, Toggle } from './controls';
 import { OutputTab } from './OutputTab';
+import { EffectsTab } from './EffectsTab';
 import { ExplodeTab } from './ExplodeTab';
 import { AnnotateTab } from './AnnotateTab';
 import { SectionPanel } from './SectionPanel';
 import { StylePresets } from './StylePresets';
 
-type Tab = 'style' | 'object' | 'drawing' | 'explode' | 'labels' | 'view' | 'output';
+type Tab = 'style' | 'object' | 'drawing' | 'explode' | 'labels' | 'view' | 'effects' | 'output';
 
 export function Inspector() {
   const [tab, setTab] = useState<Tab>('style');
@@ -25,6 +26,7 @@ export function Inspector() {
     { id: 'explode', label: 'Explode', hint: 'Exploded drawing: auto-explode, move parts, connectors, saved states' },
     { id: 'labels', label: 'Labels', hint: 'Annotations: labels with leaders, tag columns, numbered key' },
     { id: 'view', label: 'View', hint: 'Projection, orientation, framing, plan / section cut' },
+    { id: 'effects', label: 'Effects', hint: 'Image effects: dither, halftone, ASCII, hatching, contours, grain and more' },
     { id: 'output', label: 'Output', hint: 'Drawing frame, background, lineweight scale, PNG export' },
   ];
   return (
@@ -44,6 +46,7 @@ export function Inspector() {
         {tab === 'explode' && <ExplodeTab />}
         {tab === 'labels' && <AnnotateTab />}
         {tab === 'view' && <ViewTab />}
+        {tab === 'effects' && <EffectsTab />}
         {tab === 'output' && <OutputTab />}
       </div>
     </aside>
@@ -217,6 +220,23 @@ function StyleTab() {
         {field('castShadow', 'Casts shadow', <Toggle value={eff.castShadow} onChange={(v) => set('castShadow', v)} />)}
         {field('receiveShadow', 'Receives shadow', <Toggle value={eff.receiveShadow} onChange={(v) => set('receiveShadow', v)} />, 'Shows shadows cast on it, and shade on faces away from the sun')}
         {doc.drawing.shadows === 'off' && <p className="hint">Shadows are off for the drawing. Turn them on in the Drawing tab.</p>}
+      </Section>
+      <Section title="Image effects">
+        {field(
+          'fxLook',
+          'Look',
+          <select className="select" value={doc.effects.looks.some((l) => l.id === eff.fxLook) ? eff.fxLook : ''} onChange={(ev) => set('fxLook', ev.target.value)}>
+            <option value="">Whole drawing</option>
+            {doc.effects.looks.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>,
+          'Which image-effect look this object gets. Groups pass it to everything inside. Layer looks are made in the Effects tab.',
+        )}
+        {!doc.effects.enabled && <p className="hint">Image effects are off (Effects tab, Shift+X).</p>}
+        {doc.effects.enabled && !doc.effects.looks.length && <p className="hint">No layer looks yet. Add one in the Effects tab to give this object its own look.</p>}
       </Section>
       <Section title="Section cut">
         {field('cutSolid', 'Cut as one solid', <Toggle value={eff.cutSolid} onChange={(v) => set('cutSolid', v)} />, 'Fill everything inside this group as a single solid, for objects modelled as separate surfaces (outer wall, inner wall, rim, base). Open surfaces in the same group are already combined automatically.')}

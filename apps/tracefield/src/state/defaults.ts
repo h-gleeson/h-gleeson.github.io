@@ -1,5 +1,6 @@
+import { DEFAULT_EFFECTS_DOC, normalizeEffects } from './effects';
 import { DEFAULT_OUTPUT } from './output';
-import type { SectionSettings, AnnotationSettings, CameraState, DrawingSettings, ExplodeSettings, GraphicStyle, Oblique, ProjectDoc } from './types';
+import type { SectionSettings, AnnotationSettings, CameraState, DrawingSettings, ExplodeSettings, GraphicStyle, Oblique, ProjectDoc, SceneNode } from './types';
 
 export const DEFAULT_SECTION: SectionSettings = {
   enabled: false,
@@ -74,6 +75,7 @@ export const DEFAULT_STYLE: GraphicStyle = {
   hatchAngle: 45,
   castShadow: true,
   receiveShadow: true,
+  fxLook: '',
   cutSolid: false,
   cutFill: true,
   cutFillColor: '#1b1c1f',
@@ -159,6 +161,7 @@ export function createDoc(): ProjectDoc {
     explode: structuredClone(DEFAULT_EXPLODE),
     annotations: { settings: { ...DEFAULT_LABELS }, items: [] },
     section: { ...DEFAULT_SECTION },
+    effects: structuredClone(DEFAULT_EFFECTS_DOC),
   };
 }
 
@@ -170,21 +173,43 @@ function legacyCutStyle(sec: any): Partial<GraphicStyle> {
   return out;
 }
 
+/** The single-look format switched effects on per object with `style.effects`; that becomes the object's layer look. */
+function hasLegacyFx(nodes: Record<string, SceneNode> | undefined): boolean {
+  return !!nodes && Object.values(nodes).some((n) => n.style && 'effects' in n.style);
+}
+function legacyFxNodes(nodes: Record<string, SceneNode>, look: string | null): Record<string, SceneNode> {
+  const out: Record<string, SceneNode> = {};
+  for (const [id, n] of Object.entries(nodes)) {
+    const { effects, ...style } = n.style as Partial<GraphicStyle> & { effects?: boolean };
+    if (effects !== undefined && look) (style as Partial<GraphicStyle>).fxLook = effects ? look : '';
+    out[id] = { ...n, style };
+  }
+  return out;
+}
+
+function legacyFxDefaults(d: GraphicStyle & { effects?: boolean }, look: string | null): GraphicStyle {
+  if (!('effects' in d)) return d;
+  const { effects, ...rest } = d;
+  return effects && look ? { ...rest, fxLook: look } : rest;
+}
+
 /** Fill in fields missing from documents saved by older versions. */
 export function normalizeDoc(raw: Partial<ProjectDoc>): ProjectDoc {
   const base = createDoc();
+  const fx = normalizeEffects(raw.effects);
   return {
     ...base,
     ...raw,
     camera: { ...base.camera, ...raw.camera, oblique: { ...base.camera.oblique, ...raw.camera?.oblique } },
-    defaults: { ...base.defaults, ...legacyCutStyle(raw.section), ...raw.defaults },
+    defaults: legacyFxDefaults({ ...base.defaults, ...legacyCutStyle(raw.section), ...raw.defaults }, fx.legacyLayerLook),
     drawing: { ...base.drawing, ...raw.drawing },
     views: raw.views ?? [],
     output: { ...base.output, ...raw.output },
     explode: { ...base.explode, ...raw.explode },
     section: { ...base.section, ...raw.section },
+    effects: fx.effects,
     annotations: { settings: { ...base.annotations.settings, ...raw.annotations?.settings }, items: raw.annotations?.items ?? [] },
-    nodes: raw.nodes ?? {},
+    nodes: fx.legacyLayerLook !== null || hasLegacyFx(raw.nodes) ? legacyFxNodes(raw.nodes ?? {}, fx.legacyLayerLook) : raw.nodes ?? {},
     roots: raw.roots ?? [],
     models: raw.models ?? {},
   };

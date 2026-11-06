@@ -51,6 +51,13 @@ export const shared = {
   // Section cut: discard where dot(n, p) + w > 0 (xyz = n, w = -offset).
   uClipOn: { value: 0 },
   uClipPlane: { value: new Vector4(0, 1, 0, 0) },
+  /**
+   * Image-effect mask pass: every material draws which layer look its object
+   * uses (uFx = look number, 0 = none), one-hot in RGB for looks
+   * uMaskBase + 1 … uMaskBase + 3.
+   */
+  uMaskPass: { value: 0 },
+  uMaskBase: { value: 0 },
 };
 
 const clipPars = /* glsl */ `
@@ -134,6 +141,13 @@ uniform vec3 uLightDir;
 uniform float uAmbient;
 uniform float uFlat;
 uniform vec3 uHighlight;
+uniform float uMaskPass;
+uniform float uMaskBase;
+uniform float uFx;
+vec3 lookMask(float fx, float base) {
+  float k = fx - base;
+  return vec3(float(abs(k - 1.0) < 0.5), float(abs(k - 2.0) < 0.5), float(abs(k - 3.0) < 0.5));
+}
 varying vec3 vWorldPos;
 #ifdef HAS_NORMAL
 varying vec3 vNormal;
@@ -184,6 +198,8 @@ ${clipTest}
     col = uShadowMode < 0.5 ? mix(col, uShadowColor, k) : mix(col, col * uShadowColor, k);
   }
   col = mix(col, uHighlight, uSelected * 0.2);
+  // In the mask, a see-through fill (glass) claims its pixels fully, so a look given to the glass covers the glass.
+  if (uMaskPass > 0.5) { gl_FragColor = vec4(lookMask(uFx, uMaskBase), 1.0); return; }
   gl_FragColor = vec4(col, uOpacity * base.a);
 }`;
 
@@ -221,6 +237,8 @@ function sharedFillUniforms() {
     uShadeFaces: shared.uShadeFaces,
     uClipOn: shared.uClipOn,
     uClipPlane: shared.uClipPlane,
+    uMaskPass: shared.uMaskPass,
+    uMaskBase: shared.uMaskBase,
   };
 }
 
@@ -250,6 +268,7 @@ export function createFillMaterial(hasNormal: boolean, hasUv: boolean, noClip = 
       uHatchSpacing: { value: 8 },
       uHatchWidth: { value: 0.6 },
       uHatchDir: { value: new Vector2(1, 0) },
+      uFx: { value: 0 },
       uAmbient: shared.uAmbient,
       uFlat: shared.uFlat,
       uHighlight: shared.uHighlight,
@@ -268,6 +287,7 @@ uniform float uShadowOpacity;
 uniform vec3 uColor;
 uniform float uShadowOnly;
 uniform vec3 uLightDir;
+uniform float uMaskPass;
 varying vec3 vWorldPos;
 void main() {
 ${clipTest}
@@ -279,6 +299,7 @@ ${clipTest}
   } else {
     gl_FragColor = vec4(uShadowMode < 0.5 ? mix(uColor, uShadowColor, k) : mix(uColor, uColor * uShadowColor, k), 1.0);
   }
+  if (uMaskPass > 0.5) gl_FragColor.rgb = vec3(0.0);
 }`;
 
 export type GroundMaterial = ShaderMaterial & { uniforms: { uColor: { value: Color }; uShadowOnly: { value: number } } };
@@ -453,6 +474,13 @@ uniform float uDash;
 uniform float uGap;
 uniform float uDotted;
 uniform float uLineScale;
+uniform float uMaskPass;
+uniform float uMaskBase;
+uniform float uFx;
+vec3 lookMask(float fx, float base) {
+  float k = fx - base;
+  return vec3(float(abs(k - 1.0) < 0.5), float(abs(k - 2.0) < 0.5), float(abs(k - 3.0) < 0.5));
+}
 varying float vAlong;
 varying float vSide;
 varying float vHalfW;
@@ -468,7 +496,7 @@ void main() {
     if (mod(vAlong, period) > uDash * uLineScale) discard;
   }
   if (a <= 0.004) discard;
-  gl_FragColor = vec4(uColor, a);
+  gl_FragColor = vec4(uMaskPass > 0.5 ? lookMask(uFx, uMaskBase) : uColor, a);
 }`;
 
 export type LineMaterial = ShaderMaterial & { uniforms: Record<string, { value: any }> };
@@ -511,6 +539,9 @@ export function createLineMaterial(hidden: boolean): LineMaterial {
       uDotted: { value: 0 },
       uClipOn: shared.uClipOn,
       uClipPlane: shared.uClipPlane,
+      uFx: { value: 0 },
+      uMaskPass: shared.uMaskPass,
+      uMaskBase: shared.uMaskBase,
     },
   }) as LineMaterial;
 }

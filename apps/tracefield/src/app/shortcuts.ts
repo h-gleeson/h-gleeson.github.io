@@ -7,6 +7,7 @@ import { explodeActions } from './explodeActions';
 import { annotateActions } from './annotateActions';
 import { sectionActions } from './sectionActions';
 import { matchActions } from './matchActions';
+import { effectsActions } from './effectsActions';
 
 export interface Shortcut {
   keys: string;
@@ -57,6 +58,7 @@ export const SHORTCUTS: { group: string; items: Shortcut[] }[] = [
       { keys: 'M', label: 'Match properties (copy one object’s style to others)' },
       { keys: 'T', label: 'Label selection (or main parts)' },
       { keys: 'X', label: 'Plan / section cut on · off' },
+      { keys: 'Shift+X', label: 'Image effects on · off' },
       { keys: '?', label: 'This list' },
     ],
   },
@@ -114,6 +116,7 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
     if (k === 'w') return run(explodeActions.toggleMoveTool);
     if (k === 'm') return run(matchActions.toggle);
     if (k === 't') return run(annotateActions.labelSelection);
+    if (k === 'x' && e.shiftKey) return run(effectsActions.toggle);
     if (k === 'x') return run(sectionActions.toggle);
     if (e.key === '?') return run(handlers.toggleHelp);
     const preset = CAMERA_PRESETS.find((p) => p.key === e.key);

@@ -10,7 +10,7 @@ import type { GraphicStyle, ProjectDoc, StyleKey } from './types';
 export type MatchGroup = 'fill' | 'lines' | 'hatch' | 'shadows' | 'cut';
 
 export const MATCH_GROUPS: { id: MatchGroup; label: string; keys: StyleKey[] }[] = [
-  { id: 'fill', label: 'Fill', keys: ['fillMode', 'fillColor', 'opacity', 'toning'] },
+  { id: 'fill', label: 'Fill', keys: ['fillMode', 'fillColor', 'opacity', 'toning', 'fxLook'] },
   {
     id: 'lines',
     label: 'Lines',

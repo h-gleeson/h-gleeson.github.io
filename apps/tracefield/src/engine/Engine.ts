@@ -1,6 +1,7 @@
 import {
   Box3,
   BufferGeometry,
+  type Camera,
   Color,
   ColorManagement,
   DepthTexture,
@@ -35,6 +36,8 @@ import {
 } from 'three';
 import { acceleratedRaycast, computeBoundsTree } from 'three-mesh-bvh';
 import { registry } from '../import/registry';
+import { effectReach, hasFinish, type EffectLook } from '../state/effects';
+import { PostFX, type PassGeometry } from './post';
 import { descendants, ancestors, isLockedInTree, resolveStyle } from '../state/scene';
 import { store } from '../state/store';
 import type { CameraState, GraphicStyle, ProjectDoc, UIState } from '../state/types';
@@ -121,6 +124,13 @@ export class Engine {
   private ground: Mesh | null = null;
   private groundMat: GroundMaterial | null = null;
   private shadowRT: WebGLRenderTarget | null = null;
+  /** Image effects: the scene is drawn into fxScene, then the effect chain runs in fxTargets onto the canvas. */
+  private fx: PostFX | null = null;
+  private fxScene: WebGLRenderTarget | null = null;
+  private fxTargets: FxTargets = { mid: [], masks: [] };
+  /** Layer-look numbers (1-based) that some object uses, from the last style sync. */
+  private usedLooks = new Set<number>();
+  private lookKey = '';
   private shadowCam = new OrthographicCamera();
   private shadowDepthMat: ShaderMaterial | null = null;
   private shadowDirty = true;
@@ -171,6 +181,9 @@ export class Engine {
     this.groundMat?.dispose();
     this.shadowRT?.dispose();
     this.shadowDepthMat?.dispose();
+    this.fx?.dispose();
+    this.fxScene?.dispose();
+    disposeTargets(this.fxTargets);
     this.connectors?.geometry.dispose();
     this.connectorMat?.dispose();
     this.capStencilMat.dispose();
@@ -191,12 +204,15 @@ export class Engine {
     const exploded = !prev || doc.explode !== prev.explode;
     const structural = tree || exploded;
     if (structural) this.syncStructure(doc);
-    if (structural || ui.selection !== this.lastUI?.selection || ui.isolated !== this.lastUI?.isolated || doc.defaults !== prev?.defaults || doc.drawing !== prev?.drawing)
+    const lookKey = doc.effects.looks.map((l) => l.id).join('|');
+    const looksMoved = lookKey !== this.lookKey;
+    this.lookKey = lookKey;
+    if (structural || looksMoved || ui.selection !== this.lastUI?.selection || ui.isolated !== this.lastUI?.isolated || doc.defaults !== prev?.defaults || doc.drawing !== prev?.drawing)
       this.syncStyles(doc, ui);
     if (tree || doc.drawing.showGrid !== prev?.drawing.showGrid) this.syncGrid(doc);
     if (structural || doc.drawing !== prev?.drawing) this.syncGround(doc);
     if (structural || ui.isolated !== this.lastUI?.isolated) this.syncConnectors(doc, ui);
-    if (structural || doc.section !== prev?.section || doc.defaults !== prev?.defaults || ui.isolated !== this.lastUI?.isolated) this.syncSection(doc);
+    if (structural || looksMoved || doc.section !== prev?.section || doc.defaults !== prev?.defaults || ui.isolated !== this.lastUI?.isolated) this.syncSection(doc);
     this.lastDoc = doc;
     this.lastUI = ui;
     if (ui.fitRequest !== this.lastFit) {
@@ -327,6 +343,7 @@ export class Engine {
   }
 
   private syncStyles(doc: ProjectDoc, ui: UIState) {
+    this.usedLooks.clear();
     const selected = new Set<string>();
     for (const id of ui.selection) {
       selected.add(id);
@@ -390,6 +407,10 @@ export class Engine {
         const ha = MathUtils.degToRad(s.hatchAngle);
         u.uHatchDir.value.set(Math.cos(ha), Math.sin(ha));
       });
+      const look = lookNumber(doc, s.fxLook);
+      if (look) this.usedLooks.add(look);
+      r.fillMats.forEach((m) => (m.uniforms.uFx.value = look));
+      r.lineMat.uniforms.uFx.value = r.hiddenMat.uniforms.uFx.value = look;
       r.cast = s.castShadow && !isLine;
       r.fillNone = s.fillMode === 'none';
       const crease = s.allEdgesWidth > 0 ? 2 : Math.cos(MathUtils.degToRad(s.creaseAngle));
@@ -481,7 +502,7 @@ export class Engine {
 
     const q = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), n);
     const box = new Box3();
-    const cut: { mesh: Mesh; color: string; width: number }[] = [];
+    const cut: { mesh: Mesh; color: string; width: number; fx: number }[] = [];
     const styles = new Map<string, GraphicStyle>();
     const style = (id: string) => {
       let st = styles.get(id);
@@ -499,7 +520,7 @@ export class Engine {
       box.copy(mesh.geometry.boundingBox!).applyMatrix4(mesh.matrixWorld);
       const on = box.intersectsPlane(this.clipPlane);
       const st = style(r.id);
-      if (on && st.cutLineWidth > 0) cut.push({ mesh, color: st.cutLineColor, width: st.cutLineWidth });
+      if (on && st.cutLineWidth > 0) cut.push({ mesh, color: st.cutLineColor, width: st.cutLineWidth, fx: lookNumber(doc, st.fxLook) });
       if (!sec.caps) continue;
       const { key, styleId } = this.capUnitOf(doc, r, style);
       let u = units.get(key);
@@ -535,6 +556,7 @@ export class Engine {
       cu.uHatchWidth.value = st.cutHatchWidth;
       const ha = MathUtils.degToRad(st.cutHatchAngle);
       cu.uHatchDir.value.set(Math.cos(ha), Math.sin(ha));
+      cu.uFx.value = lookNumber(doc, st.fxLook);
       // Stencil pass for every member of the solid, then the cap (which clears the stencil).
       for (const m of u.members) {
         if (!m.capStencil) {
@@ -608,13 +630,13 @@ export class Engine {
    * Intersection of the cut plane with every triangle of the cut meshes, in
    * world space, batched by line style (colour + weight).
    */
-  private syncCutLines(items: { mesh: Mesh; color: string; width: number }[], _doc: ProjectDoc) {
+  private syncCutLines(items: { mesh: Mesh; color: string; width: number; fx: number }[], _doc: ProjectDoc) {
     this.clearCutLines();
     if (!items.length) return;
-    const groups = new Map<string, { color: string; width: number; out: number[] }>();
+    const groups = new Map<string, { color: string; width: number; fx: number; out: number[] }>();
     for (const it of items) {
-      const key = `${it.color}|${it.width}`;
-      if (!groups.has(key)) groups.set(key, { color: it.color, width: it.width, out: [] });
+      const key = `${it.color}|${it.width}|${it.fx}`;
+      if (!groups.has(key)) groups.set(key, { color: it.color, width: it.width, fx: it.fx, out: [] });
       this.intersect(it.mesh, groups.get(key)!.out);
     }
     for (const g of groups.values()) {
@@ -628,6 +650,7 @@ export class Engine {
       u.uSilW.value = u.uCreaseW.value = u.uOpenW.value = u.uMatW.value = u.uAllW.value = 0;
       u.uCurveW.value = g.width;
       u.uColor.value.set(g.color);
+      u.uFx.value = g.fx;
       u.uDepthBias.value = 1e-4;
       const mesh = new Mesh(geom, mat);
       mesh.frustumCulled = false;
@@ -1101,9 +1124,140 @@ export class Engine {
     this.setViewUniforms(doc.camera, this.cssW * pr, this.cssH * pr, (f.w * pr) / doc.drawing.referenceWidth, [(f.x + f.w / 2) * pr, (this.cssH - f.y - f.h / 2) * pr]);
     if (this.shadowDirty) this.renderShadowMap(doc);
     this.renderer.setClearColor(doc.drawing.background, 1);
-    this.renderer.render(this.scene, this.camera);
+    if (doc.effects.enabled) this.renderEffects(doc, f, pr);
+    else this.renderer.render(this.scene, this.camera);
     this.onRender?.();
     this.renderListeners.forEach((l) => l());
+  }
+
+  private renderEffects(doc: ProjectDoc, f: Frame, pr: number) {
+    const W = this.canvas.width, H = this.canvas.height;
+    const samples = Math.min(4, this.renderer.capabilities.maxSamples);
+    if (!this.fxScene) this.fxScene = new WebGLRenderTarget(W, H, { samples, depthBuffer: true, stencilBuffer: true });
+    if (this.fxScene.width !== W || this.fxScene.height !== H) this.fxScene.setSize(W, H);
+    this.fx ??= new PostFX();
+    this.renderer.setRenderTarget(this.fxScene);
+    this.renderer.render(this.scene, this.camera);
+    this.renderer.setRenderTarget(null);
+    const refW = doc.drawing.referenceWidth;
+    this.runEffects({
+      doc,
+      cam: this.camera,
+      scene: this.fxScene,
+      sceneOrigin: [-(f.x + f.w / 2) * pr, -(this.cssH - f.y - f.h / 2) * pr],
+      mid: { w: W, h: H, offset: [0, 0] },
+      out: { target: null, offset: [0, 0] },
+      scale: (f.w * pr) / refW,
+      frameHalf: [refW / 2, ((refW / 2) * f.h) / f.w],
+      transparent: false,
+      targets: this.fxTargets,
+      samples,
+    });
+  }
+
+  /** Layer looks that some object uses, with their 1-based numbers (the value in the mask). */
+  private activeLooks(doc: ProjectDoc): { n: number; e: EffectLook }[] {
+    return doc.effects.looks.map((e, i) => ({ n: i + 1, e })).filter((l) => this.usedLooks.has(l.n));
+  }
+
+  /** How far the effect chain looks around a pixel (px at the reference width): stylize, then the finishes in sequence. */
+  private effectsReach(doc: ProjectDoc): { stylize: number; finish: number } {
+    const looks = this.activeLooks(doc).map((l) => l.e);
+    const stylize = Math.max(...[doc.effects.drawing, ...looks].map((e) => effectReach(e).stylize));
+    const layerFinish = Math.max(0, ...looks.filter(hasFinish).map((e) => effectReach(e).finish));
+    return { stylize, finish: effectReach(doc.effects.drawing).finish + layerFinish };
+  }
+
+  /**
+   * The effect chain. Every look samples the plain drawing (`scene`):
+   *  1. the whole-drawing look, then each layer look over it, on its own layers;
+   *  2. each layer look's finish, on its own layers;
+   *  3. the whole-drawing finish over everything, into `out`.
+   * Intermediate results cover `mid` (placed at `mid.offset` in the scene);
+   * `out` is placed at `out.offset` in `mid`. Positions are bottom-up pixels.
+   */
+  private runEffects(p: {
+    doc: ProjectDoc;
+    cam: Camera;
+    scene: WebGLRenderTarget;
+    /** Device px from the scene's pixel (0,0) to the frame centre. */
+    sceneOrigin: [number, number];
+    mid: { w: number; h: number; offset: [number, number] };
+    out: { target: WebGLRenderTarget | null; offset: [number, number] };
+    scale: number;
+    frameHalf: [number, number];
+    transparent: boolean;
+    targets: FxTargets;
+    samples: number;
+  }) {
+    const { doc, scale, frameHalf, transparent: tr } = p;
+    const fx = (this.fx ??= new PostFX());
+    const r = this.renderer;
+    const bg = doc.drawing.background;
+    const looks = this.activeLooks(doc);
+    const sw = p.scene.width, sh = p.scene.height;
+
+    // Masks: three looks per render, one per colour channel.
+    for (const gi of new Set(looks.map((l) => Math.floor((l.n - 1) / 3)))) {
+      let m = p.targets.masks[gi];
+      if (!m) m = p.targets.masks[gi] = new WebGLRenderTarget(sw, sh, { samples: p.samples, depthBuffer: true, stencilBuffer: true });
+      else if (m.width !== sw || m.height !== sh) m.setSize(sw, sh);
+      this.renderMask(m, p.cam, bg, gi * 3);
+    }
+    for (let i = 0; i < 3; i++) {
+      const t = p.targets.mid[i];
+      if (!t) p.targets.mid[i] = new WebGLRenderTarget(p.mid.w, p.mid.h, { depthBuffer: false });
+      else if (t.width !== p.mid.w || t.height !== p.mid.h) t.setSize(p.mid.w, p.mid.h);
+    }
+    const [M0, M1, M2] = p.targets.mid;
+    const maskOf = (n: number) => p.targets.masks[Math.floor((n - 1) / 3)].texture;
+    const midOrigin: [number, number] = [p.sceneOrigin[0] + p.mid.offset[0], p.sceneOrigin[1] + p.mid.offset[1]];
+
+    // 1. Stylize
+    const gS: PassGeometry = { srcSize: [sw, sh], srcOffset: p.mid.offset, fragToFrame: midOrigin, scale };
+    let cur = M0, spare = M1;
+    fx.stylize(r, p.scene.texture, cur, gS, doc.effects.drawing, bg, tr);
+    for (const l of looks) {
+      fx.stylize(r, p.scene.texture, spare, gS, l.e, bg, tr, { mask: maskOf(l.n), channel: (l.n - 1) % 3, base: cur.texture });
+      [cur, spare] = [spare, cur];
+    }
+
+    // 2. Layer finishes, each over the stylized result on its own layers
+    const C = cur;
+    const gM: PassGeometry = { srcSize: [p.mid.w, p.mid.h], srcOffset: [0, 0], fragToFrame: midOrigin, scale };
+    let prev = C;
+    let flip = false;
+    for (const l of looks) {
+      if (!hasFinish(l.e)) continue;
+      const t = flip ? M2 : spare;
+      flip = !flip;
+      fx.finish(r, C.texture, t, gM, l.e, frameHalf, tr, { mask: maskOf(l.n), channel: (l.n - 1) % 3, base: prev === C ? null : prev.texture, maskSize: [sw, sh], maskOffset: p.mid.offset });
+      prev = t;
+    }
+
+    // 3. Whole-drawing finish into the output
+    const gO: PassGeometry = { srcSize: [p.mid.w, p.mid.h], srcOffset: p.out.offset, fragToFrame: [midOrigin[0] + p.out.offset[0], midOrigin[1] + p.out.offset[1]], scale };
+    fx.finish(r, prev.texture, p.out.target, gO, doc.effects.drawing, frameHalf, tr);
+  }
+
+  /**
+   * An image-effect mask: the scene drawn again with every material showing
+   * which layer look its object uses, one-hot in RGB for looks base+1 … base+3.
+   * The mask is exactly the visible surface of each look's layers.
+   */
+  private renderMask(target: WebGLRenderTarget, cam: Camera, background: string, base: number) {
+    const gridWas = this.grid?.visible;
+    if (this.grid) this.grid.visible = false;
+    shared.uMaskPass.value = 1;
+    shared.uMaskBase.value = base;
+    this.renderer.setRenderTarget(target);
+    this.renderer.setClearColor('#000000', 1);
+    this.renderer.clear(true, true, true);
+    this.renderer.render(this.scene, cam);
+    this.renderer.setRenderTarget(null);
+    shared.uMaskPass.value = 0;
+    this.renderer.setClearColor(background, 1);
+    if (this.grid && gridWas !== undefined) this.grid.visible = gridWas;
   }
 
   /** Small JPEG of the frame for the saved-view strip. */
@@ -1149,7 +1303,15 @@ export class Engine {
     const gl = this.renderer.getContext();
     if (gl.isContextLost()) throw new Error('The graphics context was lost. Reload the page and try again.');
     const maxRb = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number;
-    const tile = Math.min(4096, maxRb, this.renderer.capabilities.maxTextureSize);
+    const refW = doc.drawing.referenceWidth;
+    // With effects, each tile is rendered with a margin the effect can look into, so tiles join without seams.
+    const fx = doc.effects.enabled;
+    this.syncStyles(doc, { ...ui, selection: [] });
+    const reach = fx ? this.effectsReach(doc) : { stylize: 0, finish: 0 };
+    const apA = fx ? Math.min(1024, Math.ceil(reach.stylize * (W / refW)) + 1) : 0;
+    const apB = fx ? Math.min(1024, Math.ceil(reach.finish * (W / refW)) + 1) : 0;
+    const T = apA + apB;
+    const tile = Math.max(256, Math.min(4096, maxRb, this.renderer.capabilities.maxTextureSize) - 2 * T);
     const samples = Math.min(o.antialias, this.renderer.capabilities.maxSamples);
 
     const out = document.createElement('canvas');
@@ -1161,11 +1323,12 @@ export class Engine {
     this.exporting = true;
     const gridWas = this.grid?.visible;
     if (this.grid) this.grid.visible = o.includeGrid;
-    this.syncStyles(doc, { ...ui, selection: [] });
     const ortho = new ObliqueCamera();
     const persp = new PerspectiveCamera();
     const cam = applyCamera(doc.camera, ortho, persp, W / H, this.sceneRadius(doc.camera), 1);
-    const rt = new WebGLRenderTarget(tile, tile, { samples, depthBuffer: true, stencilBuffer: true });
+    const rt = new WebGLRenderTarget(tile + 2 * T, tile + 2 * T, { samples, depthBuffer: true, stencilBuffer: true });
+    const fxOut = fx ? new WebGLRenderTarget(tile, tile, { depthBuffer: false }) : null;
+    const fxTargets: FxTargets = { mid: [], masks: [] };
     const pixels = new Uint8Array(tile * tile * 4);
     this.renderShadowMap(doc);
     const cols = Math.ceil(W / tile), rows = Math.ceil(H / tile);
@@ -1176,16 +1339,36 @@ export class Engine {
           if (signal.cancelled) throw new ExportCancelled();
           const x = tx * tile, y = ty * tile;
           const w = Math.min(tile, W - x), h = Math.min(tile, H - y);
-          cam.setViewOffset(W, H, x, y, w, h);
-          rt.setSize(w, h);
+          // The rendered region: the tile plus the effect margin (none without effects).
+          const sx = x - T, sy = y - T, sw = w + 2 * T, sh = h + 2 * T;
+          cam.setViewOffset(W, H, sx, sy, sw, sh);
+          rt.setSize(sw, sh);
           // Tile (x, y) is top-down; gl_FragCoord inside the tile is bottom-up.
-          this.setViewUniforms(doc.camera, w, h, W / doc.drawing.referenceWidth, [W / 2 - x, y + h - H / 2]);
+          this.setViewUniforms(doc.camera, sw, sh, W / refW, [W / 2 - sx, sy + sh - H / 2]);
           this.renderer.setRenderTarget(rt);
           this.renderer.setClearColor(doc.drawing.background, o.transparent ? 0 : 1);
           this.renderer.clear(true, true, true);
           this.renderer.render(this.scene, cam);
-          this.renderer.readRenderTargetPixels(rt, 0, 0, w, h, pixels);
           this.renderer.setRenderTarget(null);
+          if (fx && fxOut) {
+            fxOut.setSize(w, h);
+            this.runEffects({
+              doc,
+              cam,
+              scene: rt,
+              sceneOrigin: [sx - W / 2, H / 2 - sy - sh],
+              mid: { w: w + 2 * apB, h: h + 2 * apB, offset: [apA, apA] },
+              out: { target: fxOut, offset: [apB, apB] },
+              scale: W / refW,
+              frameHalf: [refW / 2, (refW / 2) * (H / W)],
+              transparent: o.transparent,
+              targets: fxTargets,
+              samples,
+            });
+            this.renderer.readRenderTargetPixels(fxOut, 0, 0, w, h, pixels);
+          } else {
+            this.renderer.readRenderTargetPixels(rt, 0, 0, w, h, pixels);
+          }
           const img = ctx.createImageData(w, h);
           copyFlipped(pixels, img.data, w, h, o.transparent);
           ctx.putImageData(img, x, y);
@@ -1211,6 +1394,8 @@ export class Engine {
       );
     } finally {
       rt.dispose();
+      fxOut?.dispose();
+      disposeTargets(fxTargets);
       this.renderer.setRenderTarget(null);
       if (this.grid && gridWas !== undefined) this.grid.visible = gridWas;
       this.exporting = false;
@@ -1269,3 +1454,23 @@ function isShown(o: Object3D | null): boolean {
   }
   return true;
 }
+
+/** Render targets for the effect chain: three intermediate results, and one mask per three layer looks. */
+interface FxTargets {
+  mid: WebGLRenderTarget[];
+  masks: WebGLRenderTarget[];
+}
+
+function disposeTargets(t: FxTargets) {
+  t.mid.forEach((x) => x.dispose());
+  t.masks.forEach((x) => x.dispose());
+  t.mid.length = 0;
+  t.masks.length = 0;
+}
+
+/** The mask value of a layer look: its 1-based position in the list, 0 for none (or a look that no longer exists). */
+function lookNumber(doc: ProjectDoc, id: string): number {
+  if (!id) return 0;
+  return doc.effects.looks.findIndex((l) => l.id === id) + 1;
+}
+

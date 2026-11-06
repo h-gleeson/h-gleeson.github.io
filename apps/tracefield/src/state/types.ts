@@ -7,6 +7,8 @@
  * model registry (src/import/registry.ts) and is never mutated.
  */
 
+import type { Effects } from './effects';
+
 export type FillMode = 'material' | 'color' | 'clay' | 'white' | 'none';
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
 export type HatchMode = 'none' | 'lines' | 'cross' | 'dots';
@@ -41,6 +43,8 @@ export interface GraphicStyle {
   hatchAngle: number; // degrees
   castShadow: boolean;
   receiveShadow: boolean;
+  /** Layer look (image effects) for this object: a look id, or '' for the whole-drawing look. */
+  fxLook: string;
   // Section cut: how this object looks where the plane cuts it.
   /**
    * On a group: everything inside is filled as one solid, even if its parts are
@@ -303,6 +307,8 @@ export interface ProjectDoc {
   explode: ExplodeSettings;
   annotations: Annotations;
   section: SectionSettings;
+  /** Image effects applied to the finished drawing (viewport and export). */
+  effects: Effects;
 }
 
 export interface BusyState {
