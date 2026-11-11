@@ -112,7 +112,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
             </svg>
           </div>
           <h1>Turn a model into a drawing</h1>
-          <p>Drop a GLB, glTF, OBJ, STL or FBX here — or a .tracefield project. The file’s node hierarchy is kept intact.</p>
+          <p>Drop a GLB, glTF, OBJ, STL or FBX here — or a .tracefield project. Images (PNG, JPEG, WebP) come in as planes you can move, rotate and scale. The file’s node hierarchy is kept intact.</p>
           <div className="btn-row center">
             <button className="btn primary" onClick={onImport}>
               Import model…

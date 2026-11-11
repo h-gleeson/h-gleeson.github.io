@@ -137,6 +137,7 @@ uniform float uToning;
 uniform float uSelected;
 uniform float uHasMap;
 uniform sampler2D uMap;
+uniform float uAlphaCut;
 uniform vec3 uLightDir;
 uniform float uAmbient;
 uniform float uFlat;
@@ -167,7 +168,10 @@ ${clipTest}
   float tone = mix(1.0, uAmbient + (1.0 - uAmbient) * ndl, uToning);
   vec4 base = vec4(uColor, 1.0);
 #ifdef HAS_UV
-  if (uHasMap > 0.5) base *= texture2D(uMap, vUv);
+  if (uHasMap > 0.5) {
+    base *= texture2D(uMap, vUv);
+    if (base.a < uAlphaCut) discard;
+  }
 #endif
   vec3 col = base.rgb * tone;
 
@@ -211,6 +215,7 @@ export type FillMaterial = ShaderMaterial & {
     uSelected: { value: number };
     uHasMap: { value: number };
     uMap: { value: Texture | null };
+    uAlphaCut: { value: number };
     uReceive: { value: number };
     uHatch: { value: number };
     uHatchColor: { value: Color };
@@ -262,6 +267,7 @@ export function createFillMaterial(hasNormal: boolean, hasUv: boolean, noClip = 
       uSelected: { value: 0 },
       uHasMap: { value: 0 },
       uMap: { value: null },
+      uAlphaCut: { value: 0 },
       uReceive: { value: 1 },
       uHatch: { value: 0 },
       uHatchColor: { value: new Color('#555555') },
@@ -340,6 +346,30 @@ export function createShadowDepthMaterial(): ShaderMaterial {
     colorWrite: false,
     uniforms: { uClipOn: shared.uClipOn, uClipPlane: shared.uClipPlane },
   });
+}
+
+export type CutoutDepthMaterial = ShaderMaterial & { uniforms: { uMap: { value: Texture | null }; uAlphaCut: { value: number } } };
+
+/** Shadow-map depth for a textured cutout (image planes): transparent pixels cast no shadow. */
+export function createCutoutDepthMaterial(): CutoutDepthMaterial {
+  return new ShaderMaterial({
+    vertexShader: /* glsl */ `varying vec3 vWorldPos;
+varying vec2 vUv;
+void main() { vUv = uv; vec4 wp = modelMatrix * vec4(position, 1.0); vWorldPos = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: /* glsl */ `${clipPars}
+uniform sampler2D uMap;
+uniform float uAlphaCut;
+varying vec3 vWorldPos;
+varying vec2 vUv;
+void main() {
+${clipTest}
+  if (texture2D(uMap, vUv).a < uAlphaCut) discard;
+  gl_FragColor = vec4(1.0);
+}`,
+    side: DoubleSide,
+    colorWrite: false,
+    uniforms: { uClipOn: shared.uClipOn, uClipPlane: shared.uClipPlane, uMap: { value: null }, uAlphaCut: { value: 0.5 } },
+  }) as CutoutDepthMaterial;
 }
 
 /**

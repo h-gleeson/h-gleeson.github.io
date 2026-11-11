@@ -230,7 +230,7 @@ export function resetToImported(doc: ProjectDoc, ids: string[]): ProjectDoc {
     all.add(id);
     descendants(doc, id).forEach((x) => all.add(x));
   }
-  return updateNodes(doc, [...all], (n) => ({ ...n, name: n.importedName, matrix: n.baseMatrix, style: {} }));
+  return updateNodes(doc, [...all], (n) => ({ ...n, name: n.importedName, matrix: n.baseMatrix, style: { ...n.importedStyle } }));
 }
 
 /** Depth-first order of nodes currently visible in the tree (respecting expansion). */

@@ -4,7 +4,9 @@ import { actions } from '../app/actions';
 import { registry } from '../import/registry';
 import { CAMERA_PRESETS } from '../state/defaults';
 import { ancestors, resolveStyle, styleSource, worldMatrix } from '../state/scene';
-import { useStore } from '../state/store';
+import { store, useStore } from '../state/store';
+import { basis } from '../engine/camera';
+import type { ProjectDoc } from '../state/types';
 import type { FillMode, GraphicStyle, GroundMode, HatchMode, LineOrder, LineStyle, ShadowMode, StyleKey } from '../state/types';
 import { ColorField, Icon, NumberField, Row, Section, Segmented, Slider, Toggle } from './controls';
 import { OutputTab } from './OutputTab';
@@ -310,9 +312,16 @@ function ObjectTab() {
   const world = worldMatrix(doc, n.id);
   const pos = new Vector3(), q = new Quaternion(), scl = new Vector3();
   world.decompose(pos, q, scl);
-  const rot = new Euler().setFromQuaternion(q);
+  // Yaw first (Y up), so spinning about the vertical runs a full ±180° without flipping the other angles.
+  const rot = new Euler().setFromQuaternion(q, 'YXZ');
   const moved = n.matrix.some((v, i) => Math.abs(v - n.baseMatrix[i]) > 1e-9);
   const step = Math.max(doc.camera.height / 200, 1e-4);
+  /** Write a new world transform for the node, as a local matrix under its parent. */
+  const setWorld = (p: Vector3, r: Quaternion, s: Vector3) => {
+    const parentWorld = n.parent ? worldMatrix(doc, n.parent) : new Matrix4();
+    const newLocal = parentWorld.invert().multiply(new Matrix4().compose(p, r, s));
+    actions.setNodeMatrix(n.id, newLocal.toArray());
+  };
   const nudge = (axis: number, value: number) => {
     const delta = value - pos.getComponent(axis);
     const t = new Vector3().setComponent(axis, delta);
@@ -320,6 +329,27 @@ function ObjectTab() {
     const newWorld = new Matrix4().makeTranslation(t.x, t.y, t.z).multiply(world);
     const newLocal = parentWorld.invert().multiply(newWorld);
     actions.setNodeMatrix(n.id, newLocal.toArray());
+  };
+  const rotateTo = (axis: 'x' | 'y' | 'z', deg: number) => {
+    const e = rot.clone();
+    e[axis] = MathUtils.degToRad(deg);
+    setWorld(pos, new Quaternion().setFromEuler(e), scl);
+  };
+  const scaleAxis = (axis: number, v: number) => setWorld(pos, q, scl.clone().setComponent(axis, Math.max(v, 1e-6)));
+  const uniform = Math.cbrt(Math.abs(scl.x * scl.y * scl.z));
+  const scaleUniform = (v: number) => setWorld(pos, q, scl.clone().multiplyScalar(Math.max(v, 1e-6) / (uniform || 1)));
+  const scaleStep = Math.max(uniform / 100, 1e-4);
+  const image = imagePlaneOf(doc, n.id);
+  /** Orient an image plane: upright facing +Z (keeps its heading), flat on the ground, or square to the view. */
+  const orient = (to: 'upright' | 'flat' | 'view') => {
+    let r: Quaternion;
+    if (to === 'view') {
+      const { right, up, back } = basis(doc.camera);
+      r = new Quaternion().setFromRotationMatrix(new Matrix4().makeBasis(right, up, back));
+    } else r = new Quaternion().setFromEuler(new Euler(to === 'flat' ? -Math.PI / 2 : 0, rot.y, 0, 'YXZ'));
+    store.commit();
+    setWorld(pos, r, scl);
+    store.commit();
   };
   return (
     <>
@@ -385,19 +415,53 @@ function ObjectTab() {
               <NumberField value={pos.getComponent(i)} step={step} precision={3} onChange={(v) => nudge(i, v)} />
             </Row>
           ))}
-          <Row label="Rotation">
-            <span className="value">
-              {[rot.x, rot.y, rot.z].map((r) => MathUtils.radToDeg(r).toFixed(1)).join('°  ')}°
-            </span>
-          </Row>
-          <Row label="Scale">
-            <span className="value">{[scl.x, scl.y, scl.z].map((s) => Number(s.toFixed(3))).join(' × ')}</span>
-          </Row>
           {moved && <p className="hint">Moved from its imported position. “Reset to imported” in the Style tab restores it.</p>}
+        </Section>
+      )}
+      {sel.length === 1 && (
+        <Section title="Rotation · world">
+          {(['y', 'x', 'z'] as const).map((a) => (
+            <Row key={a} label={a === 'y' ? 'Y · turn' : a === 'x' ? 'X · tilt' : 'Z · roll'} title="Degrees, about the object's pivot. Applied turn, then tilt, then roll.">
+              <NumberField value={MathUtils.radToDeg(rot[a])} step={1} precision={1} unit="°" onChange={(v) => rotateTo(a, v)} />
+            </Row>
+          ))}
+          {image && (
+            <div className="btn-row">
+              <button className="btn" onClick={() => orient('upright')} title="Stand the image up, keeping its turn">Upright</button>
+              <button className="btn" onClick={() => orient('flat')} title="Lay the image flat, face up">Flat</button>
+              <button className="btn" onClick={() => orient('view')} title="Turn the image square to the current view">Face view</button>
+            </div>
+          )}
+        </Section>
+      )}
+      {sel.length === 1 && (
+        <Section title="Scale">
+          <Row label="Uniform" title="Scales every axis together, keeping proportions">
+            <NumberField value={uniform} step={scaleStep} precision={3} min={1e-6} onChange={scaleUniform} />
+          </Row>
+          {(image ? ['Width', 'Height'] : ['X', 'Y', 'Z']).map((a, i) => (
+            <Row key={a} label={a} title={image ? 'Along the image itself' : "Along the object's own axis"}>
+              <NumberField value={scl.getComponent(i)} step={scaleStep} precision={3} min={1e-6} onChange={(v) => scaleAxis(i, v)} />
+            </Row>
+          ))}
+          {image && (
+            <div className="btn-row">
+              <button className="btn" onClick={() => { const k = Math.sqrt(Math.abs(scl.x * scl.y)); setWorld(pos, q, new Vector3(k, k, scl.z)); }} disabled={Math.abs(scl.x - scl.y) < 1e-9} title="Undo any stretching: width and height back in the picture's proportions">
+                Restore proportions
+              </button>
+            </div>
+          )}
         </Section>
       )}
     </>
   );
+}
+
+/** True for an imported image: its top group or the plane inside it. */
+function imagePlaneOf(doc: ProjectDoc, id: string): boolean {
+  const n = doc.nodes[id];
+  const model = n.geom?.model ?? (n.children.length === 1 ? doc.nodes[n.children[0]]?.geom?.model : undefined);
+  return !!model && doc.models[model]?.format === 'image';
 }
 
 function DrawingTab() {

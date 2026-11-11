@@ -87,7 +87,7 @@ export function App() {
             Save
           </button>
           <span className="menu-sep" />
-          <button onClick={() => importRef.current?.click()} title="Import GLB, glTF, OBJ, STL, FBX (Ctrl+I)">
+          <button onClick={() => importRef.current?.click()} title="Import GLB, glTF, OBJ, STL, FBX, or images as planes (Ctrl+I)">
             Import…
           </button>
           <button className="menu-export" onClick={exportPNG} disabled={!hasContent} title="Export the drawing frame as PNG (Ctrl+E)">

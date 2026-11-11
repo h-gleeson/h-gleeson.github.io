@@ -91,9 +91,12 @@ export interface SceneNode {
   locked: boolean;
   expanded: boolean;
   style: Partial<GraphicStyle>;
+  /** Style overrides set at import (image planes show their picture); "reset to imported" restores these. */
+  importedStyle?: Partial<GraphicStyle>;
 }
 
-export type ModelFormat = 'glb' | 'gltf' | 'obj' | 'stl' | 'fbx';
+/** 'image': a picture (PNG/JPEG/WebP) imported as a textured plane. */
+export type ModelFormat = 'glb' | 'gltf' | 'obj' | 'stl' | 'fbx' | 'image';
 
 export interface ModelFile {
   name: string;

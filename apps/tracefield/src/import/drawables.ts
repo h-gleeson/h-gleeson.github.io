@@ -7,6 +7,8 @@ export interface MaterialInfo {
   color: string;
   map: Texture | null;
   opacity: number;
+  /** Texture alpha below this is cut out (glTF alphaMode MASK, image planes); 0 = off. */
+  alphaCut: number;
 }
 
 export interface Drawable {
@@ -35,7 +37,7 @@ function materialInfo(m: Material | undefined, linear: boolean): MaterialInfo {
   const map = anyM?.map ?? null;
   // Colour management is off app-wide; sample textures as stored (sRGB values).
   if (map) map.colorSpace = NoColorSpace;
-  return { name: m?.name ?? '', color: colorHex(anyM?.color, linear), map, opacity: m?.opacity ?? 1 };
+  return { name: m?.name ?? '', color: colorHex(anyM?.color, linear), map, opacity: m?.opacity ?? 1, alphaCut: map ? m?.alphaTest ?? 0 : 0 };
 }
 
 /** Plain float32 positions; loaders sometimes hand back interleaved or quantized attributes. */

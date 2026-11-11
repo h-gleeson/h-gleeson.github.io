@@ -7,7 +7,7 @@ import type { ProjectDoc } from '../state/types';
 import { Icon, Segmented } from './controls';
 
 const PAGE = 200;
-export const ACCEPT = '.glb,.gltf,.bin,.obj,.mtl,.stl,.fbx,.png,.jpg,.jpeg,.webp,.tracefield';
+export const ACCEPT = '.glb,.gltf,.bin,.obj,.mtl,.stl,.fbx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.tracefield';
 
 export function ScenePanel() {
   const doc = useStore((s) => s.doc);
@@ -38,7 +38,7 @@ export function ScenePanel() {
           </span>
         </div>
         <div className="import-row">
-          <button className="btn primary grow" onClick={() => fileRef.current?.click()} title="Import GLB, glTF, OBJ, STL or FBX (Ctrl+I)">
+          <button className="btn primary grow" onClick={() => fileRef.current?.click()} title="Import GLB, glTF, OBJ, STL, FBX, or images as planes (Ctrl+I)">
             Import model
           </button>
           <button className={`btn icon ${showOptions ? 'on' : ''}`} title="Import options" onClick={() => setShowOptions(!showOptions)} aria-expanded={showOptions}>

@@ -14,6 +14,8 @@ import {
   PlaneGeometry,
   Quaternion,
   ShaderMaterial,
+  type Texture,
+  type Material,
   UnsignedIntType,
   GridHelper,
   Group,
@@ -53,9 +55,11 @@ import {
   createGroundMaterial,
   createLineMaterial,
   createShadowDepthMaterial,
+  createCutoutDepthMaterial,
   createCapMaterial,
   createCapStencilMaterial,
   shared,
+  type CutoutDepthMaterial,
   type FillMaterial,
   type GroundMaterial,
   type LineMaterial,
@@ -82,6 +86,9 @@ interface RenderObject {
   fillNone: boolean;
   /** Section caps: stencil-parity pass (shares the body geometry) and the cap quad on the plane. */
   capStencil: Mesh | null;
+  /** Texture whose transparent pixels are cut out (shown image planes, glTF MASK), and its shadow-depth material. */
+  cutout: { map: Texture; cut: number } | null;
+  cutoutDepth: CutoutDepthMaterial | null;
 }
 
 /** A solid for section poché: one or more meshes whose faces are counted together. */
@@ -290,7 +297,7 @@ export class Engine {
     const d = model?.drawables[index];
     if (!d) return;
     if (!r) {
-      r = { id, key, host, body: null, fillMats: [], lines: null, hidden: null, lineMat: createLineMaterial(false), hiddenMat: createLineMaterial(true), cast: true, fillNone: false, capStencil: null };
+      r = { id, key, host, body: null, fillMats: [], lines: null, hidden: null, lineMat: createLineMaterial(false), hiddenMat: createLineMaterial(true), cast: true, fillNone: false, capStencil: null, cutout: null, cutoutDepth: null };
       this.robjs.set(id, r);
     }
     if (!r.body) {
@@ -337,6 +344,7 @@ export class Engine {
     r.hidden?.removeFromParent();
     r.capStencil?.removeFromParent();
     r.fillMats.forEach((m) => m.dispose());
+    r.cutoutDepth?.dispose();
     r.lineMat.dispose();
     r.hiddenMat.dispose();
     this.robjs.delete(id);
@@ -370,6 +378,7 @@ export class Engine {
       const d = registry.get(n.geom.model)?.drawables[n.geom.index];
       const sel = selected.has(r.id);
       const isLine = d?.kind === 'line';
+      r.cutout = null;
       r.fillMats.forEach((m, slot) => {
         const u = m.uniforms;
         const info = d?.materials[slot] ?? d?.materials[0];
@@ -388,6 +397,10 @@ export class Engine {
         u.uToning.value = toning;
         u.uMap.value = map;
         u.uHasMap.value = map ? 1 : 0;
+        const cut = map ? info?.alphaCut ?? 0 : 0;
+        u.uAlphaCut.value = cut;
+        // Shadows follow the cutout of a single-material mesh (image planes); multi-material casts its full shape.
+        if (map && cut > 0 && r.fillMats.length === 1) r.cutout = { map, cut };
         u.uSelected.value = sel ? 1 : 0;
         const opacity = s.opacity * (s.fillMode === 'material' ? info?.opacity ?? 1 : 1);
         u.uOpacity.value = opacity;
@@ -949,13 +962,24 @@ export class Engine {
     this.caps.forEach((c) => hide(c.mesh));
     hide(this.connectors);
     this.cutLines.forEach((c) => hide(c.mesh));
+    // Each caster draws with the depth-only material, or a cutout one so transparent pixels cast nothing.
+    const swapped: [Mesh, Material | Material[]][] = [];
+    for (const r of casters) {
+      const body = r.body as Mesh;
+      swapped.push([body, body.material]);
+      if (r.cutout) {
+        r.cutoutDepth ??= createCutoutDepthMaterial();
+        r.cutoutDepth.uniforms.uMap.value = r.cutout.map;
+        r.cutoutDepth.uniforms.uAlphaCut.value = r.cutout.cut;
+        body.material = r.cutoutDepth;
+      } else body.material = this.shadowDepthMat!;
+    }
     const prevTarget = this.renderer.getRenderTarget();
-    this.scene.overrideMaterial = this.shadowDepthMat;
     this.renderer.setRenderTarget(this.shadowRT);
     this.renderer.clear(true, true, false);
     if (casters.length) this.renderer.render(this.scene, cam);
-    this.scene.overrideMaterial = null;
     this.renderer.setRenderTarget(prevTarget);
+    for (const [m, mat] of swapped) m.material = mat;
     for (const [o, vis] of restore) o.visible = vis;
   }
 

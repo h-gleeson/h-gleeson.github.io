@@ -1,4 +1,4 @@
-import { Group, LoadingManager, Mesh, MeshStandardMaterial, Object3D } from 'three';
+import { Group, LoadingManager, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, PlaneGeometry, Texture } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
@@ -19,6 +19,50 @@ const EXT: Record<string, ModelFormat> = { glb: 'glb', gltf: 'gltf', obj: 'obj',
 export const MODEL_EXTENSIONS = Object.keys(EXT);
 /** Files that may accompany a model (glTF buffers/textures, OBJ materials). */
 export const SIDE_EXTENSIONS = ['bin', 'mtl', 'png', 'jpg', 'jpeg', 'webp', 'ktx2', 'tga', 'bmp'];
+/** Pictures that import as image planes when dropped without a model. */
+export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'];
+const MIME: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp', avif: 'image/avif' };
+
+/**
+ * An image as a plane: 1 unit tall, as wide as its aspect, centred on the
+ * origin in the XY plane facing +Z. Size and placement live in the node matrix,
+ * so the parse depends only on the bytes (projects re-attach deterministically).
+ * Transparent pixels are cut out (alphaTest) in the fill and in the shadows.
+ */
+async function parseImage(main: SourceFile): Promise<Object3D> {
+  const url = URL.createObjectURL(new Blob([main.data], { type: MIME[extOf(main.name)] ?? '' }));
+  const img = new Image();
+  try {
+    img.src = url;
+    await img.decode();
+  } catch {
+    throw new ImportError(`${main.name} could not be decoded as an image.`);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h) throw new ImportError(`${main.name} has no pixels.`);
+  // Keep textures within what every GPU takes; the original bytes are still what the project saves.
+  const MAX = 4096;
+  let source: HTMLImageElement | HTMLCanvasElement = img;
+  if (Math.max(w, h) > MAX) {
+    const k = MAX / Math.max(w, h);
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * k);
+    c.height = Math.round(h * k);
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    source = c;
+  }
+  const map = new Texture(source);
+  map.anisotropy = 8;
+  map.needsUpdate = true;
+  const geometry = new PlaneGeometry(w / h, 1);
+  const mesh = new Mesh(geometry, new MeshBasicMaterial({ color: 0xffffff, map, alphaTest: 0.5 }));
+  mesh.name = main.name.replace(/\.[^.]+$/, '');
+  const root = new Group();
+  root.add(mesh);
+  return root;
+}
 
 export function extOf(name: string): string {
   return name.toLowerCase().split('.').pop() ?? '';
@@ -110,6 +154,9 @@ export async function parseModel(main: SourceFile, side: SourceFile[], format: M
       }
       case 'fbx':
         root = new FBXLoader(manager).parse(main.data.slice(0), '');
+        break;
+      case 'image':
+        root = await parseImage(main);
         break;
     }
     // Let texture requests settle so missing-file warnings are complete.
