@@ -422,8 +422,55 @@
         cards.forEach(function (c) { io.observe(c); });
     }
 
+    /* Fit text: cards are a fixed 5:7. If any card's text doesn't fit,
+       shrink the card text on EVERY card by the same step (--card-text on
+       <html>) until all of them fit. Measured on hidden copies of each card
+       in both variants, so closed sections and the random full-art roll
+       don't change the result. */
+    var FIT_MIN = 0.7, FIT_STEP = 0.025;
+    function fitText() {
+        var cards = document.querySelectorAll('.card-rail .card');
+        if (!cards.length) return;
+        var root = document.documentElement;
+        root.classList.remove('card-text-overflow');
+        var box = document.createElement('div');
+        box.setAttribute('aria-hidden', 'true');
+        box.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;pointer-events:none;';
+        cards.forEach(function (card) {
+            [false, true].forEach(function (full) {
+                var c = card.cloneNode(true);
+                c.classList.remove('is-active');
+                c.classList.toggle('full-art', full);
+                c.removeAttribute('id');
+                box.appendChild(c);
+            });
+        });
+        document.body.appendChild(box);
+        var copies = Array.prototype.slice.call(box.children);
+        var fits = function () {
+            return copies.every(function (c) { return c.scrollHeight <= c.clientHeight + 1; });
+        };
+        var scale = 1;
+        box.style.setProperty('--card-text', scale);
+        while (!fits() && scale > FIT_MIN + 1e-6) {
+            scale = Math.max(FIT_MIN, +(scale - FIT_STEP).toFixed(3));
+            box.style.setProperty('--card-text', scale);
+        }
+        var ok = fits();
+        box.remove();
+        root.style.setProperty('--card-text', scale);
+        root.classList.toggle('card-text-overflow', !ok);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         resolveArt();
+        fitText();
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitText);
+        var fitTimer;
+        window.addEventListener('resize', function () {
+            clearTimeout(fitTimer);
+            fitTimer = setTimeout(fitText, 150);
+        });
         rollVariants();
         document.querySelectorAll('.card-rail').forEach(watchArt);
         document.querySelectorAll('.card-rail').forEach(initRail);

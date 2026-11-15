@@ -26,7 +26,7 @@
             return {
                 width: Math.round(parseFloat(css.width)), ratio: +(parseFloat(css.height) / parseFloat(css.width)).toFixed(2),
                 radius: parseFloat(css.borderRadius), padding: Math.round(parseFloat(css.paddingLeft)),
-                art: Math.round(parseFloat(getComputedStyle(regular.querySelector('.card-art')).minHeight)),
+                art: Math.round(parseFloat(getComputedStyle(regular.querySelector('.card-art')).height)),
                 titleSize: Math.round(parseFloat(getComputedStyle(regular.querySelector('.card-title')).fontSize) * 10) / 10,
                 textSize: Math.round(parseFloat(getComputedStyle(regular.querySelector('.card-desc')).fontSize) * 10) / 10,
                 sample: 'palace', title: samples.palace[0], description: samples.palace[1], typeLabel: samples.palace[2], guides: false

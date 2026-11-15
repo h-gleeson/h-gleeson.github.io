@@ -18,7 +18,7 @@
     --card-w: min(17.5rem, calc(100vw - 4.5rem));
     position: relative;
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;    /* every card in the rail matches the tallest */
     gap: 22px;
     /* room above for the raised card, room below for its shadow */
     padding: 44px 12px 24px;
@@ -55,6 +55,10 @@
 .card {
     --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.18) 13%;
     --card-surface: hsl(var(--card-surface-hsl));
+    /* text blocks: the accent hue, a little more saturated and lighter
+       than the card surface so they read as a step off the theme color */
+    --card-block: hsl(var(--accent-h) calc(var(--accent-s) * 0.38) 19%);
+    --card-block-radius: 5px;
     --card-w: min(17.5rem, calc(100vw - 4.5rem));
     --card-radius: 10px;
     --card-padding: 0.625rem;
@@ -62,7 +66,7 @@
     border-radius: var(--card-radius);
     flex: 0 0 auto;
     width: var(--card-w);
-    min-height: calc(var(--card-w) * 1.4);   /* 5:7, growing only when text needs it */
+    height: calc(var(--card-w) * 1.4);       /* always 5:7; cards.js shrinks the text to fit */
     box-sizing: border-box;
     overflow: hidden;
     display: flex;
@@ -99,6 +103,14 @@
     outline-offset: 3px;
 }
 
+/* Last resort: if the text still doesn't fit at the smallest size
+   cards.js allows (very large reader text), let cards grow instead of
+   clipping the words. */
+:root.card-text-overflow .card {
+    height: auto;
+    min-height: calc(var(--card-w) * 1.4);
+}
+
 /* ── Title ─────────────────────────────────────────────────────────── */
 
 .card-head {
@@ -115,7 +127,7 @@
 
 .card-title {
     font-family: var(--sans);
-    font-size: 0.9375rem;
+    font-size: calc(0.9375rem * var(--card-text, 1));
     font-weight: 700;
     line-height: 1.25;
     letter-spacing: -0.01em;
@@ -134,13 +146,15 @@
     order: -1;
     flex: 0 0 auto;
     min-height: 2.5em;                 /* room for two lines, so art lines up across cards */
-    padding: 0 2px;
+    padding: 0.35rem 0.5rem;
     margin-bottom: 0.5rem;
+    background: var(--card-block);
+    border-radius: var(--card-block-radius);
 }
 
 .card-index {
     font-family: var(--mono);
-    font-size: 0.75rem;
+    font-size: calc(0.75rem * var(--card-text, 1));
     letter-spacing: 0.03em;
     color: var(--text-dim);
     white-space: nowrap;
@@ -155,7 +169,7 @@
     gap: 8px;
     flex: 0 0 auto;
     font-family: var(--mono);
-    font-size: 0.75rem;
+    font-size: calc(0.75rem * var(--card-text, 1));
     line-height: 1.4;
     letter-spacing: 0.02em;
     color: var(--text-bright);
@@ -164,11 +178,22 @@
 .card:not(.full-art) .card-type {
     order: 1;
     margin-top: 0.5rem;
-    padding: 0 2px 0.4rem;
-    border-bottom: 1px solid var(--border-mid);
+    padding: 0.35rem 0.5rem;
+    background: var(--card-block);
+    border-radius: var(--card-block-radius);
 }
-.card:not(.full-art) .card-body { order: 2; }
-.card:not(.full-art) .card-foot { order: 3; }
+.card:not(.full-art) .card-body {
+    order: 2;
+    flex: 0 0 auto;
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    background: var(--card-block);
+    border-radius: var(--card-block-radius);
+}
+.card:not(.full-art) .card-foot {
+    order: 3;
+    padding: 0.4rem 0.5rem 0;   /* lines up with the text inside the blocks */
+}
 
 /* ── Art window ────────────────────────────────────────────────────── */
 
@@ -183,6 +208,17 @@
     background-color: #0d0d0d;
     border-radius: calc(var(--card-radius) - 5px);
     overflow: hidden;
+}
+
+/* Regular cards: the art window is always 5:4 (the shape of the *_reg
+   art files), so every card's image matches. Leftover height goes to the
+   text instead; the footer stays pinned to the bottom. --art-h, when set
+   (the card workshop), still overrides the height. */
+.card:not(.full-art) .card-art {
+    flex: 0 0 auto;
+    min-height: 0;
+    height: var(--art-h, auto);
+    aspect-ratio: 5 / 4;
 }
 
 /* Lazy art: hold back artwork until cards.js marks the card .art-in.
@@ -202,7 +238,7 @@
 
 .card-desc {
     font-family: var(--sans);
-    font-size: 0.875rem;
+    font-size: calc(0.875rem * var(--card-text, 1));
     line-height: 1.45;
     color: var(--text);
 }
@@ -217,7 +253,7 @@
     justify-content: space-between;
     gap: 8px;
     font-family: var(--mono);
-    font-size: 0.75rem;
+    font-size: calc(0.75rem * var(--card-text, 1));
     letter-spacing: 0.04em;
     color: var(--text-label);
 }
@@ -435,7 +471,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(17.5rem, 100%), 1fr));
     justify-items: center;
-    align-items: start;
+    align-items: stretch;
     gap: 28px 22px;
     padding: 20px 12px 24px;
     overflow: visible;
@@ -477,6 +513,7 @@
 
 :root.light-mode .card {
     --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.6) 92%;
+    --card-block: hsl(var(--accent-h) calc(var(--accent-s) * 0.7) 85%);
 }
 :root.light-mode .card.is-active,
 :root.light-mode .card-rail.is-grid .card:hover,
