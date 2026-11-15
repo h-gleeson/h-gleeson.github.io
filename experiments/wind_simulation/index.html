@@ -4,20 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wind Simulation — hsgleeson.xyz</title>
+    <meta name="description" content="Draw walls over a massing model, move the programs around, and watch the wind find its way through.">
+    <link rel="canonical" href="https://hsgleeson.xyz/experiments/wind_simulation/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Wind Simulation">
+    <meta property="og:description" content="Draw walls over a massing model, move the programs around, and watch the wind find its way through.">
+    <meta property="og:url" content="https://hsgleeson.xyz/experiments/wind_simulation/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/wind-simulation.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="The wind simulation: streams of particles flowing around coloured building masses in plan.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
+    <script src="../../assets/js/theme-init.js"></script>
     <script type="importmap">
     {
         "imports": {
@@ -27,10 +30,9 @@
     }
     </script>
     <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
 
         /* The tool fills the content column instead of showing a gallery */
-        .gallery-content { padding: 0; gap: 0; position: relative; height: calc(100vh - 58px); min-height: 0; overflow: hidden; }
+        .gallery-content { padding: 0; gap: 0; position: relative; height: calc(100vh - var(--header-h)); min-height: 0; overflow: hidden; }
         @media (max-width: 900px) { .gallery-content { height: 72vh; } }
         #stage { position: absolute; inset: 0; touch-action: none; }
         #stage canvas { display: block; }
@@ -43,38 +45,38 @@
             border: 1px solid var(--border-mid);
             color: var(--text-dim);
             font-family: var(--mono);
-            font-size: 11px;
+            font-size: 0.75rem;
             letter-spacing: .08em;
             padding: 7px 4px;
             cursor: pointer;
         }
         .seg button + button { border-left: none; }
         .seg button:hover, .btn:hover { color: var(--text); border-color: var(--text-dim); }
-        .seg button.on { color: var(--orange); border-color: var(--orange); background: var(--orange-dim); }
+        .seg button.on { color: var(--text-bright); border-color: var(--orange); background: var(--orange-dim); }
         .seg button.on + button { border-left: 1px solid var(--border-mid); }
         .btn-row { display: flex; gap: 6px; margin-bottom: 10px; }
         .ctl { display: block; margin-bottom: 12px; }
-        .ctl .row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--text-dim); text-transform: uppercase; }
+        .ctl .row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.75rem; letter-spacing: .08em; color: var(--text-dim); text-transform: uppercase; }
         .ctl input[type=range] { width: 100%; accent-color: var(--accent); }
-        .chk { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--text-dim); margin-bottom: 8px; cursor: pointer; text-transform: uppercase; }
+        .chk { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.75rem; letter-spacing: .08em; color: var(--text-dim); margin-bottom: 8px; cursor: pointer; text-transform: uppercase; }
         .chk input { accent-color: var(--accent); }
-        .hint { font-family: var(--mono); font-size: 11px; line-height: 1.6; color: var(--text-dim); }
+        .hint { font-family: var(--mono); font-size: 0.75rem; line-height: 1.6; color: var(--text-dim); }
         .hint b { color: var(--text); font-weight: normal; }
 
         /* Program legend / editor */
         .prog { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid transparent; cursor: pointer; }
         .prog:hover { background: var(--bg-hover); }
         .prog.sel { border-color: var(--orange); background: var(--orange-dim); }
-        .prog .num { font-family: var(--mono); font-size: 11px; color: var(--text-dim); width: 18px; }
+        .prog .num { font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); width: 18px; }
         .prog .sw { width: 10px; height: 10px; flex: none; }
-        .prog input { flex: 1; min-width: 0; background: none; border: none; border-bottom: 1px solid transparent; color: var(--text); font-family: var(--mono); font-size: 12px; letter-spacing: .04em; padding: 2px 0; }
+        .prog input { flex: 1; min-width: 0; background: none; border: none; border-bottom: 1px solid transparent; color: var(--text); font-family: var(--mono); font-size: 0.8125rem; letter-spacing: .04em; padding: 2px 0; }
         .prog input:focus { outline: none; border-bottom-color: var(--orange); }
 
         /* Stage overlays */
         .label {
             position: absolute; left: 0; top: 0;
             pointer-events: none;
-            font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+            font-family: var(--mono); font-size: 0.75rem; letter-spacing: .06em; text-transform: uppercase;
             padding: 2px 6px;
             color: var(--text);
             background: color-mix(in srgb, var(--bg) 78%, transparent);
@@ -82,24 +84,27 @@
             white-space: nowrap;
             will-change: transform;
         }
-        .label.sel { border-color: var(--orange); color: var(--orange); }
-        #hud { position: absolute; left: 16px; bottom: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--text-dim); pointer-events: none; text-transform: uppercase; }
-        #compass { position: absolute; right: 16px; top: 14px; width: 46px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-dim); pointer-events: none; }
+        .label.sel { border-color: var(--orange); color: var(--text-bright); }
+        #hud { position: absolute; left: 16px; bottom: 14px; font-family: var(--mono); font-size: 0.75rem; letter-spacing: .08em; color: var(--text-dim); pointer-events: none; text-transform: uppercase; }
+        #compass { position: absolute; right: 16px; top: 14px; width: 46px; text-align: center; font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); pointer-events: none; }
         #windArrow { font-size: 26px; line-height: 1; color: var(--orange); transition: transform .15s; }
         #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); letter-spacing: .12em; color: var(--text-dim); pointer-events: none; }
     </style>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="page-header">
         <a href="../../" class="back-btn">BACK</a>
-        <div class="header-project-title">Wind Simulation</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <div class="header-project-title" aria-hidden="true">Wind Simulation</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="project-main">
+    <main class="project-main" id="main">
 
-        <aside class="info-sidebar">
+        <aside class="info-sidebar" aria-label="Simulation controls">
+            <h1 class="visually-hidden">Wind Simulation</h1>
 
             <div class="info-block">
                 <span class="info-label">View</span>

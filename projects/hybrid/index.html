@@ -3,37 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Hybrid — hsgleeson.xyz</title>
+    <title>The Hybrid of Lincoln Heights — hsgleeson.xyz</title>
+    <meta name="description" content="A proposal to transform the Lincoln Heights Jail in Los Angeles into an off-grid hotel.">
+    <link rel="canonical" href="https://hsgleeson.xyz/projects/hybrid/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="The Hybrid of Lincoln Heights">
+    <meta property="og:description" content="A proposal to transform the Lincoln Heights Jail in Los Angeles into an off-grid hotel.">
+    <meta property="og:url" content="https://hsgleeson.xyz/projects/hybrid/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/hybrid.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Site model: tan, organic forms growing out of a rectilinear block with rows of windows, on a carved wood base.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
-    <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
-    </style>
+    <script src="../../assets/js/theme-init.js"></script>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="page-header">
         <a href="../../" class="back-btn">All projects</a>
-        <div class="header-project-title">The Hybrid of Lincoln Heights</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <div class="header-project-title" aria-hidden="true">The Hybrid of Lincoln Heights</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="project-main">
+    <main class="project-main project-page" id="main">
 
-        <aside class="info-sidebar">
+        <header class="project-intro">
+            <p class="project-kicker">Adaptive reuse — Hotel</p>
             <h1 class="project-heading">The Hybrid of Lincoln Heights</h1>
+            <p class="project-summary">A proposal to transform the Lincoln Heights Jail in Los Angeles into an off-grid hotel.</p>
+        </header>
+
+        <!-- Lead image: shown before the details on a phone, loaded first. -->
+        <figure class="project-figure project-lead">
+            <img src="images/web/Hybrid_5-800.jpg" srcset="images/web/Hybrid_5-800.jpg 800w, images/web/Hybrid_5-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="6827" height="4096" alt="Site model on a carved wood base: tan, organic forms grow out of a rectilinear block with rows of windows, beside a small white transmission tower." fetchpriority="high">
+            <figcaption><span>Site model of the combined massing.</span> <a href="images/Hybrid_5.jpg">Full size<span class="visually-hidden">: Site model of the combined massing</span> (6827 × 4096, 14.4 MB)</a></figcaption>
+        </figure>
+
+        <aside class="info-sidebar" aria-label="Project details">
 
             <div class="info-block">
                 <span class="info-label">Location</span>
@@ -89,25 +102,56 @@
 
         </aside>
 
-        <section class="gallery-content">
-            <!-- PERSONALIZE: Replace this prompt with a short note in your own voice. -->
-            <div class="process-note">
-                <h2>A note from me</h2>
-                <p class="personal-placeholder">[One surprise from working with the existing jail, and how it changed the design.]</p>
-            </div>
-            <img src="images/Hybrid_1.png"  class="project-image" alt="Hybrid 1">
-            <img src="images/Hybrid_2.png"  class="project-image" alt="Hybrid 2">
-            <img src="images/Hybrid_3.JPG"  class="project-image" alt="Hybrid 3">
-            <img src="images/Hybrid_4.JPG"  class="project-image" alt="Hybrid 4">
-            <img src="images/Hybrid_5.jpg"  class="project-image" alt="Hybrid 5">
-            <img src="images/Hybrid_6.png"  class="project-image" alt="Hybrid 6">
-            <img src="images/Hybrid_7.png"  class="project-image" alt="Hybrid 7">
-            <img src="images/Hybrid_8.JPG"  class="project-image" alt="Hybrid 8">
-            <img src="images/Hybrid_9.JPG"  class="project-image" alt="Hybrid 9">
-            <img src="images/Hybrid_10.JPG" class="project-image" alt="Hybrid 10">
-            <img src="images/Hybrid_11.JPG" class="project-image" alt="Hybrid 11">
-            <img src="images/Hybrid_12.JPG" class="project-image" alt="Hybrid 12">
-            <img src="images/Hybrid_13.JPG" class="project-image" alt="Hybrid 13">
+        <!-- Gallery: one <figure> per image. See PERSONALIZE.md to add more. -->
+        <section class="gallery-content" aria-label="Project images">
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_1-800.jpg" srcset="images/web/Hybrid_1-800.jpg 800w, images/web/Hybrid_1-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="4000" height="1449" alt="Grid of AI-generated samples in three rows, labelled Insects, Plants, and Machines." loading="lazy" decoding="async">
+                <figcaption><span>The catalog of generated samples: insects, plants, and machines.</span> <a href="images/Hybrid_1.png">Full size<span class="visually-hidden">: The catalog of generated samples: insects, plants, and machines</span> (4000 × 1449, 8.1 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_2-800.jpg" srcset="images/web/Hybrid_2-800.jpg 800w, images/web/Hybrid_2-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="4000" height="1328" alt="Four AI-generated hybrid organisms that combine glossy shells, petals, and ribbed, machine-like tubing." loading="lazy" decoding="async">
+                <figcaption><span>The four hybridized “post-natural” organisms.</span> <a href="images/Hybrid_2.png">Full size<span class="visually-hidden">: The four hybridized “post-natural” organisms</span> (4000 × 1328, 5.6 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_3-800.jpg" srcset="images/web/Hybrid_3-800.jpg 800w, images/web/Hybrid_3-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="8256" height="5504" alt="CNC-milled wood massing model seen from the side: a long block carved into layered, organic shapes." loading="lazy" decoding="async">
+                <figcaption><span>CNC-milled wood massing model.</span> <a href="images/Hybrid_3.JPG">Full size<span class="visually-hidden">: CNC-milled wood massing model</span> (8256 × 5504, 1.5 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_4-800.jpg" srcset="images/web/Hybrid_4-800.jpg 800w, images/web/Hybrid_4-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="7960" height="5307" alt="Two CNC-milled wood massing models side by side on a white surface." loading="lazy" decoding="async">
+                <figcaption><span>CNC-milled wood massing models.</span> <a href="images/Hybrid_4.JPG">Full size<span class="visually-hidden">: CNC-milled wood massing models</span> (7960 × 5307, 1.8 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_6-800.png" srcset="images/web/Hybrid_6-800.png 800w, images/web/Hybrid_6-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="10500" height="3600" alt="Line-drawn plan of the building on its long, wedge-shaped site, with curving walls, trees, and planted areas." loading="lazy" decoding="async">
+                <figcaption><span>Plan.</span> <a href="images/Hybrid_6.png">Full size<span class="visually-hidden">: Plan</span> (10500 × 3600, 3.2 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_7-800.png" srcset="images/web/Hybrid_7-800.png 800w, images/web/Hybrid_7-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="10500" height="3600" alt="Long section line drawing through the building, showing parking below ground, stacked floors, and curving organic volumes with planting on the roofs." loading="lazy" decoding="async">
+                <figcaption><span>Section.</span> <a href="images/Hybrid_7.png">Full size<span class="visually-hidden">: Section</span> (10500 × 3600, 3.0 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_8-800.jpg" srcset="images/web/Hybrid_8-800.jpg 800w, images/web/Hybrid_8-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="7705" height="5504" alt="White sectional model of a piece of the building: a block with gridded windows cut open beside flowing, root-like forms, pale yellow planting on a trellis, and blue water in the base." loading="lazy" decoding="async">
+                <figcaption><span>Sectional chunk model.</span> <a href="images/Hybrid_8.JPG">Full size<span class="visually-hidden">: Sectional chunk model</span> (7705 × 5504, 1.3 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_9-800.jpg" srcset="images/web/Hybrid_9-800.jpg 800w, images/web/Hybrid_9-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="7594" height="5425" alt="The white sectional model from another corner: a round opening holding a small pool, trellises with pale yellow planting, and a cutaway showing pipes and stairs inside." loading="lazy" decoding="async">
+                <figcaption><span>Sectional chunk model, second view.</span> <a href="images/Hybrid_9.JPG">Full size<span class="visually-hidden">: Sectional chunk model, second view</span> (7594 × 5425, 1.2 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_10-800.jpg" srcset="images/web/Hybrid_10-800.jpg 800w, images/web/Hybrid_10-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="7705" height="5504" alt="The white sectional model from a third side: a tiered auditorium with rows of seats under a rippled ceiling, and a round opening with a pool above." loading="lazy" decoding="async">
+                <figcaption><span>Sectional chunk model, third view.</span> <a href="images/Hybrid_10.JPG">Full size<span class="visually-hidden">: Sectional chunk model, third view</span> (7705 × 5504, 1.4 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_11-800.jpg" srcset="images/web/Hybrid_11-800.jpg 800w, images/web/Hybrid_11-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="7705" height="5504" alt="The white sectional model cut through the auditorium: rows of seats on a trussed floor, a rippled ceiling above, and blue water in the base." loading="lazy" decoding="async">
+                <figcaption><span>Sectional chunk model, fourth view.</span> <a href="images/Hybrid_11.JPG">Full size<span class="visually-hidden">: Sectional chunk model, fourth view</span> (7705 × 5504, 1.3 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_12-800.jpg" srcset="images/web/Hybrid_12-800.jpg 800w, images/web/Hybrid_12-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="8256" height="5504" alt="Close-up of the white model: a tiny figure stands at a railing above a staircase, framed by blurred organic forms." loading="lazy" decoding="async">
+                <figcaption><span>Detail of the sectional model.</span> <a href="images/Hybrid_12.JPG">Full size<span class="visually-hidden">: Detail of the sectional model</span> (8256 × 5504, 1.1 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/Hybrid_13-800.jpg" srcset="images/web/Hybrid_13-800.jpg 800w, images/web/Hybrid_13-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="8256" height="5504" alt="Close-up of the white model: a tiny figure plays a grand piano beneath a rippling carved ceiling." loading="lazy" decoding="async">
+                <figcaption><span>Detail of the sectional model.</span> <a href="images/Hybrid_13.JPG">Full size<span class="visually-hidden">: Detail of the sectional model</span> (8256 × 5504, 1.4 MB)</a></figcaption>
+            </figure>
         </section>
 
     </main>

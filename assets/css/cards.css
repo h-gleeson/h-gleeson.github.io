@@ -1,8 +1,13 @@
 /* ── Trading-card UI ───────────────────────────────────────────────────
    Each entry (project / writing / experiment) renders as a card in a
-   horizontal rail. One card is "active" (raised); the wheel moves the
-   highlight, a click promotes a card, a second click opens it.
-   Every card rolls for a FULL ART variant on page load — see cards.js. */
+   horizontal rail. One card is "active" (raised); a click or tap promotes
+   a card, a second click opens it. Previous / Next buttons step through
+   the rail, and "View all cards" lays the whole set out as a binder grid.
+   Every card rolls for a FULL ART variant on page load — see cards.js.
+
+   Sizes are in rem so the cards grow with the reader's text size. A card
+   is at least 5:7; if enlarged text needs more room it gets taller
+   instead of clipping. */
 
 .card-rail-wrap {
     position: relative;
@@ -10,6 +15,7 @@
 }
 
 .card-rail {
+    --card-w: min(17.5rem, calc(100vw - 4.5rem));
     position: relative;
     display: flex;
     align-items: flex-end;
@@ -18,6 +24,7 @@
     padding: 44px 12px 24px;
     overflow-x: auto;
     overflow-y: hidden;
+    overscroll-behavior-x: contain;   /* a sideways swipe never becomes "back" */
     scrollbar-width: none;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -48,14 +55,14 @@
 .card {
     --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.18) 13%;
     --card-surface: hsl(var(--card-surface-hsl));
-    --card-w: 280px;
+    --card-w: min(17.5rem, calc(100vw - 4.5rem));
     --card-radius: 10px;
-    --card-padding: 9px;
+    --card-padding: 0.625rem;
     position: relative;
     border-radius: var(--card-radius);
     flex: 0 0 auto;
     width: var(--card-w);
-    height: calc(var(--card-w) * 1.4);   /* Keep the original 5:7 card proportions. */
+    min-height: calc(var(--card-w) * 1.4);   /* 5:7, growing only when text needs it */
     box-sizing: border-box;
     overflow: hidden;
     display: flex;
@@ -76,7 +83,7 @@
     will-change: transform;
 }
 
-.card:hover { border-color: var(--orange); }
+.card:hover { border-color: var(--orange); color: var(--text); }
 
 .card.is-active {
     transform: translateY(-34px) scale(1);
@@ -88,11 +95,11 @@
 }
 
 .card:focus-visible {
-    outline: 1px solid var(--orange);
-    outline-offset: 4px;
+    outline: 2px solid var(--text-bright);
+    outline-offset: 3px;
 }
 
-/* ── Header: title top-left, index top-right ───────────────────────── */
+/* ── Title ─────────────────────────────────────────────────────────── */
 
 .card-head {
     position: relative;
@@ -101,87 +108,79 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
-    padding: 2px 2px 8px;
     order: -1;               /* title above the art (art comes first in the markup) */
-    min-height: 40px;
     flex: 0 0 auto;
     box-sizing: border-box;
 }
 
 .card-title {
     font-family: var(--sans);
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
     font-weight: 700;
     line-height: 1.25;
     letter-spacing: -0.01em;
     color: var(--text-bright);
     text-align: left;
     white-space: normal;
+    overflow-wrap: anywhere;
     min-width: 0;
+}
+
+/* Regular cards: title on top, art beneath it, then one ruled type line,
+   the description and the footer. No boxes — the artwork and the title
+   carry the card. */
+.card:not(.full-art) .card-head { display: contents; }
+.card:not(.full-art) .card-title {
+    order: -1;
+    flex: 0 0 auto;
+    min-height: 2.5em;                 /* room for two lines, so art lines up across cards */
+    padding: 0 2px;
+    margin-bottom: 0.5rem;
 }
 
 .card-index {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     letter-spacing: 0.03em;
     color: var(--text-dim);
     white-space: nowrap;
-    padding-top: 2px;
 }
 
-/* Regular cards: title on top, art tight beneath it, index under the art.
-   The head wrapper dissolves so title and index can be ordered separately. */
-.card:not(.full-art) .card-head { display: contents; }
-.card .card-title,
-.card .card-type,
-.card .card-desc {
-    padding: 4px 7px;
-    border: 1px solid hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.4);
-    border-radius: 6px;
-    background: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12);
-}
-.card:not(.full-art) .card-title {
-    order: -1;
-    flex: 0 0 auto;
-    /* Match the space around the nameplate, even when its text wraps. */
-    margin-bottom: var(--card-padding);
-}
-.card:not(.full-art) .card-index {
-    order: 1;
-    align-self: flex-end;
-    padding: 4px 2px 0;
-}
 .card-type {
     position: relative;
     z-index: 3;              /* above the full-art artwork and holo layers */
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: space-between;
     gap: 8px;
     flex: 0 0 auto;
-    font-family: var(--sans);
-    font-size: 0.65625rem;
-    line-height: 1.5;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
     color: var(--text-bright);
 }
 .card-type-label { min-width: 0; overflow-wrap: anywhere; }
-.card:not(.full-art) .card-type { order: 1; margin-top: 5px; }
-.card .card-type .card-index { order: 0; align-self: center; padding: 0; }
-.card:not(.full-art) .card-body { order: 2; padding: 4px 0 8px; }
+.card:not(.full-art) .card-type {
+    order: 1;
+    margin-top: 0.5rem;
+    padding: 0 2px 0.4rem;
+    border-bottom: 1px solid var(--border-mid);
+}
+.card:not(.full-art) .card-body { order: 2; }
 .card:not(.full-art) .card-foot { order: 3; }
 
 /* ── Art window ────────────────────────────────────────────────────── */
 
 .card-art {
     position: relative;
-    flex: 0 0 var(--art-h, 205px);   /* fixed height, never shifts with text */
-    height: var(--art-h, 205px);
-    min-height: 0;
+    /* Takes whatever height the text leaves, never less than --art-h. */
+    flex: 1 1 var(--art-h, 8.5rem);
+    min-height: var(--art-h, 8.5rem);
     background-image: var(--art);
     background-size: cover;
     background-position: center;
     background-color: #0d0d0d;
-    border: 1px solid var(--border);
     border-radius: calc(var(--card-radius) - 5px);
     overflow: hidden;
 }
@@ -197,18 +196,14 @@
     z-index: 3;
     display: flex;
     flex-direction: column;
-    padding: 9px 2px 0;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
+    padding: 0.5rem 2px 0.25rem;
+    flex: 0 0 auto;
 }
 
 .card-desc {
-    flex: 1 0 auto;
     font-family: var(--sans);
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    letter-spacing: 0.01em;
+    font-size: 0.875rem;
+    line-height: 1.45;
     color: var(--text);
 }
 
@@ -216,16 +211,15 @@
     position: relative;
     z-index: 3;
     margin-top: auto;
-    padding: 8px 2px 0;
+    padding: 0.25rem 2px 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     letter-spacing: 0.04em;
     color: var(--text-label);
-    border-top: 1px solid var(--border);
 }
 
 .card-cta {
@@ -235,80 +229,74 @@
 }
 .card.is-active .card-cta { opacity: 1; color: var(--orange); }
 
-/* ── FULL ART variant ──────────────────────────────────────────────── */
+/* ── FULL ART variant ──────────────────────────────────────────────────
+   The artwork fills the card. The title sits on a dark plate at the top
+   and the text on one dark panel at the bottom, in both themes, so the
+   words stay readable over any image. */
 
 .card.full-art {
     padding: 0;
     border-color: var(--orange-dim);
-    background: var(--card-surface);
+    background: #0d0d0d;
+    color: #f4f2ec;
 }
+.card.full-art:hover,
+.card.full-art.is-active { border-color: var(--orange); }
 
 .card.full-art .card-art {
     /* --art-full is optional; falls back to the regular art */
     background-image: var(--art-full, var(--art));
     position: absolute;
     inset: 0;
-    height: auto;
+    min-height: 0;
     z-index: 0;
-    border: none;
     border-radius: inherit;
     flex: none;
 }
 
-/* scrim so text stays readable over the artwork */
-.card.full-art .card-art::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom,
-        rgba(0,0,0,0.82) 0%,
-        rgba(0,0,0,0.25) 26%,
-        rgba(0,0,0,0.30) 52%,
-        rgba(0,0,0,0.40) 100%);
-    z-index: 1;
-}
-
-/* Same insets and gaps as the regular card, driven by --card-padding. */
 .card.full-art .card-head {
-    padding: var(--card-padding) var(--card-padding) 5px;
-    flex-direction: column;
-    gap: 6px;
-    /* Reserve the upper artwork area; the description fills below it. */
-    flex: 0 0 58%;
-}
-.card.full-art .card-index { color: var(--text); }
-.card.full-art .card-type { margin: 0 var(--card-padding); color: var(--text-bright); }
-.card.full-art .card-body { padding: 4px var(--card-padding) 8px; margin-top: 0; flex: 1 1 0; }
-.card.full-art .card-foot {
-    padding: 8px calc(var(--card-padding) + 2px) var(--card-padding);
-    border-top-color: rgba(255,255,255,0.14);
+    /* Reserve the upper artwork area; the text panel sits below it. */
+    flex: 1 0 auto;
+    min-height: 9.5rem;
+    padding: var(--card-padding);
 }
 .card.full-art .card-title {
-    width: 100%;
-    color: var(--text-bright);
-    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
-    font-size: 0.8125rem;
-}
-.card.full-art .card-desc {
-    color: rgba(235,235,235,0.9);
-    text-shadow: 0 1px 8px rgba(0,0,0,0.95);
-}
-.card.full-art .card-title,
-.card.full-art .card-type,
-.card.full-art .card-desc {
-    /* Keep the tint, with a dark backing for legibility over full-bleed art. */
-    background: linear-gradient(
-        hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12),
-        hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12)
-    ), hsl(var(--card-surface-hsl) / 0.85);
-    text-shadow: none;
-}
-.card.full-art .card-foot { color: #eee; margin-top: 0; }
-.card.full-art .card-desc {
-    background-color: hsl(var(--card-surface-hsl) / 0.45);
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
     color: #fff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    background: rgba(10, 10, 10, 0.84);
 }
+
+.card.full-art .card-type,
+.card.full-art .card-body,
+.card.full-art .card-foot {
+    background: rgba(10, 10, 10, 0.86);
+    padding-left: calc(var(--card-padding) + 0.2rem);
+    padding-right: calc(var(--card-padding) + 0.2rem);
+}
+.card.full-art .card-type {
+    padding-top: 0.55rem;
+    padding-bottom: 0.4rem;
+    color: #f4f2ec;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.22);
+}
+/* soften the top edge of the text panel into the artwork */
+.card.full-art .card-type::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 100%;
+    height: 1.75rem;
+    background: linear-gradient(to top, rgba(10, 10, 10, 0.86), transparent);
+    pointer-events: none;
+}
+.card.full-art .card-index { color: #d8d5cc; }
+.card.full-art .card-desc { color: #f4f2ec; }
+.card.full-art .card-foot {
+    margin-top: 0;
+    padding-bottom: var(--card-padding);
+    color: #d8d5cc;
+}
+.card.full-art .card-cta,
 .card.full-art.is-active .card-cta { color: #fff; }
 
 /* holo sheen */
@@ -340,17 +328,17 @@
 .card-rarity {
     position: absolute;
     z-index: 4;
-    top: 50%;
+    top: 38%;
     right: 0;
     border-radius: 0 4px 4px 0;   /* rotated 180°, so this reads as the inner edge */
     transform: translateY(-50%) rotate(180deg);
     writing-mode: vertical-rl;
     font-family: var(--mono);
-    font-size: 0.46rem;
-    letter-spacing: 0.34em;
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     padding: 9px 3px;
-    color: #0a0a0a;
+    color: var(--bg);
     background: var(--orange);
     display: none;
 }
@@ -399,42 +387,100 @@
     }
 }
 
+/* ── Rail HUD (counter, title, controls) ───────────────────────────── */
+
+.rail-hud {
+    position: relative;
+    z-index: 4;          /* sits above the rail's edge fades */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 0 12px 8px;
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    color: var(--text-label);
+}
+.rail-hud .rail-now { color: var(--orange); }
+.rail-title { flex: 1 1 auto; min-width: 0; }
+
+.rail-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+}
+.rail-btn {
+    min-height: 2.75rem;          /* comfortable touch target */
+    min-width: 2.75rem;
+    padding: 0.4rem 0.8rem;
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+    color: var(--text-bright);
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.rail-btn:hover:not(:disabled) { border-color: var(--orange); }
+.rail-btn:disabled { color: var(--text-dim); opacity: 0.55; cursor: default; }
+.rail-btn[aria-pressed="true"] { border-color: var(--orange); background: var(--orange-dim); }
+
+/* ── Binder grid ("View all cards") ────────────────────────────────── */
+
+.card-rail.is-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(17.5rem, 100%), 1fr));
+    justify-items: center;
+    align-items: start;
+    gap: 28px 22px;
+    padding: 20px 12px 24px;
+    overflow: visible;
+}
+.card-rail.is-grid .card {
+    transform: none;
+    box-shadow: none;
+}
+.card-rail.is-grid .card:hover,
+.card-rail.is-grid .card:focus-visible {
+    transform: translateY(-8px);
+    border-color: var(--orange);
+    box-shadow: 0 18px 28px -16px rgba(0,0,0,0.65),
+                0 0 0 1px var(--orange-dim);
+}
+.card-rail.is-grid .card .card-cta { opacity: 1; color: var(--orange); }
+.card-rail.is-grid .card.full-art .card-cta { color: #fff; }
+.card-rail-wrap.is-grid::before,
+.card-rail-wrap.is-grid::after { display: none; }
+.card-rail-wrap.is-grid .rail-step { display: none; }
+/* the "card 01 / 07" counter only makes sense in the single row */
+.card-rail-wrap.is-grid .rail-hud > span:not(.visually-hidden) { visibility: hidden; }
+
+/* ── Motion off: the visitor's system setting, or the MOTION switch ── */
+
 @media (prefers-reduced-motion: reduce) {
     .card, .card-rail { transition: none; scroll-behavior: auto; }
     .card-rail.is-dealing .card,
     .card-rail.is-collapsing .card { animation: none; }
     .card.full-art .holo { animation: none; }
 }
-
-/* ── Rail HUD (counter + hint) ─────────────────────────────────────── */
-
-.rail-hud {
-    position: relative;
-    z-index: 4;          /* sits above the rail's edge fades */
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 0 12px 8px;
-    font-family: var(--mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
-    color: var(--text-label);
-}
-.rail-hud .rail-now { color: var(--orange); }
+:root.reduce-motion .card,
+:root.reduce-motion .card-rail { transition: none; scroll-behavior: auto; }
+:root.reduce-motion .card-rail.is-dealing .card,
+:root.reduce-motion .card-rail.is-collapsing .card { animation: none; }
+:root.reduce-motion .card.full-art .holo { animation: none; }
 
 /* ── Light mode tweaks ─────────────────────────────────────────────── */
 
 :root.light-mode .card {
     --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.6) 92%;
 }
-:root.light-mode .card.full-art .card-desc {
-    background-color: hsl(var(--card-surface-hsl) / 0.8);
-    color: var(--text-bright);
-    text-shadow: none;
-}
-
-:root.light-mode .card.is-active {
+:root.light-mode .card.is-active,
+:root.light-mode .card-rail.is-grid .card:hover,
+:root.light-mode .card-rail.is-grid .card:focus-visible {
     box-shadow: 0 22px 40px -20px rgba(0,0,0,0.45),
                 0 0 0 1px var(--orange-dim);
 }
@@ -443,7 +489,9 @@
 
 @media (max-width: 768px) {
     .card-rail { gap: 12px; padding: 44px 10px 24px; }
+    .card-rail.is-grid { padding: 16px 10px 24px; }
     .rail-title { display: none; }
+    .rail-hud { padding: 0 10px 8px; }
     .card-rail-wrap::before,
     .card-rail-wrap::after { width: 10px; }
 }

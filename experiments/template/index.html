@@ -4,22 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Experiment Name — hsgleeson.xyz</title>
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
+    <script src="../../assets/js/theme-init.js"></script>
     <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
     </style>
 </head>
 <body>
@@ -27,7 +18,7 @@
     <header class="page-header">
         <a href="../../" class="back-btn">BACK</a>
         <div class="header-project-title">Experiment Name</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
     <main class="project-main">
@@ -55,18 +46,13 @@
 
         </aside>
 
-        <section class="gallery-content">
-            <!-- Images loaded dynamically -->
+        <section class="gallery-content" aria-label="Images">
+            <!-- List each image here. width/height are the image's pixel size; write alt text that says what it shows. -->
+            <img src="images/template_1.png" class="project-image" width="1600" height="1000" alt="Describe what the image shows." loading="lazy" decoding="async">
         </section>
 
     </main>
 
-    <script src="../../assets/js/gallery-loader.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadGallery('template', '.gallery-content');
-        });
-    </script>
     <script src="../../assets/js/theme.js"></script>
 </body>
 </html>

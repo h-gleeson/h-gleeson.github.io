@@ -1,31 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-motion-control>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Henry Gleeson — Architecture, Drawings &amp; Experiments</title>
+    <meta name="description" content="Henry Gleeson's portfolio: architecture, drawings, and things to play with. Seven projects, an essay, and a few interactive experiments.">
+    <link rel="canonical" href="https://hsgleeson.xyz/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Henry Gleeson — Architecture, Drawings &amp; Experiments">
+    <meta property="og:description" content="Architecture, drawings, and things to play with.">
+    <meta property="og:url" content="https://hsgleeson.xyz/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/home.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Henry Gleeson's homepage: project trading cards for The Palace of All Trades, The Hybrid of Lincoln Heights, and Stonehenge Nighttime Studies.">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/cards.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            root.classList.add('lazy-art');   // cards.js loads card art as it nears view
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
+    <script src="assets/js/theme-init.js"></script>
+    <script>document.documentElement.classList.add('lazy-art');   // cards.js loads card art as it nears view</script>
     <link rel="stylesheet" href="assets/css/home.css">
 </head>
 <body>
 
+    <a class="skip-link" href="#projects">Skip to projects</a>
 
     <div class="site-wrapper">
 
@@ -36,7 +37,7 @@
                 <a href="experiments/media/">Play</a>
                 <a href="#about">About me</a>
             </nav>
-            <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+            <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
         </div>
 
         <!-- ── Hero ─────────────────────────────────── -->
@@ -44,8 +45,7 @@
             <h1>Henry<br> <em>Gleeson</em></h1>
             <div class="hero-sub">
                 <p class="intro-text">Architecture, drawings, and things to play with.</p>
-                <!-- PERSONALIZE: Replace this visible introduction with your own words. -->
-                <p class="intro-text">Hello! I'm a designer (of various things). I like a lot of stuff, but some of my favorites are forests, playing the drums, writing, and video games. I love stories. Hearing personal anecdotes always reminds me of the possibilities of life, so let's inspire each other! My contact is below, and thanks for checking out my website!</p>
+                <p class="intro-text">Hello! I'm a designer (of various things). <a href="#about">More about me</a></p>
             </div>
         </header>
 
@@ -58,7 +58,7 @@
                 <div class="section-divider">
                     <span class="section-tag">01 / Buildings &amp; drawings</span>
                     <div class="divider-line"></div>
-                    <span class="section-toggle">+</span>
+                    <span class="section-toggle" aria-hidden="true">+</span>
                 </div>
                 <div class="section-head">
                     <h2>Projects</h2>
@@ -77,8 +77,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">The Palace of All Trades</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">001</span></div>
+                            <div class="card-type"><span class="card-type-label">Building — Trades &amp; learning</span><span class="card-index">001</span></div>
                             <div class="card-body">
                                 <p class="card-desc">A building designed to celebrate the labor of construction and the people who perform it.</p>
                             </div>
@@ -90,8 +89,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">The Hybrid of Lincoln Heights</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">002</span></div>
+                            <div class="card-type"><span class="card-type-label">Adaptive reuse — Hotel</span><span class="card-index">002</span></div>
                             <div class="card-body">
                                 <p class="card-desc">A proposal to transform the Lincoln Heights Jail in Los Angeles into an off-grid hotel.</p>
                             </div>
@@ -103,8 +101,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">Stonehenge Nighttime Studies</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">003</span></div>
+                            <div class="card-type"><span class="card-type-label">Drawing — Research study</span><span class="card-index">003</span></div>
                             <div class="card-body">
                                 <p class="card-desc">Nighttime drawings of Stonehenge and its changing meanings.</p>
                             </div>
@@ -116,8 +113,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">Vertical Village</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">004</span></div>
+                            <div class="card-type"><span class="card-type-label">Building — Community center</span><span class="card-index">004</span></div>
                             <div class="card-body">
                                 <p class="card-desc">A community center with an emphasis on its makerspace and public programs.</p>
                             </div>
@@ -129,8 +125,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">Dirt Politics</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">005</span></div>
+                            <div class="card-type"><span class="card-type-label">Sculpture — Scan &amp; 3D print</span><span class="card-index">005</span></div>
                             <div class="card-body">
                                 <p class="card-desc">A houseplant, a 3D scan, and a strange new creature. Keeping the plant alive was part of the grade.</p>
                             </div>
@@ -142,8 +137,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">Landscape Drawings</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">006</span></div>
+                            <div class="card-type"><span class="card-type-label">Drawing — Landscape plans</span><span class="card-index">006</span></div>
                             <div class="card-body">
                                 <p class="card-desc">Planting plans and construction details from a summer at DTDesign in Northeast Ohio.</p>
                             </div>
@@ -155,8 +149,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">The Last Archive</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">007</span></div>
+                            <div class="card-type"><span class="card-type-label">Building — Archive &amp; park</span><span class="card-index">007</span></div>
                             <div class="card-body">
                                 <p class="card-desc">A New York media archive and public park with a responsive algae facade.</p>
                             </div>
@@ -181,13 +174,13 @@
                 </a>
             </aside>
             <!-- ── Writings ──────────────────────────── -->
-            <section>
+            <section id="writing">
                 <details class="section-collapse">
                 <summary>
                 <div class="section-divider">
                     <span class="section-tag">02 / Words</span>
                     <div class="divider-line"></div>
-                    <span class="section-toggle">+</span>
+                    <span class="section-toggle" aria-hidden="true">+</span>
                 </div>
                 <div class="section-head">
                     <h2>Writing</h2>
@@ -199,15 +192,14 @@
                         <span>CARD <span class="rail-now">01</span> / 01</span>
                         <span class="rail-title"></span>
                     </div>
-                    <div class="card-rail" role="group" aria-label="Writings">
+                    <div class="card-rail" role="group" aria-label="Writing">
 
                         <a href="writings/studio-album-by-war-1975/" class="card">
                             <div class="card-art" style="--art: url('writings/covers/studio-album-by-war-1975.png'); --art-full: url('assets/images/cards/writing1_full.jpg')"></div>
                             <div class="card-head">
                                 <h3 class="card-title">Studio Album by War — 1975</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">001</span></div>
+                            <div class="card-type"><span class="card-type-label">Essay — Read or listen</span><span class="card-index">001</span></div>
                             <div class="card-body">
                                 <p class="card-desc">A reflection on befriending — in architecture, in life, and in a parking lot after class.</p>
                             </div>
@@ -220,13 +212,13 @@
             </section>
 
             <!-- ── Experiments ──────────────────────────── -->
-            <section>
+            <section id="experiments">
                 <details class="section-collapse">
                 <summary>
                 <div class="section-divider">
                     <span class="section-tag">03 / Things to try</span>
                     <div class="divider-line"></div>
-                    <span class="section-toggle">+</span>
+                    <span class="section-toggle" aria-hidden="true">+</span>
                 </div>
                 <div class="section-head">
                     <h2>Experiments</h2>
@@ -245,8 +237,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">Card workshop</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">001</span></div>
+                            <div class="card-type"><span class="card-type-label">Tool — Card layout</span><span class="card-index">001</span></div>
                             <div class="card-body">
                                 <p class="card-desc">Try different shapes, spacing, and text for the homepage cards. A place to make them your own.</p>
                             </div>
@@ -258,8 +249,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">The Last Archive — Interactive Diagram</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">002</span></div>
+                            <div class="card-type"><span class="card-type-label">Interactive — 3D diagram</span><span class="card-index">002</span></div>
                             <div class="card-body">
                                 <p class="card-desc">Try games, music, and patterns on the facade, or explore the systems behind it.</p>
                             </div>
@@ -271,8 +261,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">Wind Simulation</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">003</span></div>
+                            <div class="card-type"><span class="card-type-label">Simulation — Wind &amp; massing</span><span class="card-index">003</span></div>
                             <div class="card-body">
                                 <p class="card-desc">Draw walls over a massing model, move the programs around, and watch the wind find its way through.</p>
                             </div>
@@ -284,8 +273,7 @@
                             <div class="card-head">
                                 <h3 class="card-title">Tracefield</h3>
                                 </div>
-                            <!-- PERSONALIZE: Replace [Card type] with your own category. -->
-                            <div class="card-type"><span class="card-type-label">[Card type]</span><span class="card-index">004</span></div>
+                            <div class="card-type"><span class="card-type-label">Tool — Model to drawing</span><span class="card-index">004</span></div>
                             <div class="card-body">
                                 <p class="card-desc">Bring in a 3D model and turn it into a composed architectural drawing — linework, lineweights, and views.</p>
                             </div>
@@ -304,7 +292,7 @@
                 <div class="section-divider">
                     <span class="section-tag">04 / Hello</span>
                     <div class="divider-line"></div>
-                    <span class="section-toggle">+</span>
+                    <span class="section-toggle" aria-hidden="true">+</span>
                 </div>
                 <div class="section-head">
                     <h2>About me</h2>
@@ -313,7 +301,13 @@
                 </summary>
                 <div class="about-content">
                     <p>I’m Henry Gleeson. I grew up in Northeast Ohio, and my work brings together architecture, drawing, digital modeling, and interactive experiments.</p>
-                    <!-- PERSONALIZE: Your interests and a way to get in touch. -->
+                    <p>I like a lot of stuff, but some of my favorites are forests, playing the drums, writing, and video games. I love stories. Hearing personal anecdotes always reminds me of the possibilities of life, so let's inspire each other! My contact is below, and thanks for checking out my website!</p>
+                    <ul class="contact-list" aria-label="Contact">
+                        <li><span class="contact-label">Email</span> <a href="mailto:arch.hsgleeson@gmail.com">arch.hsgleeson@gmail.com</a></li>
+                        <li><span class="contact-label">Instagram</span> <a href="https://www.instagram.com/hsgleeson/" rel="noopener noreferrer">@hsgleeson</a></li>
+                        <li><span class="contact-label">LinkedIn</span> <a href="https://www.linkedin.com/in/henry-gleeson-b725252b5/" rel="noopener noreferrer">Henry Gleeson</a></li>
+                    </ul>
+                </div>
                 </details>
             </section>
 

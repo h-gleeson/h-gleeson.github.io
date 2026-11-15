@@ -19,7 +19,8 @@ Adding new art
 Notes
 - --art-full is optional. If omitted, the full-art variant reuses --art.
 - Images are cropped with "cover" from the centre, so keep the subject centred.
-  Full art has dark scrims over the top ~25% and bottom ~40% for text.
+  Full art shows the title on a dark plate at the top and the text on a dark
+  panel across the bottom ~40%, so keep important detail out of those areas.
 - Full art is rolled at random on each page load (see cards.js). To preview,
   add data-variant="full" (or "regular") to the card's <a>.
 - Art is lazy-loaded: a card only downloads the variant it shows, and only

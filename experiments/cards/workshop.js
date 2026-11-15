@@ -2,15 +2,15 @@
     'use strict';
     var storageKey = 'card-workshop-v1';
     var samples = {
-        palace: ['The Palace of All Trades', 'A building designed to celebrate the labor of construction and the people who perform it.'],
-        dirtpolitics: ['Dirt Politics', 'A houseplant, a 3D scan, and a strange new creature. Keeping the plant alive was part of the grade.'],
-        media_museum: ['The Last Archive', 'A New York media archive and public park with a responsive algae facade.']
+        palace: ['The Palace of All Trades', 'A building designed to celebrate the labor of construction and the people who perform it.', 'Building — Trades & learning'],
+        dirtpolitics: ['Dirt Politics', 'A houseplant, a 3D scan, and a strange new creature. Keeping the plant alive was part of the grade.', 'Sculpture — Scan & 3D print'],
+        media_museum: ['The Last Archive', 'A New York media archive and public park with a responsive algae facade.', 'Building — Archive & park']
     };
     var fields = [
         ['width', 'Card width', 220, 400, 1, 'px'],
         ['ratio', 'Height / width', 1.2, 1.8, 0.01, ''],
         ['radius', 'Corner radius', 0, 32, 1, 'px'],
-        ['art', 'Regular artwork height', 80, 240, 1, 'px'],
+        ['art', 'Regular artwork min. height', 80, 240, 1, 'px'],
         ['padding', 'Frame inset', 0, 24, 1, 'px'],
         ['titleSize', 'Title size', 12, 24, 0.1, 'px'],
         ['textSize', 'Description size', 8, 20, 0.1, 'px']
@@ -24,12 +24,12 @@
             style.textContent = '';
             var css = getComputedStyle(regular);
             return {
-                width: parseFloat(css.width), ratio: +(parseFloat(css.height) / parseFloat(css.width)).toFixed(2),
-                radius: parseFloat(css.borderRadius), padding: parseFloat(css.paddingLeft),
-                art: parseFloat(getComputedStyle(regular.querySelector('.card-art')).height),
-                titleSize: parseFloat(getComputedStyle(regular.querySelector('.card-title')).fontSize),
-                textSize: parseFloat(getComputedStyle(regular.querySelector('.card-desc')).fontSize),
-                sample: 'palace', title: samples.palace[0], description: samples.palace[1], typeLabel: '[Card type]', guides: false
+                width: Math.round(parseFloat(css.width)), ratio: +(parseFloat(css.height) / parseFloat(css.width)).toFixed(2),
+                radius: parseFloat(css.borderRadius), padding: Math.round(parseFloat(css.paddingLeft)),
+                art: Math.round(parseFloat(getComputedStyle(regular.querySelector('.card-art')).minHeight)),
+                titleSize: Math.round(parseFloat(getComputedStyle(regular.querySelector('.card-title')).fontSize) * 10) / 10,
+                textSize: Math.round(parseFloat(getComputedStyle(regular.querySelector('.card-desc')).fontSize) * 10) / 10,
+                sample: 'palace', title: samples.palace[0], description: samples.palace[1], typeLabel: samples.palace[2], guides: false
             };
         }
         state = defaults();
@@ -40,9 +40,10 @@
                     if (typeof saved[f[0]] === 'number' && isFinite(saved[f[0]])) state[f[0]] = Math.max(f[2], Math.min(f[3], saved[f[0]]));
                 });
                 state.sample = saved.sample;
+                state.typeLabel = samples[saved.sample][2];
                 if (typeof saved.title === 'string') state.title = saved.title.slice(0, 160);
                 if (typeof saved.description === 'string') state.description = saved.description.slice(0, 600);
-                if (typeof saved.typeLabel === 'string') state.typeLabel = saved.typeLabel.slice(0, 60);
+                if (typeof saved.typeLabel === 'string' && saved.typeLabel !== '[Card type]') state.typeLabel = saved.typeLabel.slice(0, 60);
                 state.guides = saved.guides === true;
             }
         } catch (e) { /* A draft is optional when storage is unavailable. */ }
@@ -77,7 +78,7 @@
                 card.querySelector('.card-type-label').textContent = state.typeLabel;
                 var art = card.querySelector('.card-art');
                 ['reg', 'full'].forEach(function (variant) {
-                    var url = new URL('../../assets/images/cards/' + state.sample + '_' + variant + '.png', location.href);
+                    var url = new URL('../../assets/images/cards/' + state.sample + '_' + variant + '.jpg', location.href);
                     art.style.setProperty(variant === 'reg' ? '--art' : '--art-full', 'url("' + url.href + '")');
                 });
             });
@@ -100,7 +101,7 @@
             document.getElementById(id).addEventListener('input', function (e) { state[id] = e.target.value; render(); });
         });
         document.getElementById('sample').addEventListener('change', function (e) {
-            state.sample = e.target.value; state.title = samples[state.sample][0]; state.description = samples[state.sample][1]; render();
+            state.sample = e.target.value; state.title = samples[state.sample][0]; state.description = samples[state.sample][1]; state.typeLabel = samples[state.sample][2]; render();
         });
         document.getElementById('guides').addEventListener('change', function (e) { state.guides = e.target.checked; render(); });
         document.getElementById('reset').addEventListener('click', function () { state = defaults(); render(); });

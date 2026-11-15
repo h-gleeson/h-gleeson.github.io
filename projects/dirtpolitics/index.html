@@ -4,36 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dirt Politics — hsgleeson.xyz</title>
+    <meta name="description" content="A houseplant, a 3D scan, and a strange new creature. Keeping the plant alive was part of the grade.">
+    <link rel="canonical" href="https://hsgleeson.xyz/projects/dirtpolitics/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Dirt Politics">
+    <meta property="og:description" content="A houseplant, a 3D scan, and a strange new creature. Keeping the plant alive was part of the grade.">
+    <meta property="og:url" content="https://hsgleeson.xyz/projects/dirtpolitics/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/dirtpolitics.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="A white sculpted hybrid of leaves, a snake, and a centipede, with green lines linking its parts to reference images.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
-    <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
-    </style>
+    <script src="../../assets/js/theme-init.js"></script>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="page-header">
         <a href="../../" class="back-btn">All projects</a>
-        <div class="header-project-title">Dirt Politics</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <div class="header-project-title" aria-hidden="true">Dirt Politics</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="project-main">
+    <main class="project-main project-page" id="main">
 
-        <aside class="info-sidebar">
+        <header class="project-intro">
+            <p class="project-kicker">Sculpture — Scan &amp; 3D print</p>
             <h1 class="project-heading">Dirt Politics</h1>
+            <p class="project-summary">A houseplant, a 3D scan, and a strange new creature. Keeping the plant alive was part of the grade.</p>
+        </header>
+
+        <!-- Lead image: shown before the details on a phone, loaded first. -->
+        <figure class="project-figure project-lead">
+            <img src="images/web/dirtpolitics_1-800.jpg" srcset="images/web/dirtpolitics_1-800.jpg 800w, images/web/dirtpolitics_1-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="6000" height="3375" alt="The houseplant: long, speckled green leaves in a dark green plastic pot." fetchpriority="high">
+            <figcaption><span>The houseplant.</span> <a href="images/dirtpolitics_1.png">Full size<span class="visually-hidden">: The houseplant</span> (6000 × 3375, 2.8 MB)</a></figcaption>
+        </figure>
+
+        <aside class="info-sidebar" aria-label="Project details">
 
             <div class="info-block">
                 <span class="info-label">Location</span>
@@ -86,23 +99,36 @@
 
         </aside>
 
-        <section class="gallery-content">
-            <!-- PERSONALIZE: Replace this prompt with a short note in your own voice. -->
-            <div class="process-note">
-                <h2>A note from me</h2>
-                <p class="personal-placeholder">[A detail from caring for the plant or making the sculpture that did not make it into the formal description.]</p>
-            </div>
-            <!-- Images loaded dynamically -->
+        <!-- Gallery: one <figure> per image. See PERSONALIZE.md to add more. -->
+        <section class="gallery-content" aria-label="Project images">
+            <figure class="project-figure">
+                <img src="images/web/dirtpolitics_2-800.jpg" srcset="images/web/dirtpolitics_2-800.jpg 800w, images/web/dirtpolitics_2-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="3833" height="2153" alt="ZBrush screenshot showing the 3D scan of the potted plant in red." loading="lazy" decoding="async">
+                <figcaption><span>The 3D scan in ZBrush.</span> <a href="images/dirtpolitics_2.png">Full size<span class="visually-hidden">: The 3D scan in ZBrush</span> (3833 × 2153, 1.5 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/dirtpolitics_3-800.jpg" srcset="images/web/dirtpolitics_3-800.jpg 800w, images/web/dirtpolitics_3-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="3833" height="2155" alt="ZBrush screenshot showing a few separated leaves and stems of the scan, coloured pink, purple, and red." loading="lazy" decoding="async">
+                <figcaption><span>Leaves separated from the scan.</span> <a href="images/dirtpolitics_3.png">Full size<span class="visually-hidden">: Leaves separated from the scan</span> (3833 × 2155, 1.1 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure portrait">
+                <img src="images/web/dirtpolitics_4-800.jpg" srcset="images/web/dirtpolitics_4-800.jpg 800w, images/web/dirtpolitics_4-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1750" height="1778" alt="A white sculpted hybrid of leaves, a snake&#39;s head and tail, a centipede, and a crab claw. Green lines link each part to a reference image of a snake, the plant, a centipede, and a crab." loading="lazy" decoding="async">
+                <figcaption><span>The hybrid and the sources for its parts.</span> <a href="images/dirtpolitics_4.png">Full size<span class="visually-hidden">: The hybrid and the sources for its parts</span> (1750 × 1778, 2.2 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/dirtpolitics_5-800.jpg" srcset="images/web/dirtpolitics_5-800.jpg 800w, images/web/dirtpolitics_5-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="3835" height="2150" alt="ZBrush screenshot of the grey sculpt: a scaled snake with open jaws coiled through the plant&#39;s leaves." loading="lazy" decoding="async">
+                <figcaption><span>Sculpting the hybrid in ZBrush.</span> <a href="images/dirtpolitics_5.png">Full size<span class="visually-hidden">: Sculpting the hybrid in ZBrush</span> (3835 × 2150, 1.7 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/dirtpolitics_6-800.jpg" srcset="images/web/dirtpolitics_6-800.jpg 800w, images/web/dirtpolitics_6-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="3837" height="2151" alt="The same sculpt in ZBrush with its parts in different colours: a green snake body with red, blue, purple, and tan leaves." loading="lazy" decoding="async">
+                <figcaption><span>The sculpt with its parts coloured separately.</span> <a href="images/dirtpolitics_6.png">Full size<span class="visually-hidden">: The sculpt with its parts coloured separately</span> (3837 × 2151, 1.9 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/dirtpolitics_7-800.jpg" srcset="images/web/dirtpolitics_7-800.jpg 800w, images/web/dirtpolitics_7-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="9600" height="9600" alt="AI-generated image of the hybrid as glossy blue-and-white porcelain with gold seams: a snake rearing out of leaf-like blades in a plain white pot." loading="lazy" decoding="async">
+                <figcaption><span>AI-generated image of the hybrid as blue-and-white porcelain.</span> <a href="images/dirtpolitics_7.png">Full size<span class="visually-hidden">: AI-generated image of the hybrid as blue-and-white porcelain</span> (9600 × 9600, 5.4 MB)</a></figcaption>
+            </figure>
         </section>
 
     </main>
 
-    <script src="../../assets/js/gallery-loader.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadGallery('dirtpolitics', '.gallery-content');
-        });
-    </script>
     <script src="../../assets/js/theme.js"></script>
 </body>
 </html>

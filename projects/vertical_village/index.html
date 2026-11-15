@@ -4,36 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vertical Village — hsgleeson.xyz</title>
+    <meta name="description" content="A community center with an emphasis on its makerspace and public programs.">
+    <link rel="canonical" href="https://hsgleeson.xyz/projects/vertical_village/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Vertical Village">
+    <meta property="og:description" content="A community center with an emphasis on its makerspace and public programs.">
+    <meta property="og:url" content="https://hsgleeson.xyz/projects/vertical_village/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/vertical_village.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Section drawing in red tones showing house-shaped rooms stacked and rotated, with furniture and figures inside.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
-    <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
-    </style>
+    <script src="../../assets/js/theme-init.js"></script>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="page-header">
         <a href="../../" class="back-btn">All projects</a>
-        <div class="header-project-title">Vertical Village</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <div class="header-project-title" aria-hidden="true">Vertical Village</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="project-main">
+    <main class="project-main project-page" id="main">
 
-        <aside class="info-sidebar">
+        <header class="project-intro">
+            <p class="project-kicker">Building — Community center</p>
             <h1 class="project-heading">Vertical Village</h1>
+            <p class="project-summary">A community center with an emphasis on its makerspace and public programs.</p>
+        </header>
+
+        <!-- Lead image: shown before the details on a phone, loaded first. -->
+        <figure class="project-figure project-lead">
+            <img src="images/web/VerticalVillage_1-800.png" srcset="images/web/VerticalVillage_1-800.png 800w, images/web/VerticalVillage_1-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5334" height="3000" alt="Two rows of red-and-white massing diagrams. House-shaped volumes and long bars are rotated, stacked, and merged step by step into one clustered mass." fetchpriority="high">
+            <figcaption><span>Massing diagrams.</span> <a href="images/VerticalVillage_1.png">Full size<span class="visually-hidden">: Massing diagrams</span> (5334 × 3000, 125 KB)</a></figcaption>
+        </figure>
+
+        <aside class="info-sidebar" aria-label="Project details">
 
             <div class="info-block">
                 <span class="info-label">Location</span>
@@ -69,23 +82,52 @@
 
         </aside>
 
-        <section class="gallery-content">
-            <!-- PERSONALIZE: Replace this prompt with a short note in your own voice. -->
-            <div class="process-note">
-                <h2>A note from me</h2>
-                <p class="personal-placeholder">[A moment in the project when the makerspace or public spaces started to click.]</p>
-            </div>
-            <!-- Images loaded dynamically -->
+        <!-- Gallery: one <figure> per image. See PERSONALIZE.md to add more. -->
+        <section class="gallery-content" aria-label="Project images">
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_2-800.png" srcset="images/web/VerticalVillage_2-800.png 800w, images/web/VerticalVillage_2-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="2312" height="1496" alt="Section 1: a cutaway of the building in red tones, showing house-shaped rooms stacked and rotated, with furniture and figures inside." loading="lazy" decoding="async">
+                <figcaption><span>Section 1.</span> <a href="images/VerticalVillage_2.png">Full size<span class="visually-hidden">: Section 1</span> (2312 × 1496, 576 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_3-800.png" srcset="images/web/VerticalVillage_3-800.png 800w, images/web/VerticalVillage_3-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="2329" height="1507" alt="Section 2: a cutaway in red tones with a tall central elevator shaft, workshop floors on either side, and a large angled volume on top." loading="lazy" decoding="async">
+                <figcaption><span>Section 2.</span> <a href="images/VerticalVillage_3.png">Full size<span class="visually-hidden">: Section 2</span> (2329 × 1507, 976 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_4-800.png" srcset="images/web/VerticalVillage_4-800.png 800w, images/web/VerticalVillage_4-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5334" height="3000" alt="Program diagram in section. Labels around the central shaft read Event Space, Demo Kitchen, Metal Shop, Wood Shop, Repair Cafe, Digital Workshop, Hot Desks, and indoor and outdoor project spaces." loading="lazy" decoding="async">
+                <figcaption><span>Program diagram.</span> <a href="images/VerticalVillage_4.png">Full size<span class="visually-hidden">: Program diagram</span> (5334 × 3000, 74 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_5-800.png" srcset="images/web/VerticalVillage_5-800.png 800w, images/VerticalVillage_5.png 1836w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1836" height="1188" alt="1st floor plan at Broad St and May Ave: gallery, lobby, tool library, admin, a classroom, and two outdoor project spaces." loading="lazy" decoding="async">
+                <figcaption><span>1st floor plan.</span> <a href="images/VerticalVillage_5.png">Full size<span class="visually-hidden">: 1st floor plan</span> (1836 × 1188, 539 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_6-800.png" srcset="images/web/VerticalVillage_6-800.png 800w, images/VerticalVillage_6.png 1836w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1836" height="1188" alt="2nd floor plan: digital workshop, classroom, indoor project space, and a repair cafe with two cars." loading="lazy" decoding="async">
+                <figcaption><span>2nd floor plan.</span> <a href="images/VerticalVillage_6.png">Full size<span class="visually-hidden">: 2nd floor plan</span> (1836 × 1188, 530 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_7-800.png" srcset="images/web/VerticalVillage_7-800.png 800w, images/VerticalVillage_7.png 1717w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1717" height="1111" alt="3rd floor plan: wood shop and indoor project space." loading="lazy" decoding="async">
+                <figcaption><span>3rd floor plan.</span> <a href="images/VerticalVillage_7.png">Full size<span class="visually-hidden">: 3rd floor plan</span> (1717 × 1111, 504 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_8-800.png" srcset="images/web/VerticalVillage_8-800.png 800w, images/VerticalVillage_8.png 1717w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1717" height="1111" alt="4th floor plan: metal shop, hot desks, a studio, and a terrace." loading="lazy" decoding="async">
+                <figcaption><span>4th floor plan.</span> <a href="images/VerticalVillage_8.png">Full size<span class="visually-hidden">: 4th floor plan</span> (1717 × 1111, 544 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_9-800.png" srcset="images/web/VerticalVillage_9-800.png 800w, images/VerticalVillage_9.png 1717w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1717" height="1111" alt="5th floor plan: studios, hot desks, and indoor project space." loading="lazy" decoding="async">
+                <figcaption><span>5th floor plan.</span> <a href="images/VerticalVillage_9.png">Full size<span class="visually-hidden">: 5th floor plan</span> (1717 × 1111, 594 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_10-800.png" srcset="images/web/VerticalVillage_10-800.png 800w, images/VerticalVillage_10.png 1717w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1717" height="1111" alt="6th floor plan: demo kitchen, classrooms, and a covered outdoor project space." loading="lazy" decoding="async">
+                <figcaption><span>6th floor plan.</span> <a href="images/VerticalVillage_10.png">Full size<span class="visually-hidden">: 6th floor plan</span> (1717 × 1111, 596 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/VerticalVillage_11-800.png" srcset="images/web/VerticalVillage_11-800.png 800w, images/VerticalVillage_11.png 1717w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1717" height="1111" alt="7th floor plan: event space, a classroom, and a covered indoor project space." loading="lazy" decoding="async">
+                <figcaption><span>7th floor plan.</span> <a href="images/VerticalVillage_11.png">Full size<span class="visually-hidden">: 7th floor plan</span> (1717 × 1111, 625 KB)</a></figcaption>
+            </figure>
         </section>
 
     </main>
 
-    <script src="../../assets/js/gallery-loader.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadGallery('VerticalVillage', '.gallery-content');
-        });
-    </script>
     <script src="../../assets/js/theme.js"></script>
 </body>
 </html>

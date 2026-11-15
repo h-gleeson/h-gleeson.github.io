@@ -1,0 +1,26 @@
+{
+  "photo": [
+    "projects/hybrid/images/Hybrid_1.png",
+    "projects/hybrid/images/Hybrid_2.png",
+    "projects/dirtpolitics/images/dirtpolitics_1.png",
+    "projects/dirtpolitics/images/dirtpolitics_2.png",
+    "projects/dirtpolitics/images/dirtpolitics_3.png",
+    "projects/dirtpolitics/images/dirtpolitics_4.png",
+    "projects/dirtpolitics/images/dirtpolitics_5.png",
+    "projects/dirtpolitics/images/dirtpolitics_6.png",
+    "projects/dirtpolitics/images/dirtpolitics_7.png",
+    "projects/stonehenge/images/stonehenge_1.png",
+    "projects/stonehenge/images/stonehenge_2.png",
+    "projects/stonehenge/images/stonehenge_3.png",
+    "projects/stonehenge/images/stonehenge_4.png"
+  ],
+  "social": {
+    "palace": "projects/palace/images/palace_1.png",
+    "hybrid": "projects/hybrid/images/Hybrid_5.jpg",
+    "stonehenge": "projects/stonehenge/images/stonehenge_2.png",
+    "vertical_village": "projects/vertical_village/images/VerticalVillage_2.png",
+    "dirtpolitics": "projects/dirtpolitics/images/dirtpolitics_4.png",
+    "landscape": "projects/landscape/images/landscape_3.png",
+    "media_museum": "projects/media_museum/images/MediaMuseum_1.jpg"
+  }
+}

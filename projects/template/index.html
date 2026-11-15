@@ -4,35 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Name — hsgleeson.xyz</title>
+    <!-- Template only: remove the next line in a real project page so search engines can list it. -->
+    <meta name="robots" content="noindex">
+    <!-- One or two sentences. Shown in search results and link previews. -->
+    <meta name="description" content="One-sentence description of the project.">
+    <link rel="canonical" href="https://hsgleeson.xyz/projects/your-slug/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Project Name">
+    <meta property="og:description" content="One-sentence description of the project.">
+    <meta property="og:url" content="https://hsgleeson.xyz/projects/your-slug/">
+    <!-- tools/build-web-images.ps1 makes this 1200x630 preview; add the project to tools/web-images.json. -->
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/your-slug.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="What the preview image shows.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
-    <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
-    </style>
+    <script src="../../assets/js/theme-init.js"></script>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="page-header">
-        <a href="../../" class="back-btn">BACK</a>
-        <div class="header-project-title">Project Name</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <a href="../../" class="back-btn">All projects</a>
+        <div class="header-project-title" aria-hidden="true">Project Name</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="project-main">
+    <main class="project-main project-page" id="main">
 
-        <aside class="info-sidebar">
+        <header class="project-intro">
+            <!-- The same category and one-line description as the homepage card. -->
+            <p class="project-kicker">Category — Kind</p>
+            <h1 class="project-heading">Project Name</h1>
+            <p class="project-summary">One-sentence description of the project.</p>
+        </header>
+
+        <!-- Lead image: shown before the details on a phone, loaded first.
+             width/height are the ORIGINAL image's pixel size (the build tool prints them). -->
+        <figure class="project-figure project-lead">
+            <img src="images/web/template_1-800.jpg" srcset="images/web/template_1-800.jpg 800w, images/web/template_1-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1600" height="1000" alt="Describe what the image shows." fetchpriority="high">
+            <figcaption><span>Short caption.</span> <a href="images/template_1.jpg">Full size<span class="visually-hidden">: Short caption</span></a></figcaption>
+        </figure>
+
+        <aside class="info-sidebar" aria-label="Project details">
 
             <div class="info-block">
                 <span class="info-label">Location</span>
@@ -65,18 +85,17 @@
 
         </aside>
 
-        <section class="gallery-content">
-            <!-- Images loaded dynamically -->
+        <!-- Gallery: one <figure> per image, in the order you want them shown.
+             Add class "portrait" to a figure whose image is taller than it is wide. -->
+        <section class="gallery-content" aria-label="Project images">
+            <figure class="project-figure">
+                <img src="images/web/template_2-800.png" srcset="images/web/template_2-800.png 800w, images/web/template_2-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="1600" height="1000" alt="Describe what the image shows." loading="lazy" decoding="async">
+                <figcaption><span>Short caption.</span> <a href="images/template_2.png">Full size<span class="visually-hidden">: Short caption</span></a></figcaption>
+            </figure>
         </section>
 
     </main>
 
-    <script src="../../assets/js/gallery-loader.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadGallery('template', '.gallery-content');
-        });
-    </script>
     <script src="../../assets/js/theme.js"></script>
 </body>
 </html>

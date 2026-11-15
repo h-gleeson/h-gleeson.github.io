@@ -1,7 +1,7 @@
 /* ── Theme: light/dark mode + customisable accent colour ──────────────
    The accent is stored as hue + saturation only ("h,s" in localStorage).
-   Lightness is owned by the stylesheet (--accent-l), so a chosen hue
-   stays legible in both dark and light mode.                          */
+   Lightness is worked out in theme-init.js, so a chosen hue stays
+   legible in both dark and light mode.                                */
 
 (function () {
     const STORAGE_KEY = 'accent';
@@ -22,22 +22,13 @@
 
     /* ── State ──────────────────────────────────────────────────────── */
 
-    function readAccent() {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return { ...DEFAULT_ACCENT };
-        const [h, s] = raw.split(',').map(Number);
-        if (!isFinite(h) || !isFinite(s)) return { ...DEFAULT_ACCENT };
-        return { h: (h % 360 + 360) % 360, s: Math.min(100, Math.max(0, s)) };
-    }
-
-    function applyAccent(accent) {
-        const root = document.documentElement;
-        root.style.setProperty('--accent-h', accent.h);
-        root.style.setProperty('--accent-s', accent.s + '%');
-    }
+    /* Reading and applying the accent lives in theme-init.js, which also
+       picks a readable lightness for accent-coloured text. */
+    function readAccent() { return window.SiteTheme.readAccent(); }
+    function applyAccent(accent) { window.SiteTheme.applyAccent(accent); }
 
     function saveAccent(accent) {
-        localStorage.setItem(STORAGE_KEY, accent.h + ',' + accent.s);
+        try { localStorage.setItem(STORAGE_KEY, accent.h + ',' + accent.s); } catch (e) { /* still applies for this visit */ }
     }
 
     function isLight() {
@@ -79,10 +70,12 @@
         gap: 6px;
         flex-shrink: 0;
     }
+    #theme-toggle span, #motion-toggle span { color: var(--orange); }
+    #motion-toggle,
     #accent-toggle {
         font-family: var(--mono, monospace);
-        font-size: 0.58rem;
-        letter-spacing: 0.15em;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         background: transparent;
         border: 1px solid var(--border-mid);
@@ -91,11 +84,12 @@
         cursor: pointer;
         transition: border-color 0.2s, color 0.2s;
         white-space: nowrap;
-        line-height: 1;
+        line-height: 1.2;
         display: flex;
         align-items: center;
         gap: 7px;
     }
+    #motion-toggle:hover,
     #accent-toggle:hover,
     #accent-toggle[aria-expanded="true"] {
         border-color: var(--orange);
@@ -120,8 +114,8 @@
     .accent-panel.open { display: block; }
     .accent-panel .accent-label {
         font-family: var(--mono, monospace);
-        font-size: 0.52rem;
-        letter-spacing: 0.28em;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--text-dim);
         display: block;
@@ -134,10 +128,10 @@
         gap: 6px;
     }
     .accent-swatch {
-        width: 20px;
-        height: 20px;
+        width: 28px;
+        height: 28px;
         padding: 0;
-        border: 1px solid transparent;
+        border: 2px solid transparent;
         outline-offset: 2px;
         cursor: pointer;
         background: transparent;
@@ -159,8 +153,8 @@
     }
     .accent-custom label {
         font-family: var(--mono, monospace);
-        font-size: 0.52rem;
-        letter-spacing: 0.22em;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--text-dim);
         cursor: pointer;
@@ -187,14 +181,15 @@
         btn.id = 'accent-toggle';
         btn.type = 'button';
         btn.setAttribute('aria-expanded', 'false');
-        btn.innerHTML = '<span class="chip"></span>ACCENT';
+        btn.setAttribute('aria-controls', 'accent-panel');
+        btn.innerHTML = '<span class="chip" aria-hidden="true"></span>ACCENT';
         wrap.appendChild(btn);
 
         const panel = document.createElement('div');
         panel.className = 'accent-panel';
-        panel.setAttribute('role', 'radiogroup');
-        panel.setAttribute('aria-label', 'Accent colour');
-        panel.innerHTML = '<span class="accent-label">Accent colour</span><div class="accent-grid"></div>';
+        panel.id = 'accent-panel';
+        panel.innerHTML = '<span class="accent-label" id="accent-label">Accent colour</span>' +
+            '<div class="accent-grid" role="radiogroup" aria-labelledby="accent-label"></div>';
         wrap.appendChild(panel);
 
         const grid = panel.querySelector('.accent-grid');
@@ -252,20 +247,53 @@
 
     /* ── Init ───────────────────────────────────────────────────────── */
 
+    /* ── Motion switch ──────────────────────────────────────────────────
+       Only pages that animate continuously ask for it, by putting
+       data-motion-control on <html>. It is left out when the visitor's
+       system already asks for reduced motion, because motion is then off. */
+
+    function buildMotionToggle(wrap) {
+        const root = document.documentElement;
+        if (!root.hasAttribute('data-motion-control')) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const btn = document.createElement('button');
+        btn.id = 'motion-toggle';
+        btn.type = 'button';
+        function update() {
+            const off = root.classList.contains('reduce-motion');
+            btn.innerHTML = 'MOTION: <span>' + (off ? 'OFF' : 'ON') + '</span>';
+            btn.setAttribute('aria-label', off ? 'Motion is off. Turn animation on' : 'Motion is on. Turn animation off');
+        }
+        btn.addEventListener('click', () => {
+            const off = root.classList.toggle('reduce-motion');
+            try { localStorage.setItem('motion', off ? 'off' : 'on'); } catch (e) { /* still applies for this visit */ }
+            update();
+            document.dispatchEvent(new CustomEvent('motionchange', { detail: { off: off } }));
+        });
+        update();
+        wrap.appendChild(btn);
+    }
+
+    /* ── Init ───────────────────────────────────────────────────────── */
+
     document.addEventListener('DOMContentLoaded', () => {
         let accent = readAccent();
         applyAccent(accent);
 
         const btn = document.getElementById('theme-toggle');
         if (!btn) return;
+        btn.type = 'button';
 
         const style = document.createElement('style');
         style.textContent = CSS;
         document.head.appendChild(style);
 
         function updateModeBtn() {
-            btn.innerHTML = 'MODE: <span style="color:var(--orange)">' +
-                (isLight() ? 'LIGHT' : 'DARK') + '</span>';
+            btn.innerHTML = 'MODE: <span>' + (isLight() ? 'LIGHT' : 'DARK') + '</span>';
+            btn.setAttribute('aria-label', isLight()
+                ? 'Colour mode is light. Switch to dark'
+                : 'Colour mode is dark. Switch to light');
         }
         updateModeBtn();
 
@@ -276,10 +304,12 @@
             refreshPicker(accent);
         });
         refreshPicker(accent);
+        buildMotionToggle(btn.parentNode);
 
         btn.addEventListener('click', () => {
             document.documentElement.classList.toggle('light-mode');
-            localStorage.setItem('theme', isLight() ? 'light' : 'dark');
+            try { localStorage.setItem('theme', isLight() ? 'light' : 'dark'); } catch (e) { /* still applies for this visit */ }
+            applyAccent(accent);   // the readable accent lightness depends on the mode
             updateModeBtn();
             refreshPicker(accent);
         });

@@ -1,17 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+/* Shared styles for project, writing and experiment pages.
+   Fonts are loaded with <link> tags in each page's <head> (faster than
+   an @import here). */
 
 /* ── Accent: hue + saturation are user-customisable ─────
-   theme.js writes --accent-h / --accent-s onto <html>.
-   Lightness stays theme-controlled so any hue keeps its
-   contrast in both dark and light mode.                    */
+   assets/js/theme-init.js writes --accent-h / --accent-s, the vivid
+   --accent-l used for fills, and --accent-text-l: the same hue made
+   lighter or darker until it is readable as text in the current mode.
+   The values here are the fallbacks used when scripts are off.        */
 :root {
     --accent-h: 19;
     --accent-s: 100%;
     --accent-l: 50%;
+    --accent-text-l: 50%;
     --accent:       hsl(var(--accent-h) var(--accent-s) var(--accent-l));
     --accent-dim:   hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.12);
     --accent-soft:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.05);
     --accent-glow:  hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.35);
+    --header-h: 3.625rem;   /* 58px at the default text size; grows with larger text */
 }
 
 /* ── Design tokens: dark (default) ─────────────────────── */
@@ -20,42 +25,41 @@
     --bg-panel:    #080808;
     --bg-hover:    var(--accent-soft);
     --border:      #181818;
-    --border-mid:  #2A2A2A;
-    --orange:      var(--accent);
+    --border-mid:  #3d3d3d;
+    --orange:      hsl(var(--accent-h) var(--accent-s) var(--accent-text-l));
     --orange-dim:  var(--accent-dim);
     --text-bright: #EBEBEB;
-    --text:        #A8A8A8;
-    --text-dim:    #929292;
-    --text-label:  #858585;
+    --text:        #B4B4B4;
+    --text-dim:    #9C9C9C;
+    --text-label:  #929292;
     --mono:        'Share Tech Mono', 'Courier New', monospace;
     --sans:        'Space Grotesk', system-ui, sans-serif;
     /* Legacy aliases kept for any residual usages */
     --bg-color:       #040404;
     --text-color:     #EBEBEB;
-    --secondary-text: #929292;
-    --muted-color:    #858585;
+    --secondary-text: #9C9C9C;
+    --muted-color:    #929292;
     --border-color:   #181818;
-    --accent-color:   var(--accent);
+    --accent-color:   var(--orange);
 }
 
 /* ── Design tokens: light ───────────────────────────────── */
 :root.light-mode {
     --accent-l:    42%;
+    --accent-text-l: 34%;
     --bg:          #ECEBE6;
     --bg-panel:    #E4E2DC;
     --bg-hover:    var(--accent-soft);
     --border:      #D0CBC1;
-    --border-mid:  #C4BEB4;
-    --orange:      var(--accent);
-    --orange-dim:  var(--accent-dim);
+    --border-mid:  #9A9388;
     --text-bright: #0E0E0E;
     --text:        #3C3C3C;
-    --text-dim:    #626262;
-    --text-label:  #666666;
+    --text-dim:    #565656;
+    --text-label:  #595959;
     --bg-color:       #ECEBE6;
     --text-color:     #0E0E0E;
-    --secondary-text: #626262;
-    --muted-color:    #666666;
+    --secondary-text: #565656;
+    --muted-color:    #595959;
     --border-color:   #D0CBC1;
 }
 
@@ -68,11 +72,41 @@
 
 html { scroll-behavior: smooth; }
 
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: fixed;
+    left: 12px; top: -100px;
+    z-index: 5000;
+    padding: 10px 14px;
+    background: var(--bg);
+    color: var(--text-bright);
+    border: 2px solid var(--text-bright);
+    font-family: var(--sans);
+    font-size: 0.95rem;
+}
+.skip-link:focus { top: 12px; }
+
 /* ── Theme toggle (shared across all pages) ─────────────── */
 #theme-toggle {
     font-family: var(--mono);
-    font-size: 0.58rem;
-    letter-spacing: 0.15em;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     background: transparent;
     border: 1px solid var(--border-mid);
@@ -81,9 +115,10 @@ html { scroll-behavior: smooth; }
     cursor: pointer;
     transition: border-color 0.2s, color 0.2s;
     white-space: nowrap;
-    line-height: 1;
+    line-height: 1.2;
     flex-shrink: 0;
 }
+#theme-toggle span { color: var(--orange); }
 
 #theme-toggle:hover {
     border-color: var(--orange);
@@ -95,7 +130,7 @@ html { scroll-behavior: smooth; }
     position: fixed;
     top: 0; left: 0;
     width: 100%;
-    height: 58px;
+    height: var(--header-h);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -105,25 +140,29 @@ html { scroll-behavior: smooth; }
     z-index: 1000;
     gap: 16px;
 }
+/* MODE / ACCENT sit side by side in the bar; on a narrow phone they stack, compactly */
+.page-header .theme-controls { flex-direction: row; align-items: center; gap: 6px; }
 
 .back-btn {
     font-family: var(--mono);
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     text-decoration: none;
     color: var(--text-dim);
     display: flex;
     align-items: center;
     gap: 8px;
+    min-height: 2.75rem;
+    min-width: 0;          /* may wrap onto two lines when text is enlarged on a phone */
+    line-height: 1.15;
     transition: color 0.2s;
-    flex-shrink: 0;
 }
 
 .back-btn::before {
     content: '←';
     color: var(--orange);
-    font-size: 0.9rem;
+    font-size: 1rem;
     line-height: 1;
 }
 
@@ -131,7 +170,7 @@ html { scroll-behavior: smooth; }
 
 .header-project-title {
     font-family: var(--sans);
-    font-size: 0.8rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--text-bright);
     letter-spacing: 0.1em;
@@ -143,21 +182,21 @@ html { scroll-behavior: smooth; }
     text-overflow: ellipsis;
 }
 
-/* ── Project page: main grid ────────────────────────────── */
+/* ── Main grid (experiment pages: sidebar + tool) ───────── */
 .project-main {
     display: grid;
     grid-template-columns: 300px 1fr;
     min-height: 100vh;
-    padding-top: 58px;
+    padding-top: var(--header-h);
 }
 
 /* ── Sidebar ────────────────────────────────────────────── */
 .info-sidebar {
     padding: 36px 28px;
     border-right: 1px solid var(--border);
-    height: calc(100vh - 58px);
+    height: calc(100vh - var(--header-h));
     position: sticky;
-    top: 58px;
+    top: var(--header-h);
     overflow-y: auto;
     background: var(--bg);
     scrollbar-width: thin;
@@ -165,8 +204,8 @@ html { scroll-behavior: smooth; }
 }
 
 .info-block {
-    padding-bottom: 28px;
-    margin-bottom: 28px;
+    padding-bottom: 24px;
+    margin-bottom: 24px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -178,17 +217,17 @@ html { scroll-behavior: smooth; }
 
 .info-label {
     font-family: var(--mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.3em;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
     color: var(--orange);
     text-transform: uppercase;
     display: block;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .info-value {
     font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--text);
     line-height: 1.55;
     display: block;
@@ -199,24 +238,26 @@ html { scroll-behavior: smooth; }
 }
 
 .info-value a {
-    color: var(--text);
-    text-decoration: none;
-    border-bottom: 1px solid var(--border-mid);
-    transition: color 0.2s, border-color 0.2s;
+    color: var(--text-bright);
+    text-decoration: underline;
+    text-decoration-color: var(--border-mid);
+    text-underline-offset: 4px;
+    transition: color 0.2s, text-decoration-color 0.2s;
 }
 
 .info-value a:hover {
     color: var(--orange);
-    border-color: var(--orange);
+    text-decoration-color: var(--orange);
 }
 
-/* Description block: larger text, paragraph spacing */
+/* Description block: reading text, paragraph spacing */
 .info-block.desc .info-value {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    line-height: 1.85;
+    font-family: var(--sans);
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.7;
     display: block;
-    margin-top: 14px;
+    margin-top: 16px;
 }
 
 .info-block.desc .info-value:first-of-type {
@@ -225,7 +266,7 @@ html { scroll-behavior: smooth; }
 
 .info-block.desc strong {
     font-family: var(--sans);
-    font-size: 0.7rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--text-bright);
     letter-spacing: 0.08em;
@@ -234,7 +275,7 @@ html { scroll-behavior: smooth; }
     margin-bottom: 5px;
 }
 
-/* ── Gallery ────────────────────────────────────────────── */
+/* ── Personal note (optional; see PERSONALIZE.md) ───────── */
 .process-note {
     max-width: 640px;
     border-left: 2px solid var(--orange);
@@ -248,21 +289,104 @@ html { scroll-behavior: smooth; }
     margin-bottom: 8px;
 }
 .process-note p { font-family: var(--sans); font-size: 1rem; line-height: 1.7; }
-.process-note .personal-placeholder { color: var(--text-dim); font-style: italic; }
 
+/* ── Gallery ────────────────────────────────────────────── */
 .gallery-content {
     padding: 36px;
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 36px;
     background: var(--bg-panel);
-    min-height: calc(100vh - 58px);
+    min-height: calc(100vh - var(--header-h));
 }
 
 .project-image {
     width: 100%;
     height: auto;
     display: block;
+}
+
+.project-figure { margin: 0; }
+.project-figure img {
+    display: block;
+    width: 100%;
+    height: auto;          /* width/height attributes reserve the space before it loads */
+}
+.project-figure figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 20px;
+    margin-top: 10px;
+    font-family: var(--sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--text);
+}
+.project-figure figcaption a {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    color: var(--text-bright);
+    text-underline-offset: 4px;
+    text-decoration-color: var(--border-mid);
+    padding: 6px 0;
+}
+.project-figure figcaption a:hover { color: var(--orange); text-decoration-color: var(--orange); }
+
+/* ── Project pages ──────────────────────────────────────────
+   Markup order is: title, lead image, details, remaining images. On a
+   phone that is exactly what you see, so a strong image comes before
+   the long text. On a wide screen the title and details sit in a left
+   column (the details stay pinned while the images scroll). */
+.project-page {
+    grid-template-columns: minmax(300px, 22.5rem) minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    background: var(--bg);
+}
+.project-page .project-intro {
+    grid-column: 1; grid-row: 1;
+    padding: 36px 28px 24px;
+}
+.project-page .project-lead {
+    grid-column: 2; grid-row: 1 / span 2;
+    padding: 36px 36px 0;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+}
+.project-page .info-sidebar {
+    grid-column: 1; grid-row: 2 / span 2;
+    align-self: start;
+    height: auto;
+    max-height: calc(100vh - var(--header-h));
+    padding-top: 4px;
+    border-right: none;
+}
+.project-page .gallery-content {
+    grid-column: 2; grid-row: 3;
+    min-height: 0;
+    border-left: 1px solid var(--border);
+}
+
+.project-kicker {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+}
+.project-heading { color: var(--text-bright); font-family: var(--sans); font-size: 1.75rem; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 12px; }
+.project-summary { font-family: var(--sans); font-size: 1.0625rem; line-height: 1.55; color: var(--text); }
+.project-link { color: var(--text-bright); text-underline-offset: 4px; line-height: 1.7; display: inline-block; padding: 8px 0; }
+.project-link:hover { color: var(--orange); }
+
+/* Tall drawings: keep the whole sheet in view on wide screens. */
+@media (min-width: 901px) {
+    .project-figure.portrait img {
+        width: auto;
+        max-width: 100%;
+        max-height: calc(100vh - var(--header-h) - 96px);
+    }
 }
 
 /* ── Responsive ─────────────────────────────────────────── */
@@ -284,19 +408,28 @@ html { scroll-behavior: smooth; }
     }
 
     .gallery-content {
-        padding: 20px;
-        gap: 20px;
+        padding: 24px 20px;
+        gap: 28px;
     }
+
+    .project-page { display: block; }
+    .project-page .project-intro { padding: 24px 20px 18px; }
+    .project-page .project-lead { padding: 0 20px 22px; background: var(--bg); border-left: none; }
+    .project-page .info-sidebar { max-height: none; padding-top: 6px; }
+    .project-page .gallery-content { border-left: none; }
 }
 
 @media (max-width: 520px) {
     .header-project-title { display: none; }
+    .page-header .theme-controls { flex-direction: column; align-items: stretch; gap: 3px; }
+    .page-header #theme-toggle,
+    .page-header #accent-toggle { padding: 2px 8px; font-size: 0.75rem; }
 }
 
-.project-heading { color: var(--text-bright); font-family: var(--sans); font-size: 1.6rem; line-height: 1.2; margin-bottom: 24px; }
-.project-link { color: var(--text-bright); text-underline-offset: 4px; line-height: 1.7; }
-a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--text-bright); outline-offset: 4px; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible, select:focus-visible { outline: 2px solid var(--text-bright); outline-offset: 4px; }
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+:root.reduce-motion { scroll-behavior: auto; }
+:root.reduce-motion *, :root.reduce-motion *::before, :root.reduce-motion *::after { animation: none !important; transition: none !important; }

@@ -4,31 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Studio Album by War - 1975 — hsgleeson.xyz</title>
+    <meta name="description" content="A reflection on befriending — in architecture, in life, and in a parking lot forum after class. An essay by Henry Gleeson, to read or listen to.">
+    <link rel="canonical" href="https://hsgleeson.xyz/writings/studio-album-by-war-1975/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Studio Album by War - 1975">
+    <meta property="og:description" content="A reflection on befriending — in architecture, in life, and in a parking lot forum after class.">
+    <meta property="og:url" content="https://hsgleeson.xyz/writings/studio-album-by-war-1975/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/writing-studio-album-by-war-1975.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="The essay's title, Studio Album by War - 1975, above its audio player.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
+    <script src="../../assets/js/theme-init.js"></script>
     <style>
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: var(--sans);
-        }
-
         .writing-main {
             max-width: 680px;
             margin: 0 auto;
-            padding: 80px 40px 120px;
+            padding: calc(var(--header-h) + 80px) 40px 120px;
         }
 
         .writing-header {
@@ -39,8 +36,8 @@
 
         .writing-index {
             font-family: var(--mono);
-            font-size: 0.6rem;
-            letter-spacing: 0.32em;
+            font-size: 0.8125rem;
+            letter-spacing: 0.2em;
             color: var(--orange);
             text-transform: uppercase;
             display: block;
@@ -60,28 +57,28 @@
 
         .writing-teaser {
             font-family: var(--mono);
-            font-size: 0.78rem;
+            font-size: 0.9375rem;
             color: var(--text-dim);
-            line-height: 1.8;
+            line-height: 1.7;
             letter-spacing: 0.03em;
             max-width: 480px;
         }
 
         .writing-body p {
             font-family: var(--mono);
-            font-size: clamp(0.78rem, 1.1vw, 0.88rem);
+            font-size: 1rem;
             color: var(--text);
-            line-height: 1.95;
-            letter-spacing: 0.025em;
+            line-height: 1.85;
+            letter-spacing: 0.01em;
             margin-bottom: 1.6em;
         }
 
         .writing-body ol {
             font-family: var(--mono);
-            font-size: clamp(0.78rem, 1.1vw, 0.88rem);
+            font-size: 1rem;
             color: var(--text);
-            line-height: 1.95;
-            letter-spacing: 0.025em;
+            line-height: 1.85;
+            letter-spacing: 0.01em;
             padding-left: 1.6em;
             margin: 0 0 1.6em;
         }
@@ -90,71 +87,79 @@
             margin-bottom: 0.5em;
         }
 
+        /* ── Audio player: real buttons and a slider, so it works with a
+           keyboard, a screen reader and touch as well as a mouse. ── */
         .audio-player {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 14px;
+            gap: 10px 12px;
             margin-top: 28px;
         }
 
-        #audio-toggle {
+        .audio-label {
+            flex: 1 0 100%;
             font-family: var(--mono);
-            font-size: 0.75rem;
+            font-size: 0.8125rem;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+        }
+
+        .audio-btn {
+            font-family: var(--mono);
+            font-size: 0.8125rem;
             background: transparent;
             border: 1px solid var(--border-mid);
-            color: var(--text-dim);
-            width: 34px;
-            height: 34px;
+            color: var(--text-bright);
+            min-width: 2.75rem;
+            height: 2.75rem;
+            padding: 0 0.6rem;
             cursor: pointer;
             transition: border-color 0.2s, color 0.2s;
             flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0;
         }
 
-        #audio-toggle:hover {
-            border-color: var(--orange);
-            color: var(--text-bright);
-        }
+        .audio-btn:hover { border-color: var(--orange); }
 
+        #audio-toggle { font-size: 1rem; }
         #audio-toggle.playing {
             border-color: var(--orange);
             color: var(--orange);
         }
 
         .audio-progress-wrap {
-            flex: 1;
+            flex: 1 1 12rem;
             display: flex;
             flex-direction: column;
-            gap: 7px;
+            gap: 4px;
+            min-width: 0;
         }
 
-        .audio-progress-bar {
-            height: 2px;
-            background: var(--border-mid);
+        #audio-seek {
+            width: 100%;
+            height: 1.5rem;
+            margin: 0;
+            accent-color: var(--orange);
             cursor: pointer;
-            position: relative;
-        }
-
-        .audio-progress-bar:hover {
-            background: var(--text-label);
-        }
-
-        .audio-progress-fill {
-            height: 100%;
-            background: var(--orange);
-            width: 0%;
-            pointer-events: none;
         }
 
         .audio-time {
             font-family: var(--mono);
-            font-size: 0.55rem;
-            letter-spacing: 0.15em;
+            font-size: 0.8125rem;
+            letter-spacing: 0.08em;
             color: var(--text-dim);
         }
+
+        .audio-error {
+            flex: 1 0 100%;
+            font-family: var(--mono);
+            font-size: 0.8125rem;
+            color: var(--text-bright);
+        }
+        .audio-error:empty { display: none; }
 
         .writing-cover {
             width: 100%;
@@ -174,39 +179,44 @@
 
         @media (max-width: 768px) {
             .writing-main {
-                padding: 48px 24px 80px;
+                padding: calc(var(--header-h) + 40px) 24px 80px;
             }
         }
     </style>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <audio id="writing-audio" src="../audio/Writing1Audio.mp3" preload="metadata"></audio>
 
     <header class="page-header">
         <a href="../../" class="back-btn">BACK</a>
-        <div class="header-project-title">Studio Album by War - 1975</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <div class="header-project-title" aria-hidden="true">Studio Album by War - 1975</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="writing-main" style="padding-top: calc(58px + 80px);">
+    <main class="writing-main" id="main">
 
         <div class="writing-header">
             <span class="writing-index">TXT_001</span>
             <h1 class="writing-title">Studio Album by War - 1975</h1>
             <p class="writing-teaser">A reflection on befriending — in architecture, in life, and in a parking lot forum after class.</p>
-            <div class="audio-player">
-                <button id="audio-toggle">▶</button>
+            <div class="audio-player" role="group" aria-labelledby="audio-label">
+                <span class="audio-label" id="audio-label">Listen to this essay</span>
+                <button class="audio-btn" id="audio-toggle" type="button" aria-label="Play">▶</button>
+                <button class="audio-btn" id="audio-back" type="button" aria-label="Back 15 seconds">−15s</button>
+                <button class="audio-btn" id="audio-fwd" type="button" aria-label="Forward 15 seconds">+15s</button>
                 <div class="audio-progress-wrap">
-                    <div class="audio-progress-bar" id="audio-progress-bar">
-                        <div class="audio-progress-fill" id="audio-fill"></div>
-                    </div>
+                    <input type="range" id="audio-seek" min="0" max="100" step="1" value="0" aria-label="Position in the recording" aria-valuetext="0:00 of 0:00">
                     <span class="audio-time" id="audio-time">0:00 / 0:00</span>
                 </div>
+                <span class="audio-error" id="audio-error" role="status"></span>
             </div>
         </div>
 
-        <div class="writing-cover" style="--cover-img: url('../covers/studio-album-by-war-1975.png');" role="img" aria-label="Studio Album by War - 1975 cover art"></div>
+        <div class="writing-cover"
+ style="--cover-img: url('../covers/studio-album-by-war-1975.png');" role="img" aria-label="Studio Album by War - 1975 cover art"></div>
 
         <div class="writing-body">
             <p>Hey! I'm not sure who it is that's going to be reading this, but I think being addressed is important, so hello. I hope you're having a good day and thank you for taking the time to read this little blurb of mine. I've been having a hard time putting some of these thoughts into something legible, but then I remembered that I'm writing this, and can be as informal or disorganized as I'd like.</p>
@@ -264,9 +274,9 @@
     <script>
         const audio = document.getElementById('writing-audio');
         const audioBtn = document.getElementById('audio-toggle');
-        const progressBar = document.getElementById('audio-progress-bar');
-        const progressFill = document.getElementById('audio-fill');
+        const seek = document.getElementById('audio-seek');
         const audioTime = document.getElementById('audio-time');
+        const audioError = document.getElementById('audio-error');
 
         function fmt(s) {
             const m = Math.floor(s / 60);
@@ -274,50 +284,64 @@
             return m + ':' + (sec < 10 ? '0' : '') + sec;
         }
 
+        let seeking = false;
+
         function updateTime() {
             const cur = audio.currentTime || 0;
-            const dur = audio.duration || 0;
-            audioTime.textContent = fmt(cur) + ' / ' + (dur ? fmt(dur) : '0:00');
-            progressFill.style.width = dur ? (cur / dur * 100) + '%' : '0%';
+            const dur = isFinite(audio.duration) ? audio.duration : 0;
+            audioTime.textContent = fmt(cur) + ' / ' + fmt(dur);
+            seek.max = dur ? Math.floor(dur) : 100;
+            if (!seeking) seek.value = Math.floor(cur);
+            seek.setAttribute('aria-valuetext', fmt(cur) + ' of ' + fmt(dur));
+        }
+
+        // The button always mirrors what the audio is really doing.
+        function updateButton() {
+            const playing = !audio.paused && !audio.ended;
+            audioBtn.textContent = playing ? '⏸' : '▶';
+            audioBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+            audioBtn.classList.toggle('playing', playing);
+        }
+
+        function skip(seconds) {
+            const dur = isFinite(audio.duration) ? audio.duration : 0;
+            audio.currentTime = Math.max(0, Math.min(dur, (audio.currentTime || 0) + seconds));
+            updateTime();
         }
 
         audio.addEventListener('loadedmetadata', updateTime);
+        audio.addEventListener('durationchange', updateTime);
         audio.addEventListener('timeupdate', updateTime);
+        ['play', 'playing', 'pause', 'ended'].forEach(function (name) {
+            audio.addEventListener(name, updateButton);
+        });
+        audio.addEventListener('error', function () {
+            audioError.textContent = 'The recording could not be loaded.';
+        });
 
         audioBtn.addEventListener('click', function () {
             if (audio.paused) {
-                audio.play();
-                this.textContent = '⏸';
-                this.classList.add('playing');
+                const started = audio.play();
+                if (started && started.catch) started.catch(function () {
+                    audioError.textContent = 'The recording could not be played.';
+                    updateButton();
+                });
             } else {
                 audio.pause();
-                this.textContent = '▶';
-                this.classList.remove('playing');
             }
         });
 
-        audio.addEventListener('ended', function () {
-            audioBtn.textContent = '▶';
-            audioBtn.classList.remove('playing');
-        });
+        document.getElementById('audio-back').addEventListener('click', function () { skip(-15); });
+        document.getElementById('audio-fwd').addEventListener('click', function () { skip(15); });
 
-        // Click to seek
-        progressBar.addEventListener('click', function (e) {
-            if (!audio.duration) return;
-            const rect = this.getBoundingClientRect();
-            audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+        // The slider works with a mouse, touch, and the arrow keys.
+        seek.addEventListener('input', function () {
+            seeking = true;
+            audio.currentTime = Number(seek.value);
+            updateTime();
         });
-
-        // Drag to seek
-        let dragging = false;
-        progressBar.addEventListener('mousedown', function () { dragging = true; });
-        document.addEventListener('mousemove', function (e) {
-            if (!dragging || !audio.duration) return;
-            const rect = progressBar.getBoundingClientRect();
-            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            audio.currentTime = pct * audio.duration;
-        });
-        document.addEventListener('mouseup', function () { dragging = false; });
+        seek.addEventListener('change', function () { seeking = false; });
     </script>
+
 </body>
 </html>

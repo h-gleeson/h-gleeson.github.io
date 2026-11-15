@@ -4,36 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Landscape Drawings — hsgleeson.xyz</title>
+    <meta name="description" content="Planting plans and construction details from a summer at DTDesign in Northeast Ohio.">
+    <link rel="canonical" href="https://hsgleeson.xyz/projects/landscape/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Landscape Drawings">
+    <meta property="og:description" content="Planting plans and construction details from a summer at DTDesign in Northeast Ohio.">
+    <meta property="og:url" content="https://hsgleeson.xyz/projects/landscape/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/landscape.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Part of a planting plan: a residence surrounded by labelled hedges, trees, and bluestone paving.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
-    <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
-    </style>
+    <script src="../../assets/js/theme-init.js"></script>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="page-header">
         <a href="../../" class="back-btn">All projects</a>
-        <div class="header-project-title">Landscape Drawings</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <div class="header-project-title" aria-hidden="true">Landscape Drawings</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="project-main">
+    <main class="project-main project-page" id="main">
 
-        <aside class="info-sidebar">
+        <header class="project-intro">
+            <p class="project-kicker">Drawing — Landscape plans</p>
             <h1 class="project-heading">Landscape Drawings</h1>
+            <p class="project-summary">Planting plans and construction details from a summer at DTDesign in Northeast Ohio.</p>
+        </header>
+
+        <!-- Lead image: shown before the details on a phone, loaded first. -->
+        <figure class="project-figure project-lead">
+            <img src="images/web/landscape_1-800.png" srcset="images/web/landscape_1-800.png 800w, images/web/landscape_1-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5400" height="3600" alt="Construction detail sheet D-1: elevations, a framing plan, and cross sections of a pergola with a louvered roof and a stone water feature, with material notes." fetchpriority="high">
+            <figcaption><span>Pergola and water feature details.</span> <a href="images/landscape_1.png">Full size<span class="visually-hidden">: Pergola and water feature details</span> (5400 × 3600, 1.2 MB)</a></figcaption>
+        </figure>
+
+        <aside class="info-sidebar" aria-label="Project details">
 
             <div class="info-block">
                 <span class="info-label">Location</span>
@@ -59,23 +72,40 @@
 
         </aside>
 
-        <section class="gallery-content">
-            <!-- PERSONALIZE: Replace this prompt with a short note in your own voice. -->
-            <div class="process-note">
-                <h2>A note from me</h2>
-                <p class="personal-placeholder">[Something you learned on the job that a finished planting plan cannot show.]</p>
-            </div>
-            <!-- Images loaded dynamically -->
+        <!-- Gallery: one <figure> per image. See PERSONALIZE.md to add more. -->
+        <section class="gallery-content" aria-label="Project images">
+            <figure class="project-figure">
+                <img src="images/web/landscape_2-800.png" srcset="images/web/landscape_2-800.png 800w, images/web/landscape_2-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5400" height="3600" alt="Grading plan, sheet L-3: existing and proposed contours and spot grades around a residence." loading="lazy" decoding="async">
+                <figcaption><span>Grading plan.</span> <a href="images/landscape_2.png">Full size<span class="visually-hidden">: Grading plan</span> (5400 × 3600, 1.2 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/landscape_3-800.png" srcset="images/web/landscape_3-800.png 800w, images/web/landscape_3-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5400" height="3600" alt="Planting and materials plan, sheet L-1: a residence surrounded by labelled hedges, trees, and bluestone paving, with a site materials legend." loading="lazy" decoding="async">
+                <figcaption><span>Planting and materials plan.</span> <a href="images/landscape_3.png">Full size<span class="visually-hidden">: Planting and materials plan</span> (5400 × 3600, 3.5 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/landscape_4-800.png" srcset="images/web/landscape_4-800.png 800w, images/web/landscape_4-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5400" height="3600" alt="Lighting plan, sheet L-2: fixture locations around the residence, with a low-voltage lighting legend and schedule." loading="lazy" decoding="async">
+                <figcaption><span>Low-voltage lighting plan.</span> <a href="images/landscape_4.png">Full size<span class="visually-hidden">: Low-voltage lighting plan</span> (5400 × 3600, 1.5 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/landscape_5-800.png" srcset="images/web/landscape_5-800.png 800w, images/landscape_5.png 2550w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="2550" height="1650" alt="Backyard plan dated 07.19.23: decking with planters, a fire pit on cut stone, a wood arbor, and a pea-gravel garden, with existing and proposed contours." loading="lazy" decoding="async">
+                <figcaption><span>Backyard plan.</span> <a href="images/landscape_5.png">Full size<span class="visually-hidden">: Backyard plan</span> (2550 × 1650, 449 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/landscape_6-800.png" srcset="images/web/landscape_6-800.png 800w, images/web/landscape_6-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5400" height="3600" alt="Base sheet EX-1: a residence and its lot with tree canopies, contours, and the backyard design drawn in place." loading="lazy" decoding="async">
+                <figcaption><span>Site base sheet.</span> <a href="images/landscape_6.png">Full size<span class="visually-hidden">: Site base sheet</span> (5400 × 3600, 1,021 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/landscape_7-800.png" srcset="images/web/landscape_7-800.png 800w, images/web/landscape_7-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5400" height="3600" alt="Perennial planting exhibit: a garden divided into four colour-coded zones, each with a plant schedule listing species, quantities, and sizes." loading="lazy" decoding="async">
+                <figcaption><span>Perennial planting plan.</span> <a href="images/landscape_7.png">Full size<span class="visually-hidden">: Perennial planting plan</span> (5400 × 3600, 2.9 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure">
+                <img src="images/web/landscape_8-800.png" srcset="images/web/landscape_8-800.png 800w, images/web/landscape_8-1600.png 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="2550" height="1650" alt="Coloured planting plan around a residence and parking court, with labelled trees, hydrangeas, hedges, and ground cover." loading="lazy" decoding="async">
+                <figcaption><span>Planting plan.</span> <a href="images/landscape_8.png">Full size<span class="visually-hidden">: Planting plan</span> (2550 × 1650, 1.5 MB)</a></figcaption>
+            </figure>
         </section>
 
     </main>
 
-    <script src="../../assets/js/gallery-loader.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadGallery('landscape', '.gallery-content');
-        });
-    </script>
     <script src="../../assets/js/theme.js"></script>
 </body>
 </html>

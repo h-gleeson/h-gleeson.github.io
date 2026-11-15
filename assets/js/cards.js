@@ -1,12 +1,14 @@
 /* ── Trading-card rails ────────────────────────────────────────────────
    • Every card rolls once per page load for its FULL ART variant.
    • Each rail keeps one active (raised) card.
-   • Swiping selects the leading card without interrupting native scrolling.
-   • Wheel over a rail moves the highlight; at either end the page
-     scrolls normally so the rail never traps the scroll.
-   • Click a card that isn't active -> it becomes active.
+   • Swiping scrolls the rail natively and selects the leading card; the
+     page still scrolls up and down as usual, with touch or a mouse wheel.
+   • Previous / Next buttons step through the rail. "View all cards"
+     lays the whole set out as a binder grid.
+   • Click or tap a card that isn't active -> it becomes active.
      Click the active card -> open it.
-   • Arrow keys move the highlight, Enter/Space opens the active card. */
+   • Every card is a link you can Tab to. Focusing one raises it, Enter
+     opens it, and the arrow keys move between cards. */
 
 (function () {
     'use strict';
@@ -17,8 +19,12 @@
        art card: if nobody wins the roll, one is drawn at random. */
     var FULL_ART_CHANCE = 1 / 20;
 
-    var reduceMotion = window.matchMedia &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    /* Checked each time it matters, so the MOTION switch works at once. */
+    function motionOff() {
+        if (window.SiteTheme) return window.SiteTheme.motionOff();
+        return !!(window.matchMedia &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
 
     /* ── Rarity roll ───────────────────────────────────────────────── */
 
@@ -28,6 +34,7 @@
         if (!card.querySelector('.holo')) {
             var holo = document.createElement('div');
             holo.className = 'holo';
+            holo.setAttribute('aria-hidden', 'true');
             card.appendChild(holo);
         }
         if (!card.querySelector('.card-rarity')) {
@@ -70,28 +77,36 @@
         if (!cards.length) return;
 
         var wrap = rail.closest('.card-rail-wrap');
+        var hud = wrap && wrap.querySelector('.rail-hud');
         var hudNow = wrap && wrap.querySelector('.rail-now');
         var hudTitle = wrap && wrap.querySelector('.rail-title');
+        var name = rail.getAttribute('aria-label') || 'cards';
         var active = 0;
+        var grid = false;
         var scrollTarget = null;
         var scrollIdleTimer = null;
+        var prevBtn = null, nextBtn = null, allBtn = null, live = null;
 
         function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+        function titleOf(card) {
+            var t = card.querySelector('.card-title');
+            return t ? t.textContent.trim() : '';
+        }
 
         function setActive(i, scroll) {
             active = Math.max(0, Math.min(cards.length - 1, i));
             cards.forEach(function (c, n) {
                 c.style.transform = '';   // clear any lingering tilt
-                c.classList.toggle('is-active', n === active);
-                c.setAttribute('tabindex', n === active ? '0' : '-1');
-                c.setAttribute('aria-current', n === active ? 'true' : 'false');
+                c.classList.toggle('is-active', n === active && !grid);
+                if (n === active && !grid) c.setAttribute('aria-current', 'true');
+                else c.removeAttribute('aria-current');
             });
             if (hudNow) hudNow.textContent = pad(active + 1);
-            if (hudTitle) {
-                var t = cards[active].querySelector('.card-title');
-                hudTitle.textContent = t ? t.textContent.trim() : '';
-            }
-            if (scroll !== false) centre(cards[active]);
+            if (hudTitle) hudTitle.textContent = titleOf(cards[active]);
+            if (prevBtn) prevBtn.disabled = active === 0;
+            if (nextBtn) nextBtn.disabled = active === cards.length - 1;
+            if (scroll !== false && !grid) centre(cards[active]);
         }
 
         /* Scroll the rail (not the page) so the active card sits centred. */
@@ -103,12 +118,12 @@
             // Keep click/keyboard selection while its smooth scroll passes
             // other cards. A new gesture takes ownership immediately.
             scrollTarget = target;
-            if (reduceMotion || !rail.scrollTo) rail.scrollLeft = target;
+            if (motionOff() || !rail.scrollTo) rail.scrollLeft = target;
             else rail.scrollTo({ left: target, behavior: 'smooth' });
         }
 
         function selectFromScroll() {
-            if (scrollTarget !== null || !rail.clientWidth) return;
+            if (grid || scrollTarget !== null || !rail.clientWidth) return;
             var max = rail.scrollWidth - rail.clientWidth;
             if (max <= 1) return;
             var left = Math.max(0, Math.min(max, rail.scrollLeft));
@@ -136,43 +151,22 @@
             selectFromScroll();
         }, { passive: true });
 
-        rail.addEventListener('pointerdown', function () {
+        /* A new touch, pen or trackpad gesture takes over from any scroll we
+           started. Both listeners are passive: swiping sideways scrolls the
+           rail natively and swiping or wheeling up/down scrolls the page. */
+        function releaseScroll() {
             scrollTarget = null;
             clearTimeout(scrollIdleTimer);
+        }
+        rail.addEventListener('pointerdown', releaseScroll, { passive: true });
+        rail.addEventListener('wheel', function (e) {
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) releaseScroll();
         }, { passive: true });
 
-        /* ── Wheel: step the highlight, but hand scroll back at the ends */
-        var wheelAcc = 0;
-        var wheelLock = false;
-
-        rail.addEventListener('wheel', function (e) {
-            // Trackpad horizontal gestures behave like a native mobile swipe.
-            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                scrollTarget = null;
-                return;
-            }
-            var delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-            var dir = delta > 0 ? 1 : -1;
-
-            // at the end of the rail in this direction: let the page scroll
-            if ((dir > 0 && active === cards.length - 1) ||
-                (dir < 0 && active === 0)) return;
-
-            e.preventDefault();
-            if (wheelLock) return;
-
-            wheelAcc += delta;
-            if (Math.abs(wheelAcc) < 24) return;
-
-            setActive(active + (wheelAcc > 0 ? 1 : -1));
-            wheelAcc = 0;
-            wheelLock = true;
-            setTimeout(function () { wheelLock = false; }, 220);
-        }, { passive: false });
-
-        /* ── Click: promote, then open ─────────────────────────────── */
+        /* ── Click: promote, then open. Keyboard: focus promotes. ─────── */
         cards.forEach(function (card, i) {
             card.addEventListener('click', function (e) {
+                if (grid) return;                 // binder view: every card opens directly
                 if (i !== active) {
                     e.preventDefault();
                     setActive(i);
@@ -180,37 +174,107 @@
                 // already active -> fall through, the <a> navigates
             });
 
+            card.addEventListener('focus', function () {
+                // Only for keyboard focus; a mouse or touch press is handled by click.
+                var keyboard = true;
+                try { keyboard = card.matches(':focus-visible'); } catch (err) { /* older browsers */ }
+                if (keyboard && !grid && i !== active) setActive(i);
+            });
+
             card.addEventListener('keydown', function (e) {
-                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setActive(active + 1);
-                    cards[active].focus();
-                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setActive(active - 1);
-                    cards[active].focus();
-                }
+                var step = 0;
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step = 1;
+                else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step = -1;
+                else if (e.key === 'Home') step = -cards.length;
+                else if (e.key === 'End') step = cards.length;
+                if (!step) return;
+                e.preventDefault();
+                var to = Math.max(0, Math.min(cards.length - 1, i + step));
+                if (!grid) setActive(to);
+                cards[to].focus();
             });
         });
 
         /* ── Pointer tilt on the active card ───────────────────────── */
-        if (!reduceMotion) {
-            cards.forEach(function (card) {
-                card.addEventListener('pointermove', function (e) {
-                    if (e.pointerType === 'touch') return;
-                    if (!card.classList.contains('is-active')) return;
-                    var r = card.getBoundingClientRect();
-                    var px = (e.clientX - r.left) / r.width - 0.5;
-                    var py = (e.clientY - r.top) / r.height - 0.5;
-                    card.style.transform =
-                        'translateY(-34px) scale(1) perspective(700px) rotateY(' +
-                        (px * 9).toFixed(2) + 'deg) rotateX(' +
-                        (-py * 9).toFixed(2) + 'deg)';
-                });
-                card.addEventListener('pointerleave', function () {
-                    card.style.transform = '';
-                });
+        cards.forEach(function (card) {
+            card.addEventListener('pointermove', function (e) {
+                if (e.pointerType === 'touch' || grid || motionOff()) return;
+                if (!card.classList.contains('is-active')) return;
+                var r = card.getBoundingClientRect();
+                var px = (e.clientX - r.left) / r.width - 0.5;
+                var py = (e.clientY - r.top) / r.height - 0.5;
+                card.style.transform =
+                    'translateY(-34px) scale(1) perspective(700px) rotateY(' +
+                    (px * 9).toFixed(2) + 'deg) rotateX(' +
+                    (-py * 9).toFixed(2) + 'deg)';
             });
+            card.addEventListener('pointerleave', function () {
+                card.style.transform = '';
+            });
+        });
+
+        /* ── Previous / Next / View all ────────────────────────────────
+           Built here so they only appear when they can do something. */
+        function announce(text) {
+            if (live) live.textContent = text;
+        }
+
+        function setGrid(on) {
+            grid = on;
+            rail.classList.toggle('is-grid', on);
+            if (wrap) wrap.classList.toggle('is-grid', on);
+            if (allBtn) {
+                allBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                allBtn.textContent = on ? 'Back to one row' : 'View all cards';
+            }
+            try { sessionStorage.setItem('rail-view:' + name, on ? 'grid' : 'row'); } catch (e) { /* optional */ }
+            cards.forEach(function (c) { c.classList.add('art-in'); });   // everything is on show
+            if (on) rail.scrollLeft = 0;
+            setActive(active, !on);
+        }
+
+        if (hud && cards.length > 1) {
+            var controls = document.createElement('div');
+            controls.className = 'rail-controls';
+
+            prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.className = 'rail-btn rail-step';
+            prevBtn.textContent = '← Prev';
+            prevBtn.setAttribute('aria-label', 'Previous card in ' + name);
+
+            nextBtn = document.createElement('button');
+            nextBtn.type = 'button';
+            nextBtn.className = 'rail-btn rail-step';
+            nextBtn.textContent = 'Next →';
+            nextBtn.setAttribute('aria-label', 'Next card in ' + name);
+
+            allBtn = document.createElement('button');
+            allBtn.type = 'button';
+            allBtn.className = 'rail-btn rail-all';
+            allBtn.textContent = 'View all cards';
+            allBtn.setAttribute('aria-pressed', 'false');
+
+            live = document.createElement('span');
+            live.className = 'visually-hidden';
+            live.setAttribute('aria-live', 'polite');
+
+            var step = function (dir) {
+                setActive(active + dir);
+                announce('Card ' + (active + 1) + ' of ' + cards.length + ': ' + titleOf(cards[active]));
+            };
+            prevBtn.addEventListener('click', function () { step(-1); });
+            nextBtn.addEventListener('click', function () { step(1); });
+            allBtn.addEventListener('click', function () {
+                setGrid(!grid);
+                announce(grid ? 'Showing all ' + cards.length + ' cards in a grid.' : 'Showing one row of cards.');
+            });
+
+            controls.appendChild(prevBtn);
+            controls.appendChild(nextBtn);
+            controls.appendChild(allBtn);
+            hud.appendChild(controls);
+            hud.appendChild(live);
         }
 
         /* ── Deal: cards drop in one by one when the rail is revealed.
@@ -219,7 +283,7 @@
         var dealTimer = null;
 
         function deal() {
-            if (reduceMotion) return;
+            if (motionOff() || grid) return;
             var order = [cards[active]].concat(cards.filter(function (c, n) {
                 return n !== active;
             }));
@@ -295,7 +359,7 @@
         }
 
         /* Re-centre when the rail is revealed (<details> opens) or resized */
-        var reveal = function () { if (rail.clientWidth) centre(cards[active]); };
+        var reveal = function () { if (rail.clientWidth && !grid) centre(cards[active]); };
         window.addEventListener('resize', reveal);
         var details = rail.closest('details');
         if (details) details.addEventListener('toggle', function () {
@@ -305,14 +369,18 @@
         });
 
         var summary = details && details.querySelector(':scope > summary');
-        if (summary && !reduceMotion) summary.addEventListener('click', function (e) {
+        if (summary) summary.addEventListener('click', function (e) {
             if (collapsing) { e.preventDefault(); return; }
-            if (!details.open) return;   // opening: let it through, toggle deals
+            if (!details.open) return;        // opening: let it through, toggle deals
+            if (motionOff() || grid) return;  // plain close, no animation
             e.preventDefault();
             collapse(details);
         });
 
         setActive(0, false);
+        var saved = null;
+        try { saved = sessionStorage.getItem('rail-view:' + name); } catch (e) { /* optional */ }
+        if (saved === 'grid' && allBtn) setGrid(true);
         if (!details || details.open) deal();
     }
 

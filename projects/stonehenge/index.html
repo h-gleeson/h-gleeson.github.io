@@ -4,36 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stonehenge Nighttime Studies — hsgleeson.xyz</title>
+    <meta name="description" content="Nighttime drawings of Stonehenge and its changing meanings.">
+    <link rel="canonical" href="https://hsgleeson.xyz/projects/stonehenge/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Henry Gleeson">
+    <meta property="og:title" content="Stonehenge Nighttime Studies">
+    <meta property="og:description" content="Nighttime drawings of Stonehenge and its changing meanings.">
+    <meta property="og:url" content="https://hsgleeson.xyz/projects/stonehenge/">
+    <meta property="og:image" content="https://hsgleeson.xyz/assets/images/social/stonehenge.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Part of a dark poster: a line graph of rising tourist numbers between constellations labelled Bootes, Ursa Minor, Serpens Caput, and Lyra.">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
-    <script>
-        (function () {
-            var root = document.documentElement;
-            if (localStorage.getItem('theme') === 'light') {
-                root.classList.add('light-mode');
-            }
-            var a = (localStorage.getItem('accent') || '').split(',');
-            if (a.length === 2 && a[0] !== '' && !isNaN(a[0]) && !isNaN(a[1])) {
-                root.style.setProperty('--accent-h', a[0]);
-                root.style.setProperty('--accent-s', a[1] + '%');
-            }
-        })();
-    </script>
-    <style>
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); }
-    </style>
+    <script src="../../assets/js/theme-init.js"></script>
 </head>
 <body>
 
+    <a class="skip-link" href="#main">Skip to content</a>
+
     <header class="page-header">
         <a href="../../" class="back-btn">All projects</a>
-        <div class="header-project-title">Stonehenge Nighttime Studies</div>
-        <button id="theme-toggle">MODE: <span style="color:var(--orange)">DARK</span></button>
+        <div class="header-project-title" aria-hidden="true">Stonehenge Nighttime Studies</div>
+        <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
     </header>
 
-    <main class="project-main">
+    <main class="project-main project-page" id="main">
 
-        <aside class="info-sidebar">
+        <header class="project-intro">
+            <p class="project-kicker">Drawing — Research study</p>
             <h1 class="project-heading">Stonehenge Nighttime Studies</h1>
+            <p class="project-summary">Nighttime drawings of Stonehenge and its changing meanings.</p>
+        </header>
+
+        <!-- Lead image: shown before the details on a phone, loaded first. -->
+        <figure class="project-figure portrait project-lead">
+            <img src="images/web/stonehenge_1-800.jpg" srcset="images/web/stonehenge_1-800.jpg 800w, images/web/stonehenge_1-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5148" height="6864" alt="Poster titled Summer Solstice, Salisbury, UK. Constellations such as Ursa Major, Draco, and Hercules are drawn in white over a grey map of Britain, with yellow satellites and a bar chart of satellites by country along the edges." fetchpriority="high">
+            <figcaption><span>Drawing 1 — Militarization of The Sky.</span> <a href="images/stonehenge_1.png">Full size<span class="visually-hidden">: Drawing 1 — Militarization of The Sky</span> (5148 × 6864, 13.2 MB)</a></figcaption>
+        </figure>
+
+        <aside class="info-sidebar" aria-label="Project details">
 
             <div class="info-block">
                 <span class="info-label">Location</span>
@@ -83,23 +96,24 @@
 
         </aside>
 
-        <section class="gallery-content">
-            <!-- PERSONALIZE: Replace this prompt with a short note in your own voice. -->
-            <div class="process-note">
-                <h2>A note from me</h2>
-                <p class="personal-placeholder">[What you noticed while drawing, or why you chose to study the site at night.]</p>
-            </div>
-            <!-- Images loaded dynamically -->
+        <!-- Gallery: one <figure> per image. See PERSONALIZE.md to add more. -->
+        <section class="gallery-content" aria-label="Project images">
+            <figure class="project-figure portrait">
+                <img src="images/web/stonehenge_2-800.jpg" srcset="images/web/stonehenge_2-800.jpg 800w, images/web/stonehenge_2-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="5400" height="7200" alt="Poster on a dark aerial view of the site. A dashed path links the Stonehenge visitor center to the stone circle. Below, a line graph shows tourists rising from 1.01 million in 2010 to 1.60 million in 2019, above an elevation of the stones with visitors." loading="lazy" decoding="async">
+                <figcaption><span>Drawing 2 — Gentrification.</span> <a href="images/stonehenge_2.png">Full size<span class="visually-hidden">: Drawing 2 — Gentrification</span> (5400 × 7200, 2.9 MB)</a></figcaption>
+            </figure>
+            <figure class="project-figure portrait">
+                <img src="images/web/stonehenge_3-800.jpg" srcset="images/web/stonehenge_3-800.jpg 800w, images/web/stonehenge_3-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="3600" height="4800" alt="Vertical timeline from 3000 BCE to 2024 CE. Events in Stonehenge&#39;s history sit between a chart of sleep patterns on the left and small elevations on the right that show the stones, then street lamps, then the visitor center." loading="lazy" decoding="async">
+                <figcaption><span>Drawing 3 — Sleep.</span> <a href="images/stonehenge_3.png">Full size<span class="visually-hidden">: Drawing 3 — Sleep</span> (3600 × 4800, 264 KB)</a></figcaption>
+            </figure>
+            <figure class="project-figure portrait">
+                <img src="images/web/stonehenge_4-800.jpg" srcset="images/web/stonehenge_4-800.jpg 800w, images/web/stonehenge_4-1600.jpg 1600w" sizes="(max-width: 900px) calc(100vw - 40px), calc(100vw - 26rem)" width="3600" height="4800" alt="Poster comparing materials. Above, the visitor center is drawn in yellow over dashed outlines of the stones, with decay curves for steel, conifer wood, hardwood, and glass. Below, a map traces the bluestones from the Preseli Hills in Wales and the sarsen stones from the Marlborough Downs." loading="lazy" decoding="async">
+                <figcaption><span>Drawing 4 — Materials.</span> <a href="images/stonehenge_4.png">Full size<span class="visually-hidden">: Drawing 4 — Materials</span> (3600 × 4800, 2.1 MB)</a></figcaption>
+            </figure>
         </section>
 
     </main>
 
-    <script src="../../assets/js/gallery-loader.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadGallery('stonehenge', '.gallery-content');
-        });
-    </script>
     <script src="../../assets/js/theme.js"></script>
 </body>
 </html>
