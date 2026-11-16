@@ -428,15 +428,17 @@
        in both variants, so closed sections and the random full-art roll
        don't change the result. */
     var FIT_MIN = 0.7, FIT_STEP = 0.025;
-    function fitText() {
-        var cards = document.querySelectorAll('.card-rail .card');
-        if (!cards.length) return;
-        var root = document.documentElement;
-        root.classList.remove('card-text-overflow');
+
+    /* The largest text scale (FIT_MIN–1) at which every given card fits,
+       in both variants. Copies are measured inside `host` (default <body>)
+       so they pick up any settings set on it. `fits` is false when even
+       FIT_MIN is too big. */
+    function fitScale(cards, host) {
+        host = host || document.body;
         var box = document.createElement('div');
         box.setAttribute('aria-hidden', 'true');
         box.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;pointer-events:none;';
-        cards.forEach(function (card) {
+        Array.prototype.forEach.call(cards, function (card) {
             [false, true].forEach(function (full) {
                 var c = card.cloneNode(true);
                 c.classList.remove('is-active');
@@ -445,7 +447,7 @@
                 box.appendChild(c);
             });
         });
-        document.body.appendChild(box);
+        host.appendChild(box);
         var copies = Array.prototype.slice.call(box.children);
         var fits = function () {
             return copies.every(function (c) { return c.scrollHeight <= c.clientHeight + 1; });
@@ -458,9 +460,21 @@
         }
         var ok = fits();
         box.remove();
-        root.style.setProperty('--card-text', scale);
-        root.classList.toggle('card-text-overflow', !ok);
+        return { scale: scale, fits: ok };
     }
+
+    function fitText() {
+        var cards = document.querySelectorAll('.card-rail .card');
+        if (!cards.length) return;
+        var root = document.documentElement;
+        root.classList.remove('card-text-overflow');
+        var result = fitScale(cards);
+        root.style.setProperty('--card-text', result.scale);
+        root.classList.toggle('card-text-overflow', !result.fits);
+    }
+
+    // shared with the card workshop (experiments/cards/)
+    window.SiteCards = { fitScale: fitScale, FIT_MIN: FIT_MIN };
 
     document.addEventListener('DOMContentLoaded', function () {
         resolveArt();

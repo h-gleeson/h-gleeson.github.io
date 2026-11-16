@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palette studies — Henry Gleeson</title>
+    <meta name="description" content="Ten fixed light and dark color palettes for the site, each built on a color principle and checked for contrast.">
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Cormorant+Garamond:wght@400;500;600;700&family=Cinzel:wght@400;500;600;700&family=Newsreader:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/theme.css">
+    <link rel="stylesheet" href="../../assets/css/cards.css">
+    <link rel="stylesheet" href="palettes.css">
+    <script src="../../assets/js/theme-init.js"></script>
+</head>
+<body>
+    <div class="studies">
+        <header class="studies-head">
+            <a href="../../">← Home</a>
+            <h1>Palette studies</h1>
+            <p>Ten directions for replacing the free accent picker with a fixed, designed color system: one dark mode and one light mode per palette, each built on a named color principle. The newest are at the top.</p>
+            <p class="muted">Every preview uses the real homepage card styles. The numbers are WCAG contrast ratios, worked out live from the colors: 4.5:1 is the AA minimum for body text, 3:1 for large text and interface parts, 7:1 is AAA. Nothing here changes the site.</p>
+            <nav class="jump" id="jump" aria-label="Palettes"></nav>
+        </header>
+        <main id="palettes"></main>
+        <section class="studies-foot">
+            <h2>How these were built</h2>
+            <ul>
+                <li><strong>60-30-10.</strong> Roughly 60% background, 30% text and surfaces, 10% accent. The accent marks what's interactive or important, so it stays meaningful.</li>
+                <li><strong>Tinted neutrals.</strong> No pure greys (except the Swiss study, where that's the point). Each palette's backgrounds and text lean slightly toward its accent or its complement, so the accent looks like it belongs.</li>
+                <li><strong>Two accent tones per mode.</strong> A fill tone for buttons and highlights, and a text tone adjusted until it reads at 4.5:1 or better on the page and panel colors.</li>
+                <li><strong>Dark isn't inverted light.</strong> Dark backgrounds sit around 5–8% lightness rather than pure black, text is off-white to avoid glare, and accents are lifted and slightly desaturated so they don't vibrate.</li>
+                <li><strong>Cards belong to the page.</strong> The card frame, background, title banner and text all come from the palette: drawn in the accent, the heading ink, a neutral, or (where the principle calls for one) a support material like chipboard or sage. In light mode the cards turn light too.</li>
+                <li><strong>Grounded references.</strong> The newer palettes start from real materials and processes (trace paper, diazo prints, model board) rather than from the color wheel, which keeps them from looking too perfectly balanced.</li>
+            </ul>
+        </section>
+    </div>
+    <script src="../../assets/js/cards.js"></script>
+    <script src="palettes.js"></script>
+</body>
+</html>

@@ -5,9 +5,10 @@
    the rail, and "View all cards" lays the whole set out as a binder grid.
    Every card rolls for a FULL ART variant on page load — see cards.js.
 
-   Sizes are in rem so the cards grow with the reader's text size. A card
-   is at least 5:7; if enlarged text needs more room it gets taller
-   instead of clipping. */
+   Sizes are in rem so the cards grow with the reader's text size. Every
+   card has the same fixed shape (--card-ratio); if a description doesn't
+   fit, cards.js shrinks the text on every card by the same amount. The
+   adjustable settings are listed under "Card settings" below. */
 
 .card-rail-wrap {
     position: relative;
@@ -15,7 +16,6 @@
 }
 
 .card-rail {
-    --card-w: min(17.5rem, calc(100vw - 4.5rem));
     position: relative;
     display: flex;
     align-items: stretch;    /* every card in the rail matches the tallest */
@@ -50,23 +50,82 @@
     background: linear-gradient(to left, var(--bg), transparent);
 }
 
+/* ── Card settings ─────────────────────────────────────────────────────
+   Every adjustable part of the card lives here as one named setting.
+   The card workshop (experiments/cards/) writes these same names, so a
+   settings block copied from it can be pasted straight over these.
+   Keep experiments/cards/workshop.js DEFAULTS in step with this list. */
+
+:root {
+    /* shape */
+    --card-base-w: 17.5rem;        /* card width (narrow screens shrink it) */
+    --card-ratio: 1.4;             /* height / width: 1.4 = 5:7 */
+    --card-radius: 12px;
+    --card-border-w: 4px;
+    --card-padding: 0.625rem;      /* frame inset */
+    --card-gap: 0.4375rem;         /* space between title, art, type, description */
+
+    /* artwork (regular cards) */
+    --card-art-ratio: 1.3;         /* width / height (the *_reg files are 1.25) */
+    --card-art-radius: 5px;
+
+    /* text */
+    --card-title-font: 'Cormorant Garamond', Georgia, serif;
+    --card-body-font: 'Newsreader', Georgia, serif;
+    --card-label-font: 'Cinzel', Impact, sans-serif;    /* card type, number, footer */
+    --card-title-size: 1.0625rem;
+    --card-title-weight: 600;
+    --card-title-tracking: 0.01em;
+    --card-title-case: none;
+    --card-desc-size: 0.8438rem;
+    --card-desc-leading: 1.45;
+    --card-label-size: 0.6563rem;
+    --card-label-tracking: 0.1em;
+    --card-label-case: uppercase;
+
+    /* title block: the title sits centred in it top to bottom */
+    --card-title-pad-y: 0.15rem;   /* space above and below the title */
+    --card-title-lines: 1;         /* lines of height reserved; longer titles grow it */
+
+    /* colour blocks behind the text (regular cards) */
+    --card-surface-l: 13%;         /* card background lightness */
+    --card-surface-sat: 0.18;      /* share of the accent's saturation */
+    --card-block-step: 16%;        /* how far the blocks sit from the background */
+    --card-block-dir: 1;           /* lighter in dark mode, darker in light mode */
+    --card-block-tint: 0.2;        /* extra accent colour in the blocks */
+    --card-block-alpha: 0.65;
+    --card-block-radius: 3px;
+    --card-block-pad: 0.5rem;
+
+    /* full art */
+    --fa-scrim: 0.8;               /* darkness of the shadow fade behind the text */
+    --fa-scrim-reach: 52%;         /* how far up the card the fade reaches */
+    --fa-panel-alpha: 0.3;         /* solid panel behind the text; 0 = artwork shows through */
+    --fa-title-alpha: 0.7;         /* dark title block */
+    --fa-text-shadow: 1;
+    --card-holo: 0.75;             /* holo shine strength */
+}
+:root.light-mode {
+    --card-surface-l: 92%;
+    --card-surface-sat: 0.6;
+    --card-block-dir: -1;
+}
+
 /* ── The card ──────────────────────────────────────────────────────── */
 
 .card {
-    --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.18) 13%;
-    --card-surface: hsl(var(--card-surface-hsl));
-    /* text blocks: the accent hue, a little more saturated and lighter
-       than the card surface so they read as a step off the theme color */
-    --card-block: hsl(var(--accent-h) calc(var(--accent-s) * 0.38) 19%);
-    --card-block-radius: 5px;
-    --card-w: min(17.5rem, calc(100vw - 4.5rem));
-    --card-radius: 10px;
-    --card-padding: 0.625rem;
+    --card-w: min(var(--card-base-w), calc(100vw - 4.5rem));
+    --card-surface: hsl(var(--accent-h) calc(var(--accent-s) * var(--card-surface-sat)) var(--card-surface-l));
+    /* text blocks: the accent hue, a step off the card background */
+    --card-block: hsl(var(--accent-h)
+                      calc(var(--accent-s) * (var(--card-surface-sat) + var(--card-block-tint)))
+                      calc(var(--card-surface-l) + var(--card-block-step) * var(--card-block-dir))
+                      / var(--card-block-alpha));
     position: relative;
     border-radius: var(--card-radius);
     flex: 0 0 auto;
     width: var(--card-w);
-    height: calc(var(--card-w) * 1.4);       /* always 5:7; cards.js shrinks the text to fit */
+    height: calc(var(--card-w) * var(--card-ratio));   /* fixed shape; cards.js shrinks the text to fit */
     box-sizing: border-box;
     overflow: hidden;
     display: flex;
@@ -74,7 +133,7 @@
     text-decoration: none;
     color: var(--text);
     background: var(--card-surface);
-    border: 5px solid var(--border-mid);
+    border: var(--card-border-w) solid var(--border-mid);
     padding: var(--card-padding);
     cursor: pointer;
     transform: translateY(0) scale(0.9);
@@ -108,7 +167,7 @@
    clipping the words. */
 :root.card-text-overflow .card {
     height: auto;
-    min-height: calc(var(--card-w) * 1.4);
+    min-height: calc(var(--card-w) * var(--card-ratio));
 }
 
 /* ── Title ─────────────────────────────────────────────────────────── */
@@ -126,11 +185,12 @@
 }
 
 .card-title {
-    font-family: var(--sans);
-    font-size: calc(0.9375rem * var(--card-text, 1));
-    font-weight: 700;
+    font-family: var(--card-title-font);
+    font-size: calc(var(--card-title-size) * var(--card-text, 1));
+    font-weight: var(--card-title-weight);
     line-height: 1.25;
-    letter-spacing: -0.01em;
+    letter-spacing: var(--card-title-tracking);
+    text-transform: var(--card-title-case);
     color: var(--text-bright);
     text-align: left;
     white-space: normal;
@@ -138,24 +198,28 @@
     min-width: 0;
 }
 
-/* Regular cards: title on top, art beneath it, then one ruled type line,
-   the description and the footer. No boxes — the artwork and the title
-   carry the card. */
+/* Regular cards: title block, art, type block, description block, footer. */
 .card:not(.full-art) .card-head { display: contents; }
+/* Title block, both variants: spans the card, title centred top to
+   bottom and left-aligned. */
+.card .card-title {
+    display: flex;
+    align-items: center;
+    min-height: calc(var(--card-title-lines) * 1.25em);
+    padding: var(--card-title-pad-y) var(--card-block-pad);
+    border-radius: var(--card-block-radius);
+}
 .card:not(.full-art) .card-title {
     order: -1;
     flex: 0 0 auto;
-    min-height: 2.5em;                 /* room for two lines, so art lines up across cards */
-    padding: 0.35rem 0.5rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--card-gap);
     background: var(--card-block);
-    border-radius: var(--card-block-radius);
 }
 
 .card-index {
-    font-family: var(--mono);
-    font-size: calc(0.75rem * var(--card-text, 1));
-    letter-spacing: 0.03em;
+    font-family: var(--card-label-font);
+    font-size: calc(var(--card-label-size) * var(--card-text, 1));
+    letter-spacing: calc(var(--card-label-tracking) + 0.01em);
     color: var(--text-dim);
     white-space: nowrap;
 }
@@ -168,57 +232,51 @@
     justify-content: space-between;
     gap: 8px;
     flex: 0 0 auto;
-    font-family: var(--mono);
-    font-size: calc(0.75rem * var(--card-text, 1));
+    font-family: var(--card-label-font);
+    font-size: calc(var(--card-label-size) * var(--card-text, 1));
     line-height: 1.4;
-    letter-spacing: 0.02em;
+    letter-spacing: var(--card-label-tracking);
+    text-transform: var(--card-label-case);
     color: var(--text-bright);
 }
 .card-type-label { min-width: 0; overflow-wrap: anywhere; }
 .card:not(.full-art) .card-type {
     order: 1;
-    margin-top: 0.5rem;
-    padding: 0.35rem 0.5rem;
+    margin-top: var(--card-gap);
+    padding: 0.35rem var(--card-block-pad);
     background: var(--card-block);
     border-radius: var(--card-block-radius);
 }
 .card:not(.full-art) .card-body {
     order: 2;
     flex: 0 0 auto;
-    margin-top: 0.4rem;
-    padding: 0.5rem;
+    margin-top: var(--card-gap);
+    padding: var(--card-block-pad);
     background: var(--card-block);
     border-radius: var(--card-block-radius);
 }
 .card:not(.full-art) .card-foot {
     order: 3;
-    padding: 0.4rem 0.5rem 0;   /* lines up with the text inside the blocks */
+    padding: 0.4rem var(--card-block-pad) 0;   /* lines up with the text inside the blocks */
 }
 
 /* ── Art window ────────────────────────────────────────────────────── */
 
 .card-art {
     position: relative;
-    /* Takes whatever height the text leaves, never less than --art-h. */
-    flex: 1 1 var(--art-h, 8.5rem);
-    min-height: var(--art-h, 8.5rem);
     background-image: var(--art);
     background-size: cover;
     background-position: center;
     background-color: #0d0d0d;
-    border-radius: calc(var(--card-radius) - 5px);
     overflow: hidden;
 }
 
-/* Regular cards: the art window is always 5:4 (the shape of the *_reg
-   art files), so every card's image matches. Leftover height goes to the
-   text instead; the footer stays pinned to the bottom. --art-h, when set
-   (the card workshop), still overrides the height. */
+/* Regular cards: the art window is one fixed shape on every card, so all
+   the images match. Leftover height goes below the text. */
 .card:not(.full-art) .card-art {
     flex: 0 0 auto;
-    min-height: 0;
-    height: var(--art-h, auto);
-    aspect-ratio: 5 / 4;
+    aspect-ratio: var(--card-art-ratio);
+    border-radius: var(--card-art-radius);
 }
 
 /* Lazy art: hold back artwork until cards.js marks the card .art-in.
@@ -237,9 +295,9 @@
 }
 
 .card-desc {
-    font-family: var(--sans);
-    font-size: calc(0.875rem * var(--card-text, 1));
-    line-height: 1.45;
+    font-family: var(--card-body-font);
+    font-size: calc(var(--card-desc-size) * var(--card-text, 1));
+    line-height: var(--card-desc-leading);
     color: var(--text);
 }
 
@@ -252,9 +310,10 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-family: var(--mono);
-    font-size: calc(0.75rem * var(--card-text, 1));
-    letter-spacing: 0.04em;
+    font-family: var(--card-label-font);
+    font-size: calc(var(--card-label-size) * var(--card-text, 1));
+    letter-spacing: calc(var(--card-label-tracking) + 0.02em);
+    text-transform: var(--card-label-case);
     color: var(--text-label);
 }
 
@@ -266,9 +325,10 @@
 .card.is-active .card-cta { opacity: 1; color: var(--orange); }
 
 /* ── FULL ART variant ──────────────────────────────────────────────────
-   The artwork fills the card. The title sits on a dark plate at the top
-   and the text on one dark panel at the bottom, in both themes, so the
-   words stay readable over any image. */
+   The artwork fills the whole card and shows behind the text. A shadow
+   fade rises from the bottom edge, the text carries a soft shadow and the
+   title sits on a dark plate, so the words stay readable over any image
+   in both themes. --fa-panel-alpha adds a solid panel if one is wanted. */
 
 .card.full-art {
     padding: 0;
@@ -284,31 +344,41 @@
     background-image: var(--art-full, var(--art));
     position: absolute;
     inset: 0;
-    min-height: 0;
     z-index: 0;
-    border-radius: inherit;
-    flex: none;
+    border-radius: max(0px, calc(var(--card-radius) - var(--card-border-w)));   /* inner corner of the frame, so no gap shows */
+}
+/* shadow fade behind the text */
+.card.full-art .card-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to top,
+        rgba(10, 10, 10, var(--fa-scrim)) 0%,
+        rgba(10, 10, 10, calc(var(--fa-scrim) * 0.8)) calc(var(--fa-scrim-reach) * 0.5),
+        transparent var(--fa-scrim-reach));
 }
 
 .card.full-art .card-head {
-    /* Reserve the upper artwork area; the text panel sits below it. */
+    /* Reserve the upper artwork area; the text sits below it. */
     flex: 1 0 auto;
     min-height: 9.5rem;
     padding: var(--card-padding);
 }
 .card.full-art .card-title {
-    padding: 0.35rem 0.55rem;
-    border-radius: 6px;
+    flex: 1 1 auto;          /* full width across the top, like the regular card */
     color: #fff;
-    background: rgba(10, 10, 10, 0.84);
+    background: rgba(10, 10, 10, var(--fa-title-alpha));
 }
 
 .card.full-art .card-type,
 .card.full-art .card-body,
 .card.full-art .card-foot {
-    background: rgba(10, 10, 10, 0.86);
+    background: rgba(10, 10, 10, var(--fa-panel-alpha));
     padding-left: calc(var(--card-padding) + 0.2rem);
     padding-right: calc(var(--card-padding) + 0.2rem);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, var(--fa-text-shadow)),
+                 0 0 10px rgba(0, 0, 0, var(--fa-text-shadow));
 }
 .card.full-art .card-type {
     padding-top: 0.55rem;
@@ -316,13 +386,13 @@
     color: #f4f2ec;
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.22);
 }
-/* soften the top edge of the text panel into the artwork */
+/* soften the top edge of the panel (only visible when it has one) */
 .card.full-art .card-type::before {
     content: '';
     position: absolute;
     left: 0; right: 0; bottom: 100%;
     height: 1.75rem;
-    background: linear-gradient(to top, rgba(10, 10, 10, 0.86), transparent);
+    background: linear-gradient(to top, rgba(10, 10, 10, var(--fa-panel-alpha)), transparent);
     pointer-events: none;
 }
 .card.full-art .card-index { color: #d8d5cc; }
@@ -341,9 +411,9 @@
     inset: 0;
     z-index: 2;
     pointer-events: none;
-    border-radius: inherit;
+    border-radius: max(0px, calc(var(--card-radius) - var(--card-border-w)));   /* inner corner of the frame, so no gap shows */
     mix-blend-mode: color-dodge;
-    opacity: 0.30;
+    opacity: var(--card-holo);
     background: linear-gradient(115deg,
         transparent 20%,
         hsl(var(--accent-h) 90% 60% / 0.55) 38%,
@@ -469,7 +539,7 @@
 
 .card-rail.is-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(17.5rem, 100%), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(var(--card-base-w), 100%), 1fr));
     justify-items: center;
     align-items: stretch;
     gap: 28px 22px;
@@ -511,10 +581,6 @@
 
 /* ── Light mode tweaks ─────────────────────────────────────────────── */
 
-:root.light-mode .card {
-    --card-surface-hsl: var(--accent-h) calc(var(--accent-s) * 0.6) 92%;
-    --card-block: hsl(var(--accent-h) calc(var(--accent-s) * 0.7) 85%);
-}
 :root.light-mode .card.is-active,
 :root.light-mode .card-rail.is-grid .card:hover,
 :root.light-mode .card-rail.is-grid .card:focus-visible {
@@ -531,4 +597,98 @@
     .rail-hud { padding: 0 10px 8px; }
     .card-rail-wrap::before,
     .card-rail-wrap::after { width: 10px; }
+}
+
+/* ── Card style: Storybook gilt ──────────────────────────────────────
+   The homepage card design (index.html sets data-card-style="gilt" on
+   <body>). On regular cards the art runs to the top edge and a banner
+   title overlaps its bottom, with hairlines around the type line.
+   Full-art cards keep the full-art layout above inside the frame.
+   Without the attribute (the card workshop's other designs) cards fall
+   back to the plain style above.
+
+   Colours come from these settings, so a colour palette can restyle the
+   cards by defining them (on :root or any ancestor). Each falls back to
+   the original gold-on-ink look when it isn't set:
+     --card-frame       frame, line under the art, title outline
+     --card-accent-ink  card type, number and OPEN link
+     --card-bg          card background
+     --card-plate       title banner;  --card-title-ink  its text
+     --card-desc-ink    description;   --card-foot-ink   footer label
+     --card-hair        hairlines around the type line            */
+
+[data-card-style="gilt"] .card {
+    --gilt-frame: var(--card-frame, #b8933f);
+    --gilt-plate: var(--card-plate, hsl(var(--accent-h) 30% 9% / 0.94));
+    background: var(--card-bg, radial-gradient(120% 60% at 50% 0%, hsl(var(--accent-h) 38% 20%), hsl(var(--accent-h) 30% 9%)));
+}
+[data-card-style="gilt"] .card,
+[data-card-style="gilt"] .card:hover,
+[data-card-style="gilt"] .card.is-active,
+[data-card-style="gilt"] .card-rail.is-grid .card:hover { border-color: var(--gilt-frame); }
+/* selection shows as a ring outside the frame */
+[data-card-style="gilt"] .card.is-active,
+[data-card-style="gilt"] .card-rail.is-grid .card:hover,
+[data-card-style="gilt"] .card-rail.is-grid .card:focus-visible {
+    box-shadow: 0 0 0 2px var(--orange), 0 18px 28px -16px rgba(0,0,0,0.65);
+}
+
+[data-card-style="gilt"] .card:not(.full-art) .card-art {
+    order: -2;
+    margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding)) 0;
+    border-radius: 0;
+    border-bottom: 2px solid var(--gilt-frame);
+}
+[data-card-style="gilt"] .card:not(.full-art) .card-title {
+    position: relative;
+    z-index: 2;
+    margin: -1.15rem 6px var(--card-gap);
+    background: var(--gilt-plate);
+    border: 1px solid var(--gilt-frame);
+    box-shadow: 0 0 0 3px var(--card-plate-halo, hsl(var(--accent-h) 30% 9% / 0.6));
+    color: var(--card-title-ink, #f6ecd3);
+}
+[data-card-style="gilt"] .card:not(.full-art) .card-type {
+    margin-top: 0;
+    background: none;
+    border-radius: 0;
+    border-top: 1px solid var(--card-hair, rgba(184, 147, 63, 0.55));
+    border-bottom: 1px solid var(--card-hair, rgba(184, 147, 63, 0.55));
+    color: var(--card-accent-ink, #d4b56a);
+    padding-left: 2px;
+    padding-right: 2px;
+}
+[data-card-style="gilt"] .card:not(.full-art) .card-index { color: var(--card-accent-ink, #d4b56a); }
+[data-card-style="gilt"] .card:not(.full-art) .card-body { background: none; padding-left: 2px; padding-right: 2px; }
+[data-card-style="gilt"] .card:not(.full-art) .card-desc { color: var(--card-desc-ink, #eee4cb); }
+[data-card-style="gilt"] .card:not(.full-art) .card-foot { color: var(--card-foot-ink, #b8933f); padding-left: 2px; padding-right: 2px; }
+[data-card-style="gilt"] .card:not(.full-art).is-active .card-cta,
+[data-card-style="gilt"] .card-rail.is-grid .card:not(.full-art) .card-cta { color: var(--card-accent-ink, #d4b56a); }
+
+/* ── Card colours: Swiss Pale Blue ─────────────────────────────────
+   The site palette's values for the settings above (see the palette
+   block in theme.css). Dark mode: a near-black card with a powder-blue
+   frame and a faint blue glow at the top. Light mode: a white card with a
+   thin black printed frame, and the card type in the readable blue. */
+:root {
+    --card-frame: #B2CDE6;
+    --card-bg: radial-gradient(120% 60% at 50% 0%, #242629, #141414);
+    --card-plate: rgba(10, 10, 10, 0.95);
+    --card-plate-halo: rgba(10, 10, 10, 0.6);
+    --card-title-ink: #FFFFFF;
+    --card-desc-ink: #CFCFCF;
+    --card-accent-ink: #B2CDE6;
+    --card-foot-ink: #9E9E9E;
+    --card-hair: rgba(178, 205, 230, 0.45);
+}
+:root.light-mode {
+    --card-frame: #0A0A0A;
+    --card-bg: radial-gradient(120% 60% at 50% 0%, #FEFEFE, #FCFCFC);
+    --card-plate: rgba(254, 254, 254, 0.95);
+    --card-plate-halo: rgba(254, 254, 254, 0.6);
+    --card-title-ink: #0A0A0A;
+    --card-desc-ink: #333333;
+    --card-accent-ink: #0A69C7;
+    --card-foot-ink: #595959;
+    --card-hair: rgba(10, 10, 10, 0.45);
 }

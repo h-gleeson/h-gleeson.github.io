@@ -3,19 +3,29 @@
 .workshop-intro h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin-bottom: 18px; }
 .workshop-intro p { line-height: 1.6; margin-top: 8px; }
 .muted { color: var(--text-dim); font-size: 0.875rem; line-height: 1.6; }
-.workbench { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 40px; }
-.controls { border-top: 1px solid var(--border); padding-top: 20px; }
-.controls h2 { font-size: 1.3rem; margin-bottom: 20px; }
-.controls label { display: block; font-size: 0.875rem; margin: 16px 0 7px; }
+.workbench { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 40px; align-items: start; }
+
+/* controls */
+.controls { border-top: 1px solid var(--border); }
+.group { border-bottom: 1px solid var(--border); }
+.group summary { cursor: pointer; padding: 14px 0; font-size: 1.05rem; color: var(--text-bright); }
+.group summary:hover { color: var(--orange); }
+.group-body { padding: 0 0 18px; }
+.group-body > label:first-child { margin-top: 0; }
+.controls label { display: block; font-size: 0.875rem; margin: 14px 0 7px; }
 .controls output { float: right; color: var(--text-dim); font-family: var(--mono); }
 .controls input[type="range"] { width: 100%; accent-color: var(--orange); }
-.controls input[type="text"], select, textarea { width: 100%; min-width: 0; padding: 9px; color: var(--text-bright); background: var(--bg-panel); border: 1px solid var(--border-mid); border-radius: 3px; font: inherit; }
+.controls input[type="text"], select, textarea { width: 100%; min-width: 0; padding: 9px; color: var(--text-bright); background: var(--bg-panel); border: 1px solid var(--border-mid); border-radius: 3px; font: inherit; box-sizing: border-box; }
 textarea { resize: vertical; font-size: 0.875rem; line-height: 1.5; }
+.check { cursor: pointer; }
 .check input { accent-color: var(--orange); margin-right: 8px; }
+.controls > .check { margin-top: 20px; }
 button { padding: 10px 14px; background: var(--bg-panel); color: var(--text-bright); border: 1px solid var(--border-mid); border-radius: 3px; font: inherit; cursor: pointer; }
 button:hover { border-color: var(--orange); }
-#reset { margin-top: 20px; }
-.preview-area { min-width: 0; }
+#reset { margin-top: 16px; }
+
+/* preview: stays in view while the controls scroll */
+.preview-area { min-width: 0; position: sticky; top: 16px; }
 .preview-stage { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 32px; padding: 20px 16px 36px; border: 1px solid var(--border); overflow-x: auto; }
 .preview-stage figure { margin: 0; flex: 0 0 auto; }
 .preview-stage figcaption { display: flex; justify-content: space-between; gap: 12px; font-size: 0.875rem; margin-bottom: 18px; }
@@ -24,15 +34,188 @@ button:hover { border-color: var(--orange); }
 .preview-stage .holo { animation: none; }
 .preview-stage.guides :is(.card-title, .card-art, .card-type, .card-body, .card-foot) { outline: 1px dashed var(--orange); outline-offset: -1px; }
 #fit-status { padding: 14px 0; min-height: 48px; }
-.settings { border-top: 1px solid var(--border); padding: 20px 0; }
-.settings summary { cursor: pointer; }
-.settings p { margin: 16px 0; line-height: 1.6; }
-.settings textarea { display: block; margin-bottom: 12px; font-family: var(--mono); }
+
+.settings { border-top: 1px solid var(--border); padding: 20px 0; margin-top: 32px; max-width: 900px; }
+.settings h2 { font-size: 1.1rem; }
+.settings p { margin: 10px 0 14px; }
+.settings textarea { display: block; margin-bottom: 12px; font-family: var(--mono); font-size: 0.8125rem; }
 #copy-status { font-size: 0.875rem; margin-left: 8px; }
 .refresh-note { max-width: 660px; }
+
 @media (max-width: 850px) {
     .workshop { padding: 0 16px 32px; }
     .workbench { grid-template-columns: 1fr; gap: 24px; }
-    .preview-area { grid-row: 1; }
+    .preview-area { grid-row: 1; position: static; }
     .preview-stage { flex-wrap: nowrap; gap: 24px; }
 }
+
+/* ── Starting designs gallery ─────────────────────────────────────── */
+.variants { border-top: 1px solid var(--border); padding: 20px 0 28px; }
+.variants h2 { font-size: 1.3rem; }
+.variants > p { margin: 8px 0 18px; max-width: 760px; }
+.variant-row { display: flex; flex-wrap: wrap; gap: 28px 22px; padding: 4px 4px 16px; }
+.variant { margin: 0; flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; width: min(17.5rem, calc(100vw - 4.5rem)); }
+.variant-stage { cursor: pointer; }
+.variant-stage .card { transform: none; }
+.variant-stage .holo { animation: none; }
+.variant figcaption { display: flex; flex-direction: column; gap: 4px; }
+.variant-name { color: var(--text-bright); font-size: 1rem; }
+.variant-note { color: var(--text-dim); font-size: 0.8125rem; line-height: 1.5; }
+.variant button { align-self: flex-start; }
+.variant button[aria-pressed="true"] { border-color: var(--orange); background: var(--orange-dim); }
+
+/* ── Skins ────────────────────────────────────────────────────────────
+   Frame styling for each starting design. Scoped to [data-skin] so it
+   only applies inside this workshop. The sliders (card settings) still
+   work on top of every skin. Internals are styled for regular cards only;
+   full-art cards keep the homepage full-art layout inside the skin frame. */
+
+/* every skin: keep the frame colour on hover and selection, ring instead */
+[data-skin] .card,
+[data-skin] .card:hover,
+[data-skin] .card.is-active { border-color: var(--skin-border); }
+[data-skin] .card.is-active { box-shadow: 0 0 0 2px var(--orange), 0 18px 28px -16px rgba(0,0,0,0.65); }
+
+/* 1. Arcane frame: classic fantasy TCG. Dark outer border, painted frame
+   in the theme colour, parchment title and type bars, parchment text box. */
+[data-skin="arcane"] .card {
+    --skin-border: #15120e;
+    --skin-parch: linear-gradient(#f4ecd9, #ddd0b4);
+    background:
+        repeating-linear-gradient(115deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 7px),
+        linear-gradient(165deg, hsl(var(--accent-h) 34% 44%), hsl(var(--accent-h) 28% 25%) 60%, hsl(var(--accent-h) 30% 17%));
+}
+[data-skin="arcane"] .card:not(.full-art) :is(.card-title, .card-type) {
+    background: var(--skin-parch);
+    color: #1b1712;
+    border: 1px solid #2a241c;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px rgba(0,0,0,0.55);
+    position: relative;
+    z-index: 2;
+}
+[data-skin="arcane"] .card:not(.full-art) .card-art {
+    border: 2px solid #15120e;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+    margin: 0 4px;
+}
+[data-skin="arcane"] .card:not(.full-art) .card-type { margin-top: -6px; }
+[data-skin="arcane"] .card:not(.full-art) .card-index { color: #5c4e38; }
+[data-skin="arcane"] .card:not(.full-art) .card-body {
+    flex: 1 1 auto;
+    margin: var(--card-gap) 4px 0;
+    background: linear-gradient(#f7f0e1, #ebe1cb);
+    border: 1px solid #2a241c;
+    border-radius: 3px;
+    box-shadow: inset 0 0 12px rgba(120, 95, 50, 0.25);
+}
+[data-skin="arcane"] .card:not(.full-art) .card-desc { color: #1d1a16; }
+[data-skin="arcane"] .card:not(.full-art) .card-foot { color: rgba(255,255,255,0.78); }
+[data-skin="arcane"] .card:not(.full-art).is-active .card-cta { color: #fff; }
+
+/* 2. Bright border: creature-collecting TCG. Thick golden border, light
+   tinted card, bold title with no block, bevelled art frame, info strip. */
+[data-skin="bright"] .card {
+    --skin-border: #efc53d;
+    background: linear-gradient(180deg, hsl(var(--accent-h) 70% 84%), hsl(var(--accent-h) 60% 93%) 55%, hsl(var(--accent-h) 65% 87%));
+}
+[data-skin="bright"] .card:not(.full-art) .card-title {
+    background: none;
+    padding-left: 2px; padding-right: 2px;
+    color: #161616;
+}
+[data-skin="bright"] .card:not(.full-art) .card-art {
+    border: 4px solid;
+    border-color: #f8eaa6 #c9a33a #ae8726 #f1dc88;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+}
+[data-skin="bright"] .card:not(.full-art) .card-type {
+    background: linear-gradient(90deg, #d6ae3a, #f7e6a0 50%, #d6ae3a);
+    color: #3a2d08;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-style: italic;
+}
+[data-skin="bright"] .card:not(.full-art) .card-index { color: hsl(var(--accent-h) 80% 34%); font-style: normal; font-weight: 700; }
+[data-skin="bright"] .card:not(.full-art) .card-body { background: none; padding-left: 2px; padding-right: 2px; }
+[data-skin="bright"] .card:not(.full-art) .card-desc { color: #222; }
+[data-skin="bright"] .card:not(.full-art) .card-foot { color: #4a4a4a; border-top: 1px solid rgba(0,0,0,0.18); padding-left: 2px; padding-right: 2px; }
+[data-skin="bright"] .card:not(.full-art).is-active .card-cta { color: hsl(var(--accent-h) 80% 34%); }
+
+/* 3. Monolith: duelling-monster TCG. Bronze textured card, bevelled name
+   plate, square-ish bevelled art, one beige text box with [ type ]. */
+[data-skin="monolith"] .card {
+    --skin-border: #1a1a1a;
+    --skin-bevel-out: rgba(255,255,255,0.4) rgba(0,0,0,0.5) rgba(0,0,0,0.5) rgba(255,255,255,0.4);
+    --skin-bevel-in: rgba(0,0,0,0.5) rgba(255,255,255,0.35) rgba(255,255,255,0.35) rgba(0,0,0,0.5);
+    background:
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.045) 0 2px, transparent 2px 6px),
+        linear-gradient(160deg, hsl(var(--accent-h) 58% 46%), hsl(var(--accent-h) 52% 28%));
+}
+[data-skin="monolith"] .card:not(.full-art) .card-title {
+    background: rgba(0,0,0,0.16);
+    border: 2px solid; border-color: var(--skin-bevel-out);
+    border-radius: 0;
+    color: #fff8e6;
+    text-shadow: 0 1px 1px #000;
+}
+[data-skin="monolith"] .card:not(.full-art) .card-art {
+    border: 3px solid; border-color: var(--skin-bevel-in);
+    margin: 0 8px;
+}
+[data-skin="monolith"] .card:not(.full-art) :is(.card-type, .card-body) {
+    background: #efe4c8;
+    border: 2px solid; border-color: var(--skin-bevel-in);
+    border-radius: 0;
+    color: #1b1610;
+}
+[data-skin="monolith"] .card:not(.full-art) .card-type { border-bottom: 0; font-weight: 700; padding-bottom: 0; }
+[data-skin="monolith"] .card:not(.full-art) .card-type-label::before { content: '[ '; }
+[data-skin="monolith"] .card:not(.full-art) .card-type-label::after { content: ' ]'; }
+[data-skin="monolith"] .card:not(.full-art) .card-index { color: #6b5a3a; font-weight: 400; }
+[data-skin="monolith"] .card:not(.full-art) .card-body { border-top: 0; margin-top: 0; flex: 1 1 auto; }
+[data-skin="monolith"] .card:not(.full-art) .card-desc { color: #1b1610; }
+[data-skin="monolith"] .card:not(.full-art) .card-foot { color: #f6ead0; }
+[data-skin="monolith"] .card:not(.full-art).is-active .card-cta { color: #fff; }
+
+/* 4. Ballpark: vintage sports card. Cream border, tall photo, slanted
+   team-colour name banner, numbered badge, plain printed text. */
+[data-skin="ballpark"] .card {
+    --skin-border: #f3eee2;
+    --skin-team: hsl(var(--accent-h) 78% 44%);
+    background: #f3eee2;
+}
+[data-skin="ballpark"] .card:not(.full-art) .card-art {
+    order: -2;
+    margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding)) 0;
+    border-radius: 0;
+}
+[data-skin="ballpark"] .card:not(.full-art) .card-title {
+    position: relative;
+    z-index: 2;
+    align-self: flex-start;
+    max-width: calc(100% - 1rem);
+    margin: -1.35rem 0 var(--card-gap) calc(-1 * var(--card-padding));
+    padding: var(--card-title-pad-y) 1.6rem var(--card-title-pad-y) calc(var(--card-padding) + 0.2rem);
+    background: var(--skin-team);
+    border-radius: 0;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 0.9rem) 100%, 0 100%);
+    color: #fff;
+}
+[data-skin="ballpark"] .card:not(.full-art) .card-type {
+    margin-top: 0;
+    background: none;
+    border-radius: 0;
+    border-bottom: 2px solid var(--skin-team);
+    padding: 2px 0 4px;
+    color: #232323;
+}
+[data-skin="ballpark"] .card:not(.full-art) .card-index {
+    color: #f3eee2;
+    background: #1d1d1d;
+    border-radius: 999px;
+    padding: 1px 7px;
+}
+[data-skin="ballpark"] .card:not(.full-art) .card-body { background: none; padding: 4px 0 0; }
+[data-skin="ballpark"] .card:not(.full-art) .card-desc { color: #2a2a2a; }
+[data-skin="ballpark"] .card:not(.full-art) .card-foot { color: #6a6a6a; padding-left: 0; padding-right: 0; }
+[data-skin="ballpark"] .card:not(.full-art).is-active .card-cta { color: var(--skin-team); }
