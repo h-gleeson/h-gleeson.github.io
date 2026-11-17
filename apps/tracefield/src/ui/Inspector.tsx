@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Matrix4, Vector3, Quaternion, Euler, MathUtils } from 'three';
 import { actions } from '../app/actions';
 import { registry } from '../import/registry';
@@ -15,12 +15,18 @@ import { ExplodeTab } from './ExplodeTab';
 import { AnnotateTab } from './AnnotateTab';
 import { SectionPanel } from './SectionPanel';
 import { StylePresets } from './StylePresets';
+import { TextPanel } from './TextPanel';
+import { textTarget } from '../app/textActions';
 
 type Tab = 'style' | 'object' | 'drawing' | 'explode' | 'labels' | 'view' | 'effects' | 'output';
 
 export function Inspector() {
   const [tab, setTab] = useState<Tab>('style');
   const sel = useStore((s) => s.ui.selection);
+  const request = useStore((s) => s.ui.inspectorTab);
+  useEffect(() => {
+    if (request) setTab(request.tab as Tab);
+  }, [request]);
   const tabs: { id: Tab; label: string; hint: string }[] = [
     { id: 'style', label: 'Style', hint: 'Fill and linework for the selection, or drawing defaults' },
     { id: 'object', label: 'Object', hint: 'Name, source, visibility, position' },
@@ -340,7 +346,8 @@ function ObjectTab() {
   const scaleUniform = (v: number) => setWorld(pos, q, scl.clone().multiplyScalar(Math.max(v, 1e-6) / (uniform || 1)));
   const scaleStep = Math.max(uniform / 100, 1e-4);
   const image = imagePlaneOf(doc, n.id);
-  /** Orient an image plane: upright facing +Z (keeps its heading), flat on the ground, or square to the view. */
+  const text = sel.length === 1 && !!textTarget(doc, n.id);
+  /** Orient an image plane or text: upright facing +Z (keeps its heading), flat on the ground, or square to the view. */
   const orient = (to: 'upright' | 'flat' | 'view') => {
     let r: Quaternion;
     if (to === 'view') {
@@ -353,6 +360,7 @@ function ObjectTab() {
   };
   return (
     <>
+      {text && <TextPanel nodeId={n.id} />}
       <Section title="Properties">
         {sel.length === 1 && (
           <Row label="Name">
@@ -425,11 +433,11 @@ function ObjectTab() {
               <NumberField value={MathUtils.radToDeg(rot[a])} step={1} precision={1} unit="°" onChange={(v) => rotateTo(a, v)} />
             </Row>
           ))}
-          {image && (
+          {(image || text) && (
             <div className="btn-row">
-              <button className="btn" onClick={() => orient('upright')} title="Stand the image up, keeping its turn">Upright</button>
-              <button className="btn" onClick={() => orient('flat')} title="Lay the image flat, face up">Flat</button>
-              <button className="btn" onClick={() => orient('view')} title="Turn the image square to the current view">Face view</button>
+              <button className="btn" onClick={() => orient('upright')} title={`Stand the ${text ? 'text' : 'image'} up, keeping its turn`}>Upright</button>
+              <button className="btn" onClick={() => orient('flat')} title={`Lay the ${text ? 'text' : 'image'} flat, face up`}>Flat</button>
+              <button className="btn" onClick={() => orient('view')} title={`Turn the ${text ? 'text' : 'image'} square to the current view`}>Face view</button>
             </div>
           )}
         </Section>

@@ -7,13 +7,15 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import type { ModelFormat } from '../state/types';
+import { ImportError } from './errors';
+import { parseText } from './text';
+
+export { ImportError };
 
 export interface SourceFile {
   name: string;
   data: ArrayBuffer;
 }
-
-export class ImportError extends Error {}
 
 const EXT: Record<string, ModelFormat> = { glb: 'glb', gltf: 'gltf', obj: 'obj', stl: 'stl', fbx: 'fbx' };
 export const MODEL_EXTENSIONS = Object.keys(EXT);
@@ -157,6 +159,9 @@ export async function parseModel(main: SourceFile, side: SourceFile[], format: M
         break;
       case 'image':
         root = await parseImage(main);
+        break;
+      case 'text':
+        root = await parseText(main, side);
         break;
     }
     // Let texture requests settle so missing-file warnings are complete.

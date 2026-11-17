@@ -1,10 +1,12 @@
-import { Matrix4, Quaternion, Vector3 } from 'three';
+import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from 'three';
 import { store, uid } from '../state/store';
 import type { GraphicStyle, ModelFormat, ModelRecord, SceneNode } from '../state/types';
 import { buildNodes } from './buildNodes';
 import { extOf, formatOf, IMAGE_EXTENSIONS, ImportError, MODEL_EXTENSIONS, SIDE_EXTENSIONS, type SourceFile } from './loaders';
 import { registry } from './registry';
+import { decodeText, FONT_EXTENSIONS, textLabel } from './text';
 import { openProjectFile } from '../project/projectFile';
+import { textActions } from '../app/textActions';
 
 const PROJECT_EXT = 'tracefield';
 
@@ -12,15 +14,25 @@ const PROJECT_EXT = 'tracefield';
 export async function importModel(files: SourceFile[], format: ModelFormat): Promise<string> {
   const id = uid('model');
   const isImage = format === 'image';
-  const upAxis = isImage ? 'y' : pendingUpAxis;
+  const isText = format === 'text';
+  const upAxis = isImage || isText ? 'y' : pendingUpAxis;
   const parsed = await registry.add(id, format, files);
   if (!parsed.drawables.length) {
     registry.remove(id);
     throw new ImportError(`${files[0].name} contains no meshes or curves to draw.`);
   }
-  store.setUI({ busy: { label: `Building hierarchy for ${files[0].name}` } });
-  const { nodes, rootId } = buildNodes(parsed.root, registry.drawableMap(parsed), id, files[0].name, upAxis);
+  const label = isText ? textLabel(decodeText(files[0].data)) : files[0].name;
+  store.setUI({ busy: { label: `Building hierarchy for ${label}` } });
+  const { nodes, rootId } = buildNodes(parsed.root, registry.drawableMap(parsed), id, label, upAxis);
   if (isImage) placeImage(nodes, rootId);
+  if (isText) {
+    const empty = store.get().doc.roots.length === 0;
+    placeText(nodes, rootId);
+    store.setDoc((d) => ({ ...d, models: { ...d.models, [id]: { id, name: label, format, files: files.map((f) => ({ name: f.name, size: f.data.byteLength })), upAxis, drawables: 1 } }, nodes: { ...d.nodes, ...nodes }, roots: [...d.roots, rootId] }));
+    store.setUI((u) => ({ restoreAvailable: false, fitRequest: empty ? u.fitRequest + 1 : u.fitRequest }));
+    store.status(`Added text “${label}”. Edit the words, font and depth in the Object tab.`);
+    return rootId;
+  }
   const record: ModelRecord = {
     id,
     name: files[0].name,
@@ -67,6 +79,30 @@ function placeImage(nodes: Record<string, SceneNode>, rootId: string) {
   }
 }
 
+/** How a text object looks when added: its own face and side colours. */
+export const TEXT_STYLE: Partial<GraphicStyle> = { fillMode: 'material' };
+
+/**
+ * Size and place new text: the letters about 15% of the frame tall, at the
+ * camera target, turned to face the view (laid flat in a plan view). As for
+ * images, this is the imported matrix, so "reset to imported" comes back here.
+ */
+function placeText(nodes: Record<string, SceneNode>, rootId: string) {
+  const doc = store.get().doc;
+  const empty = doc.roots.length === 0;
+  const h = empty ? 1 : doc.camera.height * 0.15;
+  const t = empty ? new Vector3() : new Vector3(...doc.camera.target);
+  const plan = doc.camera.elevation > 60;
+  const q = new Quaternion().setFromEuler(new Euler(plan ? -Math.PI / 2 : 0, MathUtils.degToRad(doc.camera.azimuth), 0, 'YXZ'));
+  const m = new Matrix4().compose(t, q, new Vector3(h, h, h)).toArray();
+  const top = nodes[rootId];
+  top.matrix = top.baseMatrix = m;
+  for (const id of top.children) {
+    const n = nodes[id];
+    if (n.kind === 'mesh') n.style = n.importedStyle = { ...TEXT_STYLE };
+  }
+}
+
 /** Up-axis applied to the next import (set from the import options). */
 let pendingUpAxis: 'y' | 'z' = 'y';
 export function setImportUpAxis(a: 'y' | 'z') {
@@ -88,6 +124,12 @@ export async function importFiles(files: File[]): Promise<void> {
     return;
   }
   const mains = files.filter((f) => MODEL_EXTENSIONS.includes(extOf(f.name)));
+  // A font file dropped on its own starts a text object in that font.
+  const fonts = files.filter((f) => FONT_EXTENSIONS.includes(extOf(f.name)));
+  if (!mains.length && fonts.length) {
+    for (const f of fonts) await textActions.add({}, { name: f.name, data: await f.arrayBuffer() });
+    return;
+  }
   // Pictures dropped without a model are image planes; with a model they are its textures.
   if (!mains.length) {
     const images = files.filter((f) => IMAGE_EXTENSIONS.includes(extOf(f.name)));
@@ -103,7 +145,7 @@ export async function importFiles(files: File[]): Promise<void> {
   if (!mains.length) {
     store.status(
       unknown.length
-        ? `Unsupported file${unknown.length > 1 ? 's' : ''}: ${unknown.map((f) => f.name).join(', ')}. Tracefield reads GLB, glTF, OBJ, STL, FBX, images (PNG, JPEG, WebP) and .tracefield projects.`
+        ? `Unsupported file${unknown.length > 1 ? 's' : ''}: ${unknown.map((f) => f.name).join(', ')}. Tracefield reads GLB, glTF, OBJ, STL, FBX, images (PNG, JPEG, WebP), fonts (TTF, OTF, WOFF) as text, and .tracefield projects.`
         : 'No model file found. Include the .gltf/.obj alongside its side files.',
       'error',
     );

@@ -454,3 +454,16 @@ input.text.mono { font-family: var(--mono); }
 .fx-look-meta { font-size: 10.5px; color: var(--ink-3); }
 .fx-new { align-self: flex-start; margin-top: 3px; }
 .btn.small.danger { color: var(--danger); }
+
+/* ------------------------------------------------------------ gradient map, glitch, text */
+.grad-preview { height: 14px; border-radius: var(--radius); border: 1px solid var(--rule); margin: 6px 0 4px; }
+.btn-row.tight { margin-top: 0; align-items: center; flex-wrap: nowrap; }
+.text-area {
+  width: 100%; min-height: 64px; resize: vertical; padding: 6px 7px;
+  border: 1px solid var(--rule); border-radius: var(--radius); background: var(--field);
+  color: var(--ink); font: 13px/1.3 var(--sans);
+}
+.text-area:focus { outline: none; border-color: var(--accent-line); }
+.text-busy { color: var(--ink-3); font-size: 11px; margin-left: 6px; }
+.pal-preview { display: flex; height: 14px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--rule); margin: 6px 0 4px; }
+.pal-preview i { flex: 1; }

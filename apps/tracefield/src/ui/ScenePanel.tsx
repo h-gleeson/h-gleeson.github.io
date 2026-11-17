@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { actions } from '../app/actions';
+import { textActions } from '../app/textActions';
 import { getImportUpAxis, importFiles, setImportUpAxis } from '../import/importFiles';
 import { ancestors, descendants } from '../state/scene';
 import { store, useStore } from '../state/store';
@@ -7,7 +8,7 @@ import type { ProjectDoc } from '../state/types';
 import { Icon, Segmented } from './controls';
 
 const PAGE = 200;
-export const ACCEPT = '.glb,.gltf,.bin,.obj,.mtl,.stl,.fbx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.tracefield';
+export const ACCEPT = '.glb,.gltf,.bin,.obj,.mtl,.stl,.fbx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.ttf,.otf,.woff,.woff2,.tracefield';
 
 export function ScenePanel() {
   const doc = useStore((s) => s.doc);
@@ -40,6 +41,9 @@ export function ScenePanel() {
         <div className="import-row">
           <button className="btn primary grow" onClick={() => fileRef.current?.click()} title="Import GLB, glTF, OBJ, STL, FBX, or images as planes (Ctrl+I)">
             Import model
+          </button>
+          <button className="btn" onClick={() => textActions.add()} title="Add text you can extrude into 3D letters (Shift+T). Dropping a font file also starts text in that font.">
+            + Text
           </button>
           <button className={`btn icon ${showOptions ? 'on' : ''}`} title="Import options" onClick={() => setShowOptions(!showOptions)} aria-expanded={showOptions}>
             {showOptions ? '▴' : '▾'}

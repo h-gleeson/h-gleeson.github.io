@@ -8,6 +8,7 @@ import { annotateActions } from './annotateActions';
 import { sectionActions } from './sectionActions';
 import { matchActions } from './matchActions';
 import { effectsActions } from './effectsActions';
+import { textActions } from './textActions';
 
 export interface Shortcut {
   keys: string;
@@ -57,6 +58,7 @@ export const SHORTCUTS: { group: string; items: Shortcut[] }[] = [
       { keys: 'W', label: 'Move tool (exploded drawings)' },
       { keys: 'M', label: 'Match properties (copy one object’s style to others)' },
       { keys: 'T', label: 'Label selection (or main parts)' },
+      { keys: 'Shift+T', label: 'Add text (extrudable 3D lettering)' },
       { keys: 'X', label: 'Plan / section cut on · off' },
       { keys: 'Shift+X', label: 'Image effects on · off' },
       { keys: '?', label: 'This list' },
@@ -115,6 +117,7 @@ export function installShortcuts(handlers: { openImport: () => void; openProject
     if (k === 'e') return run(explodeActions.toggleExploded);
     if (k === 'w') return run(explodeActions.toggleMoveTool);
     if (k === 'm') return run(matchActions.toggle);
+    if (k === 't' && e.shiftKey) return run(() => textActions.add());
     if (k === 't') return run(annotateActions.labelSelection);
     if (k === 'x' && e.shiftKey) return run(effectsActions.toggle);
     if (k === 'x') return run(sectionActions.toggle);

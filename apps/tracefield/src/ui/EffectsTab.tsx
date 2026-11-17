@@ -150,13 +150,90 @@ export function EffectsTab() {
               {num('cellJitter', 'Irregularity', 0, 1, 0.01)}
             </>
           )}
+          {e.effect === 'shatter' && (
+            <>
+              {num('shardSize', 'Shard size', 8, 240, 1, 'px')}
+              {num('shardStretch', 'Stretch', 1, 8, 0.1, undefined, 'Long, splintered shards along the angle')}
+              {num('shardAngle', 'Angle', -90, 90, 1, '°')}
+              {num('shardOffset', 'Slide', 0, 80, 0.5, 'px', 'How far each shard’s piece of the picture slides')}
+              {num('shardShade', 'Shading', 0, 1, 0.01, undefined, 'Brightness variation from shard to shard')}
+              {num('shardEdge', 'Outline', 0, 6, 0.1, 'px', 'Shard edges in the ink colour')}
+            </>
+          )}
+          {e.effect === 'threshold' && (
+            <>
+              {num('threshLevel', 'Ink amount', 0, 1, 0.01, undefined, 'Higher: more of the drawing prints as solid ink')}
+              {num('threshGrit', 'Toner grit', 0, 1, 0.01, undefined, 'Ragged, speckled edges where the tone crosses the threshold')}
+              {e.threshGrit > 0 && num('threshGritSize', 'Grit size', 0.3, 8, 0.1, 'px')}
+              <p className="hint">Ink and paper are set under Colour. Spot colour mode adds one coloured ink on top.</p>
+            </>
+          )}
+          {e.effect === 'smear' && (
+            <>
+              {num('smearLength', 'Length', 0, 400, 1, 'px', 'Longest streak; each band of rows gets a random share of it')}
+              {num('smearAngle', 'Direction', -180, 180, 1, '°', 'Which way the streaks run: -90 = down, 0 = right')}
+              {num('smearThreshold', 'Threshold', 0, 1, 0.01, undefined, 'Only tones past this streak')}
+              {bool('smearBright', 'Light tones', 'On: light tones drag (for dark drawings). Off: dark tones drag (for drawings on light paper).')}
+              {num('smearBand', 'Band', 0.5, 40, 0.5, 'px', 'Height of each band of rows with its own streak length')}
+            </>
+          )}
         </div>
       </Section>
 
       <Section title="Colour">
         <Row label="Mode">
-          <Segmented value={e.colorMode} onChange={(v) => set('colorMode', v)} options={[{ value: 'original', label: 'Original', title: 'The drawing’s own colours' }, { value: 'mono', label: 'Mono', title: 'Ink on paper' }]} />
+          <Segmented
+            value={e.colorMode}
+            onChange={(v) => set('colorMode', v)}
+            options={[
+              { value: 'original', label: 'Original', title: 'The drawing’s own colours' },
+              { value: 'mono', label: 'Mono', title: 'Ink on paper' },
+              { value: 'gradient', label: 'Gradient', title: 'Gradient map: dark tones take the shadow colour, light tones the highlight. Duotone, tritone or flat bands.' },
+              { value: 'palette', label: 'Palette', title: 'Every pixel snaps to the nearest of a few inks you pick' },
+              { value: 'spot', label: 'Spot', title: 'Greyscale, with the colourful parts of the drawing in one spot ink' },
+            ]}
+          />
         </Row>
+        {e.colorMode === 'palette' && (
+          <>
+            <div className="pal-preview">
+              {[e.pal1, e.pal2, e.pal3, e.pal4, e.pal5].slice(0, Math.max(2, Math.round(e.palCount))).map((c, i) => (
+                <i key={i} style={{ background: c }} />
+              ))}
+            </div>
+            {num('palCount', 'Inks', 2, 5, 1)}
+            {(['pal1', 'pal2', 'pal3', 'pal4', 'pal5'] as const).slice(0, Math.max(2, Math.round(e.palCount))).map((k, i) => (
+              <Row key={k} label={`Ink ${i + 1}`}>
+                <ColorField value={e[k]} onChange={(v) => set(k, v)} />
+              </Row>
+            ))}
+            {num('palDither', 'Dither', 0, 1, 0.01, undefined, 'Ordered dither before snapping, so gradients break into patterns of the inks')}
+          </>
+        )}
+        {e.colorMode === 'spot' && (
+          <>
+            <Row label="Spot ink">
+              <ColorField value={e.spotColor} onChange={(v) => set('spotColor', v)} />
+            </Row>
+            {num('spotThreshold', 'From saturation', 0, 1, 0.01, undefined, 'How colourful a part must be to print in the spot ink. Give accent objects a strong colour in the Style tab.')}
+          </>
+        )}
+        {e.colorMode === 'gradient' && (
+          <>
+            <div className="grad-preview" style={{ background: `linear-gradient(90deg, ${e.gradShadow}, ${e.gradMid} ${Math.round(e.gradMidpoint * 100)}%, ${e.gradHighlight})` }} />
+            <Row label="Shadow">
+              <ColorField value={e.gradShadow} onChange={(v) => set('gradShadow', v)} />
+            </Row>
+            <Row label="Mid">
+              <ColorField value={e.gradMid} onChange={(v) => set('gradMid', v)} />
+            </Row>
+            <Row label="Highlight">
+              <ColorField value={e.gradHighlight} onChange={(v) => set('gradHighlight', v)} />
+            </Row>
+            {num('gradMidpoint', 'Mid point', 0.05, 0.95, 0.01, undefined, 'Where the mid colour sits between dark and light')}
+            {num('gradBands', 'Bands', 0, 12, 1, undefined, '0 = smooth. 2 or more = that many flat bands of colour, like cel shading or screen print')}
+          </>
+        )}
         <Row label="Ink" title="Mono ink, and the colour of Voronoi outlines and edge overlays">
           <ColorField value={e.ink} onChange={(v) => set('ink', v)} />
         </Row>
@@ -192,6 +269,71 @@ export function EffectsTab() {
         {num('scanlines', 'Scanlines', 0, 1, 0.01)}
         {e.scanlines > 0 && num('scanlineSpacing', 'Line spacing', 1, 12, 0.25, 'px')}
         {num('vignette', 'Vignette', 0, 1, 0.01)}
+        {num('misprint', 'Misprint', -12, 12, 0.25, 'px', 'Inks out of register: red and blue shift opposite ways, the same across the sheet')}
+        {e.misprint !== 0 && num('misprintAngle', 'Misprint angle', -180, 180, 1, '°')}
+      </Section>
+
+      <Section title="Echo" defaultOpen={e.echo > 0}>
+        {num('echo', 'Strength', 0, 1, 0.01, undefined, 'Fading ghost copies of the drawing, like motion or a double print')}
+        {e.echo > 0 && (
+          <>
+            {num('echoCount', 'Copies', 1, 6, 1)}
+            {num('echoOffset', 'Spacing', 1, 80, 0.5, 'px')}
+            {num('echoAngle', 'Direction', -180, 180, 1, '°', 'Which way the copies trail: 0 = to the right, 90 = up')}
+          </>
+        )}
+      </Section>
+
+      <Section title="HUD overlay" defaultOpen={e.hud > 0}>
+        {num('hud', 'Opacity', 0, 1, 0.01, undefined, 'A technical overlay on the frame: corner brackets, rulers, crosshair, circles, leader lines and a waveform strip')}
+        {e.hud > 0 && (
+          <>
+            <Row label="Colour">
+              <ColorField value={e.hudColor} onChange={(v) => set('hudColor', v)} />
+            </Row>
+            {num('hudDensity', 'Busy-ness', 0, 1, 0.01, undefined, 'How many circles and leader lines')}
+            {num('hudWidth', 'Line weight', 0.2, 3, 0.05, 'px')}
+            <Row label="Variation" title="Another arrangement of circles and leader lines">
+              <div className="btn-row tight">
+                <span className="value">#{e.hudSeed}</span>
+                <button className="btn small" onClick={() => set('hudSeed', e.hudSeed + 1)}>
+                  Shuffle
+                </button>
+              </div>
+            </Row>
+          </>
+        )}
+      </Section>
+
+      <Section title="Glitch" defaultOpen={e.glitch > 0 || e.glitchBlocks > 0}>
+        {num('glitch', 'Slices', 0, 1, 0.01, undefined, 'Share of slices that slide out of place')}
+        {e.glitch > 0 && (
+          <>
+            {num('glitchSlice', 'Slice height', 2, 120, 0.5, 'px')}
+            {num('glitchShift', 'Slide', 0, 300, 1, 'px', 'Largest slide of a slice')}
+            {num('glitchSplit', 'RGB split', 0, 20, 0.25, 'px', 'Colour channels pulled apart inside the slid slices')}
+          </>
+        )}
+        {num('glitchBlocks', 'Bars', 0, 1, 0.01, undefined, 'Solid and barcode-striped bars in the glitch colour')}
+        {e.glitchBlocks > 0 && (
+          <Row label="Bar colour">
+            <ColorField value={e.glitchColor} onChange={(v) => set('glitchColor', v)} />
+          </Row>
+        )}
+        {(e.glitch > 0 || e.glitchBlocks > 0) && (
+          <>
+            {e.glitch <= 0 && num('glitchSlice', 'Bar height', 2, 120, 0.5, 'px')}
+            {bool('glitchVertical', 'Vertical', 'Slices and bars run up and down instead of across')}
+            <Row label="Variation" title="Another random arrangement of slices and bars">
+              <div className="btn-row tight">
+                <span className="value">#{e.glitchSeed}</span>
+                <button className="btn small" onClick={() => set('glitchSeed', e.glitchSeed + 1)}>
+                  Shuffle
+                </button>
+              </div>
+            </Row>
+          </>
+        )}
       </Section>
     </>
   );

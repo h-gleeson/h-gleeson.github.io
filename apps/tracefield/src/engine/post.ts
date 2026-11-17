@@ -15,7 +15,8 @@ import { charsOf, type EffectsSettings } from '../state/effects';
  * is the whole canvas (offset 0); in the export it is the tile plus a margin.
  */
 
-const EFFECT_INDEX: Record<EffectsSettings['effect'], number> = { none: 0, dither: 1, halftone: 2, ascii: 3, crosshatch: 4, contour: 5, edges: 6, pixelate: 7, wave: 8, voronoi: 9 };
+const EFFECT_INDEX: Record<EffectsSettings['effect'], number> = { none: 0, dither: 1, halftone: 2, ascii: 3, crosshatch: 4, contour: 5, edges: 6, pixelate: 7, wave: 8, voronoi: 9, shatter: 10, threshold: 11, smear: 12 };
+const COLOR_INDEX: Record<EffectsSettings['colorMode'], number> = { original: 0, mono: 1, gradient: 2, palette: 3, spot: 4 };
 const DITHER_INDEX = { none: 0, bayer2: 1, bayer4: 2, bayer8: 3, noise: 4 } as const;
 const SHAPE_INDEX = { circle: 0, square: 1, diamond: 2, line: 3 } as const;
 
@@ -50,6 +51,17 @@ vec2 hash22(vec2 p) {
 mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
 // Coverage of a shape edge, anti-aliased over one device pixel. dist and r are in drawing px.
 float cover(float r, float dist) { return clamp((r - dist) * uScale + 0.5, 0.0, 1.0); }
+float valueNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash12(i), b = hash12(i + vec2(1, 0)), c = hash12(i + vec2(0, 1)), e = hash12(i + vec2(1, 1));
+  return mix(mix(a, b, f.x), mix(c, e, f.x), f.y);
+}
+float segDist(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+  return length(pa - ba * h);
+}
 `;
 
 const STYLIZE = /* glsl */ `
@@ -69,7 +81,18 @@ uniform float uEdgeThreshold, uEdgeWidth, uEdgeOverlay;
 uniform float uPixelSize, uPixelGap;
 uniform float uWaveSpacing, uWaveAmplitude, uWaveFrequency, uWaveWidth, uWaveVertical;
 uniform float uCellSize, uCellEdge, uCellJitter;
+uniform float uShardSize, uShardStretch, uShardAngle, uShardOffset, uShardShade, uShardEdge;
+uniform float uThreshLevel, uThreshGrit, uThreshGritSize;
+uniform float uSmearLength, uSmearAngle, uSmearThreshold, uSmearBright, uSmearBand;
 uniform float uMono;
+uniform int uColorMode;
+uniform vec3 uGradShadow, uGradMid, uGradHigh;
+uniform float uGradMidpoint, uGradBands;
+uniform vec3 uPal[5];
+uniform int uPalCount;
+uniform float uPalDither;
+uniform vec3 uSpotColor;
+uniform float uSpotThreshold;
 uniform vec3 uInk, uPaper, uBg;
 uniform float uMix;
 uniform sampler2D tMask;
@@ -273,6 +296,85 @@ vec4 fxVoronoi(vec2 d) {
   return vec4(c, tone(c)) * (1.0 - e) + vec4(uInk, 1.0) * e;
 }
 
+// Broken glass: Voronoi shards stretched along an angle; each slides the picture and shades it a little.
+vec4 fxShatter(vec2 d) {
+  mat2 R = rot(radians(uShardAngle));
+  vec2 p = transpose(R) * d;
+  p.x /= uShardStretch;
+  vec2 g = p / uShardSize;
+  vec2 base = floor(g);
+  float f1 = 1e9, f2 = 1e9;
+  vec2 seed = vec2(0.0);
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 cell = base + vec2(float(i), float(j));
+    vec2 s = cell + 0.5 + (hash22(cell + 3.7) - 0.5) * 0.95;
+    float dd = length(g - s);
+    if (dd < f1) { f2 = f1; f1 = dd; seed = s; }
+    else if (dd < f2) f2 = dd;
+  }
+  vec2 off = (hash22(seed * 7.13 + 1.9) - 0.5) * 2.0 * uShardOffset;
+  vec3 c = at(d + R * off);
+  float shade = 1.0 + (hash12(seed * 3.31 + 8.2) - 0.5) * uShardShade;
+  c = clamp(c * shade, 0.0, 1.0);
+  float edgeDist = (f2 - f1) * 0.5 * uShardSize;
+  float e = uShardEdge > 0.0 ? cover(uShardEdge * 0.5, edgeDist) : 0.0;
+  return vec4(c, tone(c)) * (1.0 - e) + vec4(uInk, 1.0) * e;
+}
+
+// Photocopy: a hard threshold whose edge is roughened by toner grit (coarse noise plus per-pixel speckle).
+vec4 fxThreshold(vec2 d) {
+  vec3 c = at(d);
+  float k = tone(c);
+  float n = 0.0;
+  if (uThreshGrit > 0.0) n = (valueNoise(d / max(uThreshGritSize, 0.25)) * 0.65 + hash12(floor(d * uScale) + 3.1) * 0.35 - 0.5) * uThreshGrit;
+  float ink = k > 0.02 ? step(1.0 - uThreshLevel, k + n) : 0.0;
+  return vec4(mix(uPaper, uInk, ink), ink);
+}
+
+// Smear: each pixel looks back along the streak direction and keeps the lightest
+// (or darkest) tone past the threshold, so those tones drag. Every band of rows
+// gets its own streak length, like pixel sorting.
+vec4 fxSmear(vec2 d) {
+  float a = radians(uSmearAngle);
+  vec2 dir = vec2(cos(a), sin(a));
+  vec2 perp = vec2(-dir.y, dir.x);
+  float row = floor(dot(d, perp) / max(uSmearBand, 0.5));
+  float len = uSmearLength * (0.2 + 0.8 * hash12(vec2(row, 7.3)));
+  vec3 best = at(d);
+  float bl = luma(best);
+  for (int i = 1; i <= 24; i++) {
+    vec3 c = at(d - dir * len * float(i) / 24.0);
+    float l = luma(c);
+    bool take = uSmearBright > 0.5 ? (l > uSmearThreshold && l > bl) : (l < uSmearThreshold && l < bl);
+    if (take) { best = c; bl = l; }
+  }
+  return vec4(best, tone(best));
+}
+
+// Palette: the nearest of up to five inks, optionally ordered-dithered first so gradients break into ink patterns.
+vec3 paletteMap(vec3 c, vec2 d) {
+  if (uPalDither > 0.0) c += (bayer(ivec2(floor(d / 1.5)), 2) - 0.5) * uPalDither * 0.6;
+  vec3 best = uPal[0];
+  float bd = 1e9;
+  for (int i = 0; i < 5; i++) {
+    if (i >= uPalCount) break;
+    vec3 e = c - uPal[i];
+    float dd = dot(e * e, vec3(2.0, 4.0, 3.0));
+    if (dd < bd) { bd = dd; best = uPal[i]; }
+  }
+  return best;
+}
+
+float satOf(vec3 c) { return max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b)); }
+
+// Gradient map: luminance 0 (dark) … 1 (light) through shadow → mid → highlight, optionally in flat bands.
+vec3 gradientMap(vec3 c) {
+  float t = clamp(luma(c), 0.0, 1.0);
+  if (uGradBands >= 2.0) t = min(floor(t * uGradBands), uGradBands - 1.0) / (uGradBands - 1.0);
+  float m = clamp(uGradMidpoint, 0.01, 0.99);
+  return t < m ? mix(uGradShadow, uGradMid, t / m) : mix(uGradMid, uGradHigh, (t - m) / (1.0 - m));
+}
+
 void main() {
   vec2 d = drawPos();
   vec4 raw = rawAt(d);
@@ -286,10 +388,13 @@ void main() {
   else if (uEffect == 7) r = fxPixelate(d);
   else if (uEffect == 8) r = fxWave(d);
   else if (uEffect == 9) r = fxVoronoi(d);
+  else if (uEffect == 10) r = fxShatter(d);
+  else if (uEffect == 11) r = fxThreshold(d);
+  else if (uEffect == 12) r = fxSmear(d);
   else r = fxNone(d);
 
   vec3 col;
-  bool continuous = uEffect == 0 || uEffect == 1 || uEffect == 7 || uEffect == 9 || (uEffect == 5 && uContourFill > 0.5);
+  bool continuous = uEffect == 0 || uEffect == 1 || uEffect == 7 || uEffect == 9 || uEffect == 10 || uEffect == 11 || uEffect == 12 || (uEffect == 5 && uContourFill > 0.5);
   if (uMono > 0.5) col = mix(uPaper, uInk, clamp(r.a, 0.0, 1.0));
   else if (continuous) col = r.rgb;
   else if (uEffect == 6 && uEdgeOverlay > 0.5) col = mix(r.rgb, uInk, r.a);
@@ -301,6 +406,14 @@ void main() {
     float edge = min(min(f.x, f.y), min(uPixelSize - f.x, uPixelSize - f.y));
     col = mix(col, uPaper, cover(uPixelGap * 0.5, edge));
   }
+  if (uColorMode == 2) col = gradientMap(col);
+  else if (uColorMode == 3) col = paletteMap(col, d);
+  else if (uColorMode == 4) {
+    // Spot colour: greyscale, with the drawing's colourful parts (before the effect) in one spot ink.
+    float w = smoothstep(uSpotThreshold, uSpotThreshold + 0.08, satOf(at(d)));
+    col = mix(vec3(luma(col)), uSpotColor, w);
+  }
+  // (Gradient map replaces both Original and Mono colouring; Mono's ink/paper stay for outlines.)
   // The look's amount blends with the plain drawing. A layer look then goes over
   // the result so far where its layers are the visible surface (mask = 1).
   col = mix(raw.rgb, col, uMix);
@@ -322,6 +435,12 @@ uniform float uBloom, uBloomThreshold, uBloomRadius;
 uniform float uChromatic;
 uniform float uScanlines, uScanlineSpacing;
 uniform float uVignette;
+uniform float uGlitch, uGlitchSlice, uGlitchShift, uGlitchSplit, uGlitchBlocks, uGlitchVertical, uGlitchSeed;
+uniform vec3 uGlitchColor;
+uniform float uMisprint, uMisprintAngle;
+uniform float uEcho, uEchoCount, uEchoOffset, uEchoAngle;
+uniform float uHud, uHudDensity, uHudWidth, uHudSeed;
+uniform vec3 uHudColor;
 uniform sampler2D tMask;
 uniform float uUseMask;
 uniform vec3 uMaskChannel;
@@ -329,22 +448,148 @@ uniform vec2 uMaskOffset, uMaskSize;
 uniform sampler2D tBase; // the result so far, aligned with tSrc
 uniform float uUseBase;
 
-float valueNoise(vec2 p) {
-  vec2 i = floor(p), f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  float a = hash12(i), b = hash12(i + vec2(1, 0)), c = hash12(i + vec2(0, 1)), e = hash12(i + vec2(1, 1));
-  return mix(mix(a, b, f.x), mix(c, e, f.x), f.y);
+// HUD overlay: frame brackets, a thin frame, rulers, a centre crosshair, scattered
+// circles, leader lines and a waveform strip. Drawn in drawing px from the frame
+// centre, so it sits on the sheet the same way in the viewport and the export.
+float hudCover(vec2 d) {
+  vec2 H = uFrameHalf;
+  float w = uHudWidth * 0.5;
+  float m = min(H.x, H.y) * 0.06;
+  vec2 q = abs(d);
+  vec2 inner = H - m;
+  vec2 fr = H - m * 0.45;
+  float L = min(H.x, H.y) * 0.14;
+  float c = 0.0;
+  // Corner brackets (heavier), mirrored into all four corners.
+  c = max(c, cover(w * 2.2, min(segDist(q, vec2(inner.x - L, inner.y), inner), segDist(q, vec2(inner.x, inner.y - L), inner))));
+  // A thin frame just outside them.
+  vec2 e = q - fr;
+  float sd = length(max(e, 0.0)) + min(max(e.x, e.y), 0.0);
+  c = max(c, 0.55 * cover(w * 0.6, abs(sd)));
+  if (sd > 0.0) return c;
+  // Rulers: along the top edge and the left edge, a long tick every 5.
+  float span = inner.x - L - 6.0;
+  if (d.y > inner.y - 10.0 && d.y < inner.y && abs(d.x) < span) {
+    float n = floor(d.x / 10.0 + 0.5);
+    float len = mod(n, 5.0) == 0.0 ? 10.0 : 4.0;
+    if (d.y > inner.y - len) c = max(c, cover(w * 0.7, abs(d.x - n * 10.0)));
+  }
+  float spanY = inner.y - L - 6.0;
+  if (d.x < -inner.x + 10.0 && d.x > -inner.x && abs(d.y) < spanY) {
+    float n = floor(d.y / 10.0 + 0.5);
+    float len = mod(n, 5.0) == 0.0 ? 10.0 : 4.0;
+    if (d.x < -inner.x + len) c = max(c, cover(w * 0.7, abs(d.y - n * 10.0)));
+  }
+  // Centre crosshair: a ring and four ticks.
+  c = max(c, cover(w, abs(length(d) - 11.0)));
+  c = max(c, cover(w, min(segDist(q, vec2(16.0, 0.0), vec2(30.0, 0.0)), segDist(q, vec2(0.0, 16.0), vec2(0.0, 30.0)))));
+  // Scattered circles, some with a dot.
+  vec2 cell = floor(d / 140.0);
+  if (hash12(cell + uHudSeed * 3.7 + 11.0) < uHudDensity * 0.45) {
+    vec2 ctr = (cell + 0.2 + 0.6 * hash22(cell + uHudSeed * 7.1)) * 140.0;
+    float rr = 4.0 + 10.0 * hash12(cell + 5.0 + uHudSeed);
+    float dc = length(d - ctr);
+    c = max(c, cover(w, abs(dc - rr)));
+    if (hash12(cell + 9.0) < 0.4) c = max(c, cover(rr * 0.35, dc));
+  }
+  // Leader lines: a horizontal run, then a 45° kink, with a dot at the start.
+  vec2 cl = floor(d / 220.0);
+  if (hash12(cl + uHudSeed * 1.9 + 23.0) < uHudDensity * 0.5) {
+    vec2 r2 = hash22(cl + uHudSeed + 3.0);
+    vec2 p0 = (cl + vec2(0.1, 0.25 + 0.5 * r2.y)) * 220.0;
+    vec2 p1 = p0 + vec2(40.0 + 60.0 * r2.x, 0.0);
+    vec2 p2 = p1 + vec2(40.0, r2.x > 0.5 ? 40.0 : -40.0);
+    c = max(c, cover(w * 0.7, min(segDist(d, p0, p1), segDist(d, p1, p2))));
+    c = max(c, cover(2.0, length(d - p0)));
+  }
+  // Waveform strip, bottom left.
+  float yb = -inner.y + 18.0;
+  if (abs(d.y - yb) < 9.0 && d.x > -inner.x + 10.0 && d.x < -inner.x * 0.3) {
+    float n = floor(d.x / 4.0);
+    float hgt = 2.0 + 14.0 * hash12(vec2(n, uHudSeed + 0.5)) * (0.4 + 0.6 * abs(sin(n * 0.21)));
+    if (abs(d.y - yb) < hgt * 0.5) c = max(c, cover(0.75, abs(d.x - (n + 0.5) * 4.0)));
+  }
+  // A pair of small label boxes, top left.
+  vec2 b0 = vec2(-inner.x + 14.0, inner.y - 28.0);
+  vec2 bq = abs(d - (b0 + vec2(26.0, -6.0))) - vec2(26.0, 6.0);
+  c = max(c, cover(w * 0.7, abs(length(max(bq, 0.0)) + min(max(bq.x, bq.y), 0.0))));
+  vec2 bq2 = abs(d - (b0 + vec2(70.0, -6.0))) - vec2(10.0, 6.0);
+  c = max(c, cover(w * 0.7, abs(length(max(bq2, 0.0)) + min(max(bq2.x, bq2.y), 0.0))));
+  return clamp(c, 0.0, 1.0);
+}
+
+// Glitch: slices of the picture (bands along x, or along y when vertical) slide sideways.
+// Everything is a function of the drawing position, so export tiles join seamlessly.
+vec2 glitchShift(vec2 d, out float hit) {
+  float a = uGlitchVertical > 0.5 ? d.x : d.y;
+  float band = floor(a / uGlitchSlice);
+  // Bands of uneven height: a coarse band is split again where a second hash says so.
+  float sub = floor(a / (uGlitchSlice * 0.37));
+  float h = hash12(vec2(band, uGlitchSeed * 13.1));
+  float hs = hash12(vec2(sub, uGlitchSeed * 5.7 + 2.0));
+  hit = step(1.0 - uGlitch, h) * step(0.25, hs);
+  float s = (hash12(vec2(band * 1.7 + sub * 0.13, uGlitchSeed + 9.0)) * 2.0 - 1.0) * uGlitchShift * hit;
+  return uGlitchVertical > 0.5 ? vec2(0.0, s) : vec2(s, 0.0);
+}
+
+// Glitch bars: solid or barcode-striped rectangles in the glitch colour.
+float glitchBars(vec2 d) {
+  vec2 p = uGlitchVertical > 0.5 ? d.yx : d;
+  vec2 size = vec2(uGlitchSlice * 12.0, uGlitchSlice * 1.6);
+  vec2 cell = floor(p / size);
+  float h = hash12(cell + uGlitchSeed * 3.3 + 40.0);
+  if (h > uGlitchBlocks * 0.22) return 0.0;
+  vec2 f = (p - cell * size) / size;
+  // Each bar covers a random span of its cell.
+  float x0 = hash12(cell + 71.0) * 0.5, x1 = x0 + 0.25 + hash12(cell + 13.0) * 0.5;
+  if (f.x < x0 || f.x > x1) return 0.0;
+  if (hash12(cell + 5.0) < 0.5) return 1.0;
+  // Barcode: stripes of uneven width.
+  float u = p.x / (uGlitchSlice * 0.45);
+  return step(0.45, hash12(vec2(floor(u), cell.y + uGlitchSeed)));
 }
 
 void main() {
   vec2 d = drawPos();
   vec4 base = rawAt(d);
   vec3 col = base.rgb;
+  vec2 gd = d;
+  float glitched = 0.0;
+  if (uGlitch > 0.0) {
+    gd = d + glitchShift(d, glitched);
+    col = rawAt(gd).rgb;
+    if (glitched > 0.5 && uGlitchSplit > 0.0) {
+      vec2 sp = uGlitchVertical > 0.5 ? vec2(0.0, uGlitchSplit) : vec2(uGlitchSplit, 0.0);
+      col.r = rawAt(gd + sp).r;
+      col.b = rawAt(gd - sp).b;
+    }
+  }
+  if (uEcho > 0.0) {
+    // Ghost copies show where they differ from the paper: darker ghosts on light
+    // areas, lighter ghosts on dark areas, each fainter than the last.
+    float ea = radians(uEchoAngle);
+    vec2 dir = vec2(cos(ea), sin(ea));
+    bool light = luma(col) > 0.5;
+    for (int k = 1; k <= 6; k++) {
+      if (float(k) > uEchoCount) break;
+      vec3 g = rawAt(gd - dir * uEchoOffset * float(k)).rgb;
+      float w = uEcho * pow(0.62, float(k - 1));
+      if (light ? luma(g) < luma(col) - 0.02 : luma(g) > luma(col) + 0.02) col = mix(col, g, w);
+    }
+  }
   if (uChromatic > 0.0) {
     vec2 off = d / uFrameHalf.x * uChromatic;
-    col.r = rawAt(d + off).r;
-    col.b = rawAt(d - off).b;
+    col.r = rawAt(gd + off).r;
+    col.b = rawAt(gd - off).b;
   }
+  if (uMisprint != 0.0) {
+    // Inks out of register: red one way, blue the other, the same across the sheet.
+    float ma = radians(uMisprintAngle);
+    vec2 o = vec2(cos(ma), sin(ma)) * uMisprint;
+    col.r = rawAt(gd + o).r;
+    col.b = rawAt(gd - o).b;
+  }
+  if (uGlitchBlocks > 0.0) col = mix(col, uGlitchColor, glitchBars(d));
   if (uBloom > 0.0) {
     vec3 acc = vec3(0.0);
     for (int i = 0; i < 24; i++) {
@@ -368,6 +613,7 @@ void main() {
     float n = valueNoise(d / max(uGrainSize, 0.1)) + valueNoise(d / max(uGrainSize, 0.1) * 2.03 + 7.1) * 0.5;
     col += (n / 1.5 - 0.5) * uGrain * 0.6;
   }
+  if (uHud > 0.0) col = mix(col, uHudColor, hudCover(d) * uHud);
   if (uUseMask > 0.5) {
     vec3 prev = uUseBase > 0.5 ? unpremul(texture(tBase, uvAt(d))).rgb : base.rgb;
     col = mix(prev, col, dot(texture(tMask, (gl_FragCoord.xy + uMaskOffset) / uMaskSize).rgb, uMaskChannel));
@@ -426,7 +672,12 @@ export class PostFX {
       depthWrite: false,
       uniforms: {
         ...common(),
-        ...u(['uEffect', 'uBrightness', 'uContrast', 'uSaturation', 'uHue', 'uGamma', 'uBlur', 'uInvert', 'uDitherPattern', 'uDitherLevels', 'uDitherScale', 'uDotShape', 'uDotHex', 'uDotSpacing', 'uDotAngle', 'uDotScale', 'uGlyphCount', 'uCharSize', 'uHatchSpacing', 'uHatchWidth', 'uHatchAngle', 'uHatchJitter', 'uHatchLayers', 'uContourLevels', 'uContourWidth', 'uContourFill', 'uEdgeThreshold', 'uEdgeWidth', 'uEdgeOverlay', 'uPixelSize', 'uPixelGap', 'uWaveSpacing', 'uWaveAmplitude', 'uWaveFrequency', 'uWaveWidth', 'uWaveVertical', 'uCellSize', 'uCellEdge', 'uCellJitter', 'uMono', 'uMix']),
+        ...u(['uEffect', 'uBrightness', 'uContrast', 'uSaturation', 'uHue', 'uGamma', 'uBlur', 'uInvert', 'uDitherPattern', 'uDitherLevels', 'uDitherScale', 'uDotShape', 'uDotHex', 'uDotSpacing', 'uDotAngle', 'uDotScale', 'uGlyphCount', 'uCharSize', 'uHatchSpacing', 'uHatchWidth', 'uHatchAngle', 'uHatchJitter', 'uHatchLayers', 'uContourLevels', 'uContourWidth', 'uContourFill', 'uEdgeThreshold', 'uEdgeWidth', 'uEdgeOverlay', 'uPixelSize', 'uPixelGap', 'uWaveSpacing', 'uWaveAmplitude', 'uWaveFrequency', 'uWaveWidth', 'uWaveVertical', 'uCellSize', 'uCellEdge', 'uCellJitter', 'uShardSize', 'uShardStretch', 'uShardAngle', 'uShardOffset', 'uShardShade', 'uShardEdge', 'uThreshLevel', 'uThreshGrit', 'uThreshGritSize', 'uSmearLength', 'uSmearAngle', 'uSmearThreshold', 'uSmearBright', 'uSmearBand', 'uPalCount', 'uPalDither', 'uSpotThreshold', 'uMono', 'uColorMode', 'uGradMidpoint', 'uGradBands', 'uMix']),
+        uGradShadow: { value: new Color() },
+        uGradMid: { value: new Color() },
+        uGradHigh: { value: new Color() },
+        uPal: { value: [new Color(), new Color(), new Color(), new Color(), new Color()] },
+        uSpotColor: { value: new Color() },
         tGlyphs: { value: null as Texture | null },
         uInk: { value: new Color() },
         uPaper: { value: new Color() },
@@ -455,7 +706,9 @@ export class PostFX {
         uUseBase: { value: 0 },
         uMaskOffset: { value: new Vector2() },
         uMaskSize: { value: new Vector2(1, 1) },
-        ...u(['uGrain', 'uGrainSize', 'uBloom', 'uBloomThreshold', 'uBloomRadius', 'uChromatic', 'uScanlines', 'uScanlineSpacing', 'uVignette']),
+        ...u(['uGrain', 'uGrainSize', 'uBloom', 'uBloomThreshold', 'uBloomRadius', 'uChromatic', 'uScanlines', 'uScanlineSpacing', 'uVignette', 'uGlitch', 'uGlitchSlice', 'uGlitchShift', 'uGlitchSplit', 'uGlitchBlocks', 'uGlitchVertical', 'uGlitchSeed', 'uMisprint', 'uMisprintAngle', 'uEcho', 'uEchoCount', 'uEchoOffset', 'uEchoAngle', 'uHud', 'uHudDensity', 'uHudWidth', 'uHudSeed']),
+        uGlitchColor: { value: new Color() },
+        uHudColor: { value: new Color() },
       },
     });
   }
@@ -560,7 +813,33 @@ export class PostFX {
     set('uCellSize', Math.max(2, e.cellSize));
     set('uCellEdge', e.cellEdge);
     set('uCellJitter', e.cellJitter);
+    set('uShardSize', Math.max(4, e.shardSize));
+    set('uShardStretch', Math.max(1, e.shardStretch));
+    set('uShardAngle', e.shardAngle);
+    set('uShardOffset', e.shardOffset);
+    set('uShardShade', e.shardShade);
+    set('uShardEdge', e.shardEdge);
     set('uMono', e.colorMode === 'mono' ? 1 : 0);
+    set('uColorMode', COLOR_INDEX[e.colorMode] ?? 0);
+    set('uGradMidpoint', e.gradMidpoint);
+    set('uGradBands', e.gradBands >= 2 ? Math.round(e.gradBands) : 0);
+    u.uGradShadow.value.set(e.gradShadow);
+    u.uGradMid.value.set(e.gradMid);
+    u.uGradHigh.value.set(e.gradHighlight);
+    set('uThreshLevel', e.threshLevel);
+    set('uThreshGrit', e.threshGrit);
+    set('uThreshGritSize', e.threshGritSize);
+    set('uSmearLength', Math.max(0, e.smearLength));
+    set('uSmearAngle', e.smearAngle);
+    set('uSmearThreshold', e.smearThreshold);
+    set('uSmearBright', e.smearBright ? 1 : 0);
+    set('uSmearBand', Math.max(0.5, e.smearBand));
+    const pal = [e.pal1, e.pal2, e.pal3, e.pal4, e.pal5];
+    (u.uPal.value as Color[]).forEach((c, i) => c.set(pal[i]));
+    set('uPalCount', Math.max(2, Math.min(5, Math.round(e.palCount))));
+    set('uPalDither', e.palDither);
+    u.uSpotColor.value.set(e.spotColor);
+    set('uSpotThreshold', e.spotThreshold);
     set('uMix', e.mix);
     u.uInk.value.set(e.ink);
     u.uPaper.value.set(e.paperFromBackground ? background : e.paper);
@@ -597,6 +876,25 @@ export class PostFX {
     u.uScanlines.value = e.scanlines;
     u.uScanlineSpacing.value = Math.max(1, e.scanlineSpacing);
     u.uVignette.value = e.vignette;
+    u.uGlitch.value = e.glitch;
+    u.uGlitchSlice.value = Math.max(1, e.glitchSlice);
+    u.uGlitchShift.value = e.glitchShift;
+    u.uGlitchSplit.value = e.glitchSplit;
+    u.uGlitchBlocks.value = e.glitchBlocks;
+    u.uGlitchVertical.value = e.glitchVertical ? 1 : 0;
+    u.uGlitchSeed.value = e.glitchSeed;
+    u.uGlitchColor.value.set(e.glitchColor);
+    u.uMisprint.value = e.misprint;
+    u.uMisprintAngle.value = e.misprintAngle;
+    u.uEcho.value = e.echo;
+    u.uEchoCount.value = Math.max(1, Math.min(6, Math.round(e.echoCount)));
+    u.uEchoOffset.value = e.echoOffset;
+    u.uEchoAngle.value = e.echoAngle;
+    u.uHud.value = e.hud;
+    u.uHudDensity.value = e.hudDensity;
+    u.uHudWidth.value = Math.max(0.2, e.hudWidth);
+    u.uHudSeed.value = e.hudSeed;
+    u.uHudColor.value.set(e.hudColor);
     this.draw(renderer, m, target);
   }
 

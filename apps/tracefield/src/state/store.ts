@@ -43,6 +43,7 @@ const initialUI: UIState = {
   label: null,
   sectionHandle: true,
   stats: { objects: 0, triangles: 0, edges: 0 },
+  inspectorTab: null,
 };
 
 let state: StoreState = { doc: createDoc(), ui: initialUI, past: [], future: [] };

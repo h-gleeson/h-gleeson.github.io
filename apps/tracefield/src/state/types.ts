@@ -96,7 +96,8 @@ export interface SceneNode {
 }
 
 /** 'image': a picture (PNG/JPEG/WebP) imported as a textured plane. */
-export type ModelFormat = 'glb' | 'gltf' | 'obj' | 'stl' | 'fbx' | 'image';
+/** 'text': a text object; its main file is a JSON spec (see import/text.ts), plus an uploaded font file if it uses one. */
+export type ModelFormat = 'glb' | 'gltf' | 'obj' | 'stl' | 'fbx' | 'image' | 'text';
 
 export interface ModelFile {
   name: string;
@@ -341,4 +342,6 @@ export interface UIState {
   /** Show the section plane and its drag handle in the viewport. */
   sectionHandle: boolean;
   stats: { objects: number; triangles: number; edges: number };
+  /** Ask the Inspector to show a tab (n changes on every request). */
+  inspectorTab: { tab: string; n: number } | null;
 }

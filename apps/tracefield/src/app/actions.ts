@@ -3,7 +3,8 @@ import { basis } from '../engine/camera';
 import { getEngine } from '../engine/engineRef';
 import { applyPreset as applySizePreset, aspectOf, MAX_SIDE, SIZE_PRESETS } from '../state/output';
 import { CAMERA_PRESETS } from '../state/defaults';
-import { presetStyle, type StylePreset } from '../state/stylePresets';
+import { BUILT_IN_PRESETS, loadUserPresets, lookFromPreset, presetStyle, type StylePreset } from '../state/stylePresets';
+import { DEFAULT_EFFECTS } from '../state/effects';
 import {
   deleteNodes,
   descendants,
@@ -172,17 +173,28 @@ export const actions = {
   },
   /** Apply a drawing-style preset to the defaults and drawing settings. Object overrides stay unless asked. */
   applyStylePreset(p: StylePreset, clearOverrides = false) {
-    const { defaults, drawing } = presetStyle(p);
+    const { defaults, drawing, effects } = presetStyle(p);
+    let fxNote = '';
     store.setDoc((d) => {
       let nodes = d.nodes;
       if (clearOverrides) {
         nodes = { ...d.nodes };
         for (const id in nodes) if (Object.keys(nodes[id].style).length) nodes[id] = { ...nodes[id], style: {} };
       }
-      return { ...d, nodes, defaults, drawing: { ...d.drawing, ...drawing } };
+      // A graphic preset sets the whole-drawing effect. A plain one clears it only if
+      // it is still exactly what a preset set, so a look you tuned yourself survives.
+      let fx = d.effects;
+      if (effects) {
+        fx = { ...fx, enabled: true, drawing: effects };
+        fxNote = ' · image effects on';
+      } else if (fx.enabled && lookFromPreset(fx.drawing, [...BUILT_IN_PRESETS, ...loadUserPresets()])) {
+        fx = { ...fx, drawing: { ...DEFAULT_EFFECTS }, enabled: fx.looks.length > 0 };
+        fxNote = ' · image effects off';
+      }
+      return { ...d, nodes, defaults, drawing: { ...d.drawing, ...drawing }, effects: fx };
     });
     const overrides = Object.values(doc().nodes).filter((n) => Object.keys(n.style).length).length;
-    store.status(`Applied “${p.name}”${!clearOverrides && overrides ? ` · ${overrides} object${overrides > 1 ? 's keep their' : ' keeps its'} own overrides` : ''}`);
+    store.status(`Applied “${p.name}”${fxNote}${!clearOverrides && overrides ? ` · ${overrides} object${overrides > 1 ? 's keep their' : ' keeps its'} own overrides` : ''}`);
   },
   setDrawing<K extends keyof DrawingSettings>(key: K, value: DrawingSettings[K]) {
     store.setDoc((d) => ({ ...d, drawing: { ...d.drawing, [key]: value } }), { coalesce: `drawing-${String(key)}` });
