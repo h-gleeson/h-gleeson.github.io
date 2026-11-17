@@ -23,6 +23,7 @@
     <script src="assets/js/theme-init.js"></script>
     <script>document.documentElement.classList.add('lazy-art');   // cards.js loads card art as it nears view</script>
     <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/pack.css">
 </head>
 <body data-card-style="gilt">
 
@@ -36,6 +37,7 @@
                 <a href="#projects">Projects</a>
                 <a href="experiments/media/">Play</a>
                 <a href="#about">About me</a>
+                <button type="button" class="pack-sticker" id="rip-pack" aria-haspopup="dialog" aria-controls="pack-dialog" hidden><span>RIP A PACK!!</span></button>
             </nav>
             <button id="theme-toggle" type="button">MODE: <span>DARK</span></button>
         </div>
@@ -314,8 +316,44 @@
         </main>
     </div>
 
+    <dialog id="pack-dialog" class="pack-dialog" aria-labelledby="pack-heading">
+        <header class="pack-bar">
+            <h2 id="pack-heading">Project pack</h2>
+            <button type="button" class="pack-close" aria-label="Close pack">×</button>
+        </header>
+        <div class="pack-stage">
+            <div class="pack-sealed">
+                <div class="pack-wrapper" aria-hidden="true">
+                    <div class="pack-lid"><span>Henry Gleeson</span><b>HG / 01</b></div>
+                    <div class="pack-print">
+                        <div class="pack-illustration"></div>
+                        <strong>Project<br>Pack<span>!!</span></strong>
+                        <div class="pack-imprint"><span>6 project cards</span><i></i></div>
+                    </div>
+                    <div class="pack-seam"><i></i><span>››</span></div>
+                </div>
+                <p class="pack-hint">Slide across the top seam to rip it open <span aria-hidden="true">→</span></p>
+                <button class="pack-text-button" type="button" id="pack-open">Open pack</button>
+            </div>
+            <div class="pack-reveal" hidden>
+                <p class="pack-counter" aria-live="polite" aria-atomic="true"></p>
+                <div class="pack-stack">
+                    <div class="pack-face"></div>
+                    <button class="pack-advance" type="button"></button>
+                </div>
+                <a class="pack-project-link">Open project <span aria-hidden="true">↗</span></a>
+            </div>
+            <div class="pack-collection" hidden>
+                <h3>Your six cards</h3>
+                <ol class="pack-list"></ol>
+                <button class="pack-again" type="button">Rip another pack <span aria-hidden="true">↗</span></button>
+            </div>
+        </div>
+    </dialog>
+
     <script src="assets/js/theme.js"></script>
     <script src="assets/js/cards.js"></script>
+    <script src="assets/js/pack.js"></script>
 
 </body>
 </html>

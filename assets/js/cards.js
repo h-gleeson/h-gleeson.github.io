@@ -474,7 +474,7 @@
     }
 
     // shared with the card workshop (experiments/cards/)
-    window.SiteCards = { fitScale: fitScale, FIT_MIN: FIT_MIN };
+    window.SiteCards = { fitScale: fitScale, FIT_MIN: FIT_MIN, makeFullArt: makeFullArt };
 
     document.addEventListener('DOMContentLoaded', function () {
         resolveArt();
