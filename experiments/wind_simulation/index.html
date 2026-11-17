@@ -89,6 +89,18 @@
         #compass { position: absolute; right: 16px; top: 14px; width: 46px; text-align: center; font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); pointer-events: none; }
         #windArrow { font-size: 26px; line-height: 1; color: var(--orange); transition: transform .15s; }
         #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); letter-spacing: .12em; color: var(--text-dim); pointer-events: none; }
+        #progs { max-height: 40vh; overflow-y: auto; }
+        #model-status { margin: 0; word-break: break-word; }
+        #model-status.err { color: var(--orange); }
+        #stage.drop::after {
+            content: 'DROP .GLB TO LOAD';
+            position: absolute; inset: 12px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px dashed var(--orange);
+            background: color-mix(in srgb, var(--bg) 70%, transparent);
+            font-family: var(--mono); letter-spacing: .12em; color: var(--text-bright);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -112,6 +124,21 @@
                     <button data-view="plan" class="on">PLAN</button>
                     <button data-view="persp">3D</button>
                 </div>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Model</span>
+                <div class="btn-row">
+                    <button class="btn" id="upload-btn">UPLOAD GLB</button>
+                    <button class="btn" id="default-model">DEFAULT</button>
+                </div>
+                <input type="file" id="upload" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" multiple hidden>
+                <label class="ctl">
+                    <span class="row"><span>Model scale</span><span id="ms-val">100%</span></span>
+                    <input type="range" id="ms" min="25" max="150" step="5" value="100">
+                </label>
+                <p class="hint" id="model-status">Loading the default massing…</p>
+                <p class="hint">Upload or drop one or more <b>.glb</b> files. Each object becomes a mass you can move. Uploads are scaled to fit the site and sit on the ground.</p>
             </div>
 
             <div class="info-block">
@@ -187,7 +214,7 @@
                 <span class="info-label">Description</span>
                 <div class="info-value">
                     <strong>Overview</strong>
-                    Draw walls over a massing model and watch the wind move through it. The wind is a stack of five 2D lattice Boltzmann flow slices, from ground level up to 34 units. Each slice only sees the masses and walls tall enough to reach it, so air higher up passes straight over lower volumes, and particles that meet a low roof or wall rise over it. It is an approximation rather than full 3D CFD, but it shows where wind funnels, stalls and slips over.
+                    Draw walls over a massing model (the default one, or your own .glb) and watch the wind move through it. The wind is a stack of five 2D lattice Boltzmann flow slices, from ground level up to 34 units. Each slice only sees the masses and walls tall enough to reach it, so air higher up passes straight over lower volumes, and particles that meet a low roof or wall rise over it. It is an approximation rather than full 3D CFD, but it shows where wind funnels, stalls and slips over.
                 </div>
             </div>
 
@@ -207,6 +234,8 @@
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+    import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
     /* ── Program names, in the same order as the objects in BuildingMassing.glb.
           Fill these in; anything left out shows as "Program NN". Names can also
@@ -338,6 +367,7 @@
     let selected = -1;
     let tool = 'move', style = 'pen';
     let maskDirty = true;
+    let ready = false;
     const wind = { dirx: 1, dirz: 0, vx: 0, vy: 0, U: 0 };
     let omega = 1.78;
 
@@ -948,9 +978,10 @@
     });
 
     /* ── Program names + selection ────────────────────────────────────────── */
+    const pad = (n) => String(n).padStart(2, '0');
+    let source = null;   // { label, key, fit, parts: [{ name, pos }] }; pos = world-space triangle soup (x, y, z per vertex)
     let names = [];
-    try { names = JSON.parse(localStorage.getItem('wind_programs') || '[]'); } catch (e) { names = []; }
-    const nameOf = (i) => names[i] || PROGRAMS[i] || ('Program ' + String(i + 1).padStart(2, '0'));
+    const nameOf = (i) => names[i] || (source && source.parts[i] && source.parts[i].name) || ('Program ' + pad(i + 1));
     function select(i) {
         selected = i;
         masses.forEach((m, k) => {
@@ -960,92 +991,298 @@
         });
     }
 
-    /* ── Load the massing model ───────────────────────────────────────────── */
+    /* ── Massing model: the default site, or GLB files the visitor uploads ── */
+    const MAX_MASSES = 60;              // more objects than this get grouped together
+    const FIT = 0.6;                    // uploads are scaled so their footprint fills this much of the site
+    const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/libs/draco/gltf/');
+    const loader = new GLTFLoader().setDRACOLoader(draco).setMeshoptDecoder(MeshoptDecoder);
+
+    function setStatus(text, err) {
+        const el = $('#model-status');
+        el.textContent = text;
+        el.classList.toggle('err', !!err);
+    }
+    function setLoading(text) {
+        const el = $('#loading');
+        el.textContent = text || '';
+        el.style.display = text ? '' : 'none';
+    }
+
+    // Names exported from Rhino, Blender etc.; skip the generic ones like "mesh_0" or "Object 12".
+    function cleanName(n) {
+        if (!n) return '';
+        n = n.replace(/_/g, ' ').trim();
+        return /^(mesh|node|object|group|geometry|brep|polysurface|extrusion)?\s*[\d.\s]*$/i.test(n) ? '' : n;
+    }
+
+    // Bake a set of meshes into one world-space, non-indexed position array.
+    function worldPositions(objs) {
+        const jobs = [];
+        let total = 0;
+        const im = new THREE.Matrix4();
+        for (const o of objs) {
+            const geo = o.geometry, idx = geo.index;
+            const n = idx ? idx.count : geo.attributes.position.count;
+            const tris = n - (n % 3);
+            if (o.isInstancedMesh) {
+                for (let k = 0; k < o.count; k++) {
+                    o.getMatrixAt(k, im);
+                    jobs.push([geo, tris, new THREE.Matrix4().multiplyMatrices(o.matrixWorld, im)]);
+                    total += tris;
+                }
+            } else {
+                jobs.push([geo, tris, o.matrixWorld]);
+                total += tris;
+            }
+        }
+        const out = new Float32Array(total * 3);
+        const v = new THREE.Vector3();
+        let w = 0;
+        for (const [geo, tris, mat] of jobs) {
+            const pos = geo.attributes.position, idx = geo.index;
+            for (let q = 0; q < tris; q++) {
+                v.fromBufferAttribute(pos, idx ? idx.getX(q) : q).applyMatrix4(mat);
+                out[w++] = v.x; out[w++] = v.y; out[w++] = v.z;
+            }
+        }
+        return out;
+    }
+
+    // One part per mesh; if the file has a lot of meshes, one part per top-level object instead.
+    function extractParts(gltf) {
+        const root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
+        if (!root) return [];
+        root.updateMatrixWorld(true);
+        const meshes = [];
+        root.traverse(o => { if (o.isMesh && o.geometry && o.geometry.attributes.position) meshes.push(o); });
+        if (meshes.length <= MAX_MASSES) {
+            return meshes.map(o => ({ name: cleanName(o.name) || cleanName(o.parent && o.parent.name), pos: worldPositions([o]) }));
+        }
+        let top = root;
+        while (top.children.length === 1 && !top.isMesh) top = top.children[0];
+        const groups = new Map();
+        for (const o of meshes) {
+            let a = o;
+            while (a.parent && a.parent !== top) a = a.parent;
+            if (!groups.has(a)) groups.set(a, []);
+            groups.get(a).push(o);
+        }
+        return [...groups].map(([a, objs]) => ({ name: cleanName(a.name), pos: worldPositions(objs) }));
+    }
+
+    // Still too many parts: merge neighbours on a coarsening plan grid until there are few enough.
+    function clusterParts(parts) {
+        if (parts.length <= MAX_MASSES) return parts;
+        const cs = parts.map(p => {
+            let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+            for (let k = 0; k < p.pos.length; k += 3) {
+                const x = p.pos[k], z = p.pos[k + 2];
+                if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z;
+            }
+            return [(x0 + x1) / 2, (z0 + z1) / 2];
+        });
+        let mx = Infinity, Mx = -Infinity, mz = Infinity, Mz = -Infinity;
+        cs.forEach(([x, z]) => { mx = Math.min(mx, x); Mx = Math.max(Mx, x); mz = Math.min(mz, z); Mz = Math.max(Mz, z); });
+        let cell = Math.max(Mx - mx, Mz - mz, 1e-6) / 20;
+        let buckets;
+        for (;;) {
+            buckets = new Map();
+            parts.forEach((p, i) => {
+                const key = Math.floor((cs[i][0] - mx) / cell) + ',' + Math.floor((cs[i][1] - mz) / cell);
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key).push(p);
+            });
+            if (buckets.size <= MAX_MASSES) break;
+            cell *= 1.4;
+        }
+        return [...buckets.values()].map(ps => {
+            if (ps.length === 1) return ps[0];
+            const pos = new Float32Array(ps.reduce((s, p) => s + p.pos.length, 0));
+            let o = 0;
+            ps.forEach(p => { pos.set(p.pos, o); o += p.pos.length; });
+            return { name: '', pos };
+        });
+    }
+
+    function clearMasses() {
+        for (const m of masses) {
+            scene.remove(m.pivot);
+            m.mesh.geometry.dispose();
+            m.edges.geometry.dispose();
+            m.mat.dispose();
+            m.label.remove();
+            m.row.remove();
+        }
+        masses.length = 0;
+        selected = -1;
+        drag = null;
+    }
+
+    function buildMasses() {
+        ready = false;
+        clearMasses();
+        const parts = source.parts;
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, z0 = Infinity, z1 = -Infinity;
+        for (const p of parts) {
+            const a = p.pos;
+            for (let k = 0; k < a.length; k += 3) {
+                if (a[k] < x0) x0 = a[k]; if (a[k] > x1) x1 = a[k];
+                if (a[k + 1] < y0) y0 = a[k + 1];
+                if (a[k + 2] < z0) z0 = a[k + 2]; if (a[k + 2] > z1) z1 = a[k + 2];
+            }
+        }
+        // the default model keeps its own units and ground level; uploads are fitted to the site and set on the ground
+        const fit = source.fit ? Math.min(FIT * DOM_W / Math.max(x1 - x0, 1e-6), FIT * DOM_D / Math.max(z1 - z0, 1e-6)) : 1;
+        const s = fit * parseInt($('#ms').value, 10) / 100;
+        const ox = (x0 + x1) / 2, oz = (z0 + z1) / 2, oy = source.fit ? y0 : 0;
+        const showLabels = $('#show-labels').checked;
+
+        parts.forEach((part, i) => {
+            const src = part.pos, p = new Float32Array(src.length);
+            let bx0 = Infinity, bx1 = -Infinity, bz0 = Infinity, bz1 = -Infinity, top = -Infinity;
+            for (let k = 0; k < src.length; k += 3) {
+                const x = p[k] = (src[k] - ox) * s, y = p[k + 1] = (src[k + 1] - oy) * s, z = p[k + 2] = (src[k + 2] - oz) * s;
+                if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
+                if (z < bz0) bz0 = z; if (z > bz1) bz1 = z;
+                if (y > top) top = y;
+            }
+            const cx = (bx0 + bx1) / 2, cz = (bz0 + bz1) / 2;     // pivot at the footprint centre
+            for (let k = 0; k < p.length; k += 3) { p[k] -= cx; p[k + 2] -= cz; }
+
+            // plan triangles for the flow mask; vertical faces have no footprint, so they are dropped here
+            const tri = [], triY = [];
+            for (let q = 0; q < p.length; q += 9) {
+                const ax = p[q], az = p[q + 2], bx = p[q + 3], bz = p[q + 5], qx = p[q + 6], qz = p[q + 8];
+                if (Math.abs((bx - ax) * (qz - az) - (bz - az) * (qx - ax)) < 1e-6) continue;
+                const ya = p[q + 1], yb = p[q + 4], yc = p[q + 7];
+                tri.push(ax, az, bx, bz, qx, qz);
+                triY.push((ya + yb + yc) / 3, Math.max(ya, yb, yc));
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+            geo.computeVertexNormals();
+            const color = new THREE.Color().setHSL(i / parts.length, 0.38, 0.56);
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geo, mat);
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat);
+            mesh.add(edges);
+            const pivot = new THREE.Group();
+            pivot.position.set(cx, 0, cz);
+            pivot.add(mesh);
+            scene.add(pivot);
+
+            const label = document.createElement('div');
+            label.className = 'label';
+            label.style.display = showLabels ? '' : 'none';
+            stage.appendChild(label);
+
+            const row = document.createElement('div');
+            row.className = 'prog';
+            row.innerHTML = '<span class="num">' + pad(i + 1) + '</span><span class="sw"></span><input type="text" spellcheck="false">';
+            row.querySelector('.sw').style.background = '#' + color.getHexString();
+            const input = row.querySelector('input');
+            input.value = nameOf(i);
+            input.addEventListener('input', () => {
+                names[i] = input.value;
+                label.textContent = pad(i + 1) + '  ' + input.value;
+                try { localStorage.setItem(source.key, JSON.stringify(names)); } catch (e) { /* storage unavailable */ }
+            });
+            row.addEventListener('click', () => select(i));
+            $('#progs').appendChild(row);
+
+            const m = {
+                i, pivot, mesh, edges, mat, tri: new Float32Array(tri), triY: new Float32Array(triY),
+                top, label, row, home: pivot.position.clone()
+            };
+            mesh.userData.mass = m;
+            label.textContent = pad(i + 1) + '  ' + nameOf(i);
+            masses.push(m);
+        });
+
+        select(-1);
+        rebuildMask();
+        resetAll();
+        for (let p = 0; p < PMAX; p++) spawn(p, true);
+        ready = true;
+    }
+
+    function setSource(src) {
+        source = src;
+        try { names = JSON.parse(localStorage.getItem(src.key) || '[]'); } catch (e) { names = []; }
+        $('#ms').value = 100;
+        $('#ms-val').textContent = '100%';
+        buildMasses();
+        setLoading('');
+        const tris = src.parts.reduce((t, p) => t + p.pos.length / 9, 0);
+        setStatus(src.label + ' · ' + masses.length + (masses.length === 1 ? ' mass · ' : ' masses · ') + Math.round(tris).toLocaleString() + ' triangles');
+    }
+
+    function loadDefault() {
+        setLoading('LOADING MASSING…');
+        loader.load('BuildingMassing.glb', (gltf) => {
+            const parts = extractParts(gltf).map((p, i) => ({ ...p, name: PROGRAMS[i] || p.name }));
+            setSource({ label: 'Default massing', key: 'wind_programs', fit: false, parts });
+        }, undefined, () => {
+            setLoading('');
+            setStatus('Could not load BuildingMassing.glb', true);
+        });
+    }
+
+    async function loadFiles(list) {
+        const files = [...list].filter(f => /\.(glb|gltf)$/i.test(f.name));
+        if (!files.length) { setStatus('Only .glb or .gltf files can be loaded.', true); return; }
+        const label = files.length === 1 ? files[0].name : files.length + ' files';
+        setLoading('LOADING ' + label.toUpperCase() + '…');
+        try {
+            let parts = [];
+            for (const f of files) {
+                const gltf = await loader.parseAsync(await f.arrayBuffer(), '');
+                parts = parts.concat(extractParts(gltf));
+            }
+            parts = clusterParts(parts.filter(p => p.pos.length >= 9));
+            if (!parts.length) throw new Error('no meshes found in the file');
+            setSource({ label, key: 'wind_programs:' + files.map(f => f.name).join('|'), fit: true, parts });
+        } catch (err) {
+            setLoading('');
+            const why = /fetch|URL/i.test(String(err && err.message)) ? 'it refers to external files; export a single .glb instead' : (err && err.message) || err;
+            setStatus('Could not load ' + label + ': ' + why, true);
+        }
+    }
+
+    $('#upload-btn').addEventListener('click', () => $('#upload').click());
+    $('#upload').addEventListener('change', (e) => {
+        if (e.target.files.length) loadFiles(e.target.files);
+        e.target.value = '';
+    });
+    $('#default-model').addEventListener('click', loadDefault);
+    $('#ms').addEventListener('input', () => { $('#ms-val').textContent = $('#ms').value + '%'; });
+    $('#ms').addEventListener('change', () => { if (source) buildMasses(); });
+
+    let dragDepth = 0;
+    stage.addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; stage.classList.add('drop'); });
+    stage.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    stage.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; stage.classList.remove('drop'); } });
+    stage.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragDepth = 0;
+        stage.classList.remove('drop');
+        if (e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
+    });
+
     readTheme();
     updateWind();
     if (location.hash === '#3d') setView('persp');
     resize();
     setHud();
     stage.style.cursor = 'default';
-
-    new GLTFLoader().load('BuildingMassing.glb', (gltf) => {
-        gltf.scene.updateMatrixWorld(true);
-        const meshes = [];
-        gltf.scene.traverse(o => { if (o.isMesh) meshes.push(o); });
-
-        // bake world transforms, then recentre the whole site on the origin in plan
-        const geos = meshes.map(m => m.geometry.clone().applyMatrix4(m.matrixWorld));
-        const all = new THREE.Box3();
-        geos.forEach(geo => { geo.computeBoundingBox(); all.union(geo.boundingBox); });
-        const C = all.getCenter(new THREE.Vector3());
-
-        geos.forEach((geo, i) => {
-            const b = geo.boundingBox;
-            const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
-            geo.translate(-cx, 0, -cz);              // pivot at the footprint centre
-
-            const pos = geo.attributes.position, idx = geo.index;
-            const count = idx ? idx.count : pos.count;
-            const tri = new Float32Array(count * 2);
-            const triY = new Float32Array(count / 3 * 2);       // per triangle: average and max height
-            for (let q = 0; q < count; q++) {
-                const v = idx ? idx.getX(q) : q;
-                tri[q * 2] = pos.getX(v); tri[q * 2 + 1] = pos.getZ(v);
-            }
-            for (let q = 0; q < count; q += 3) {
-                let sum = 0, mx = -1e9;
-                for (let a = 0; a < 3; a++) {
-                    const y = pos.getY(idx ? idx.getX(q + a) : q + a);
-                    sum += y; if (y > mx) mx = y;
-                }
-                triY[q / 3 * 2] = sum / 3; triY[q / 3 * 2 + 1] = mx;
-            }
-
-            const color = new THREE.Color().setHSL(i / meshes.length, 0.38, 0.56);
-            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0 });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat));
-            const pivot = new THREE.Group();
-            pivot.position.set(cx - C.x, 0, cz - C.z);
-            pivot.add(mesh);
-            scene.add(pivot);
-
-            const label = document.createElement('div');
-            label.className = 'label';
-            stage.appendChild(label);
-
-            const row = document.createElement('div');
-            row.className = 'prog';
-            row.innerHTML = '<span class="num">' + String(i + 1).padStart(2, '0') + '</span><span class="sw"></span><input type="text" spellcheck="false">';
-            row.querySelector('.sw').style.background = '#' + color.getHexString();
-            const input = row.querySelector('input');
-            input.value = nameOf(i);
-            input.addEventListener('input', () => {
-                names[i] = input.value;
-                m.label.textContent = String(i + 1).padStart(2, '0') + '  ' + input.value;
-                try { localStorage.setItem('wind_programs', JSON.stringify(names)); } catch (e) { /* storage unavailable */ }
-            });
-            row.addEventListener('click', () => select(i));
-            $('#progs').appendChild(row);
-
-            const m = { i, pivot, mesh, mat, tri, triY, top: b.max.y, label, row, home: pivot.position.clone() };
-            mesh.userData.mass = m;
-            label.textContent = String(i + 1).padStart(2, '0') + '  ' + nameOf(i);
-            masses.push(m);
-        });
-
-        $('#loading').remove();
-        select(-1);
-        rebuildMask();
-        resetAll();
-        ready = true;
-    }, undefined, () => { $('#loading').textContent = 'COULD NOT LOAD BuildingMassing.glb'; });
+    loadDefault();
 
     new MutationObserver(() => { readTheme(); select(selected); })
         .observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
 
     /* ── Frame loop ───────────────────────────────────────────────────────── */
-    let ready = false, simSteps = 2, simMs = 10;
+    let simSteps = 2, simMs = 10;
     const lv = new THREE.Vector3();
     function updateLabels() {
         const w = stage.clientWidth, h = stage.clientHeight, c = cam();
