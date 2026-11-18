@@ -51,11 +51,17 @@ export function ViewStrip() {
   const cut = useStore((s) => s.doc.section.enabled);
   const exploded = useStore((s) => s.doc.explode.amount > 0.5 && Object.keys(s.doc.explode.offsets).length > 0);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [showViews, setShowViews] = useState(false);
 
   return (
     <div className="viewstrip">
-      <div className="vs-group" aria-label="Projection presets">
-        <span className="vs-label">Projections</span>
+      <button className="vs-library-toggle" aria-expanded={showViews} aria-controls="projection-library saved-view-library" onClick={() => setShowViews(!showViews)}>
+        <span aria-hidden>{showViews ? '▾' : '▸'}</span>
+        Views &amp; saved views
+        <span className="muted">{views.length ? `${views.length} saved` : 'Projection presets & camera bookmarks'}</span>
+      </button>
+      <div className="vs-group" id="projection-library" aria-label="Projection presets" hidden={!showViews}>
+        <span className="vs-label">Choose a view</span>
         <div className="vs-presets">
           {CAMERA_PRESETS.map((p) => (
             <button
@@ -72,7 +78,7 @@ export function ViewStrip() {
         </div>
       </div>
 
-      <div className="vs-group grow" aria-label="Saved views">
+      <div className="vs-group grow" id="saved-view-library" aria-label="Saved views" hidden={!showViews}>
         <span className="vs-label">Saved views</span>
         <div className="vs-views">
           {views.map((v, i) => (
@@ -121,21 +127,25 @@ export function ViewStrip() {
             Parallel
           </button>
           <button className={camera.projection === 'persp' ? 'on' : ''} onClick={() => camera.projection !== 'persp' && actions.toggleProjection()} title="Perspective (O)">
-            Persp.
+            Perspective
           </button>
         </div>
         <div className="vs-iconrow">
           <button className={`icon-btn ${camera.locked ? 'on' : ''}`} onClick={actions.toggleViewLock} title="Lock view orientation (Shift+L)">
             {Icon.lock(camera.locked)}
+            <span>Lock view</span>
           </button>
           <button className="icon-btn" onClick={actions.fitAll} title="Fit all (F)">
             {Icon.fit}
+            <span>Fit all</span>
           </button>
           <button className="icon-btn" disabled={!hasSel} onClick={actions.fitSelection} title="Fit selection (Shift+F)">
             {Icon.target}
+            <span>Fit selected</span>
           </button>
           <button className={`icon-btn ${showGrid ? 'on' : ''}`} onClick={() => actions.setDrawing('showGrid', !showGrid)} title="Ground grid (G)">
             {Icon.grid}
+            <span>Grid</span>
           </button>
           <button className={`icon-btn ${cut ? 'on' : ''}`} onClick={sectionActions.toggle} title="Plan / section cut (X)">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round">
@@ -143,14 +153,17 @@ export function ViewStrip() {
               <path d="M1 8.5h14" strokeWidth="1.8" />
               <path d="M2.5 10.5 8 13.5l5.5-3V8.5h-11z" fill="currentColor" stroke="none" opacity="0.35" />
             </svg>
+            <span>Section</span>
           </button>
           <button className={`icon-btn ${tool === 'move' ? 'on' : ''}`} onClick={explodeActions.toggleMoveTool} title="Move tool: drag parts apart (W)">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 1.5v13M1.5 8h13M8 1.5 6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2" />
             </svg>
+            <span>Move parts</span>
           </button>
           <button className={`icon-btn ${tool === 'match' ? 'on' : ''}`} onClick={matchActions.toggle} title="Match properties: copy one object's fill, lines, hatch and cut style to others (M)">
             <EyedropperIcon />
+            <span>Match style</span>
           </button>
           <button className={`icon-btn ${exploded ? 'on' : ''}`} onClick={explodeActions.toggleExploded} title="Assembled ↔ exploded (E)">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round">
@@ -158,6 +171,7 @@ export function ViewStrip() {
               <path d="M3 6 8 8.5 13 6 8 3.5z" />
               <path d="M8 1v1.5M8 8.5v.5" strokeDasharray="1.2 1.2" />
             </svg>
+            <span>Explode</span>
           </button>
         </div>
         <span className="vs-readout" title="Azimuth · elevation">

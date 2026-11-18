@@ -96,7 +96,7 @@ export function StylePresets() {
         </div>
       </div>
       <p className="hint">
-        A style sets the object defaults, shadows, ground, hidden lines and background. Graphic styles also set the whole-drawing image effect (fine-tune it in the Effects tab); layer looks are kept. Grid, sun direction and lineweight reference stay as they are.
+        A style sets the object defaults, shadows, ground, hidden lines and background. Graphic styles also set the whole-drawing image effect (fine-tune it in the Image effects section); layer looks are kept. Grid, sun direction and lineweight reference stay as they are.
         {overrides > 0 && !clear && ` ${overrides} object${overrides > 1 ? 's have' : ' has'} own overrides, which will be kept.`}
       </p>
     </>

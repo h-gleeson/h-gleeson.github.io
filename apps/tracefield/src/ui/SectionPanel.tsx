@@ -5,7 +5,7 @@ import { store, useStore } from '../state/store';
 import type { SectionSettings } from '../state/types';
 import { NumberField, Row, Section, Segmented, Slider, Toggle } from './controls';
 
-/** Section cut controls (View tab). */
+/** Section cut controls (Camera & sections panel). */
 export function SectionPanel() {
   const s = useStore((st) => st.doc.section);
   const handle = useStore((st) => st.ui.sectionHandle);
@@ -61,7 +61,7 @@ export function SectionPanel() {
         <Toggle value={s.cutLines} onChange={(v) => sec.set('cutLines', v)} />
       </Row>
       <p className="hint">
-        Poché colour, hatch and cut lineweight are set per object in the <b>Style</b> tab under <i>Section cut</i>. Set them on a group (walls, slabs, glass) and everything inside follows; with nothing selected they set the drawing default.
+        Poché colour, hatch and cut lineweight are set per object in the <b>Style &amp; linework</b> section under <i>Section cut</i>. Set them on a group (walls, slabs, glass) and everything inside follows; with nothing selected they set the drawing default.
       </p>
       <p className="hint">Poché needs closed (watertight) meshes; open surfaces get a cut line but no fill. Saved views remember their cut, so you can keep a plan per level and named sections.</p>
     </Section>

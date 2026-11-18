@@ -30,14 +30,15 @@ export function ScenePanel() {
   }, [doc.nodes]);
 
   return (
-    <aside className="panel left">
+    <aside className="panel left" id="scene-panel" aria-label="Scene objects">
       <div className="panel-head">
         <div className="panel-title">
-          <span>Scene</span>
+          <span>Objects</span>
           <span className="muted">
             {counts.objects.toLocaleString()} objects · {counts.groups.toLocaleString()} groups
           </span>
         </div>
+        <p className="panel-intro">Select and organise the parts of your model.</p>
         <div className="import-row">
           <button className="btn primary grow" onClick={() => fileRef.current?.click()} title="Import GLB, glTF, OBJ, STL, FBX, or images as planes (Ctrl+I)">
             Import model
@@ -96,7 +97,8 @@ export function ScenePanel() {
       <div className="filter-wrap">
         <input
           className="filter"
-          placeholder="Search nodes…"
+          placeholder="Find an object or group…"
+          aria-label="Find an object or group"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           onKeyDown={(e) => {
@@ -120,7 +122,7 @@ export function ScenePanel() {
           if (id && e.target === e.currentTarget) actions.reparent(id, null);
         }}
       >
-        {!doc.roots.length && <div className="tree-empty">Imported models appear here with their original node hierarchy.</div>}
+        {!doc.roots.length && <div className="tree-empty"><span className="tree-empty-icon">{Icon.model}</span><strong>Your model, organised.</strong><p>Imported objects and groups appear here. Select a part to adjust its appearance in the Inspector.</p></div>}
         {doc.roots.map((id) => (
           <TreeRow key={id} id={id} depth={0} doc={doc} selSet={selSet} renaming={ui.renaming} match={match} pages={pages} setPages={setPages} />
         ))}

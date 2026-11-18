@@ -15,11 +15,30 @@ export function App() {
   const importRef = useRef<HTMLInputElement>(null);
   const openRef = useRef<HTMLInputElement>(null);
   const [help, setHelp] = useState(false);
+  const [sceneVisible, setSceneVisible] = useState(() => window.innerWidth >= 1180);
+  const [inspectorVisible, setInspectorVisible] = useState(() => window.innerWidth >= 760);
+  const inspectorRequest = useStore((s) => s.ui.inspectorTab);
+  const output = useStore((s) => s.doc.output);
   const status = useStore((s) => s.ui.status);
   const name = useStore((s) => s.doc.name);
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
   const hasContent = useStore((s) => s.doc.roots.length > 0);
+
+  useEffect(() => { if (inspectorRequest) setInspectorVisible(true); }, [inspectorRequest]);
+
+  useEffect(() => {
+    const narrow = window.matchMedia('(max-width: 1179px)');
+    const mobile = window.matchMedia('(max-width: 759px)');
+    const hideScene = (e: MediaQueryListEvent) => { if (e.matches) setSceneVisible(false); };
+    const hideInspector = (e: MediaQueryListEvent) => { if (e.matches) setInspectorVisible(false); };
+    narrow.addEventListener('change', hideScene);
+    mobile.addEventListener('change', hideInspector);
+    return () => {
+      narrow.removeEventListener('change', hideScene);
+      mobile.removeEventListener('change', hideInspector);
+    };
+  }, []);
 
   useEffect(() => {
     hasAutosave()
@@ -48,7 +67,7 @@ export function App() {
   }, [name]);
 
   return (
-    <div className="app">
+    <div className={`app${sceneVisible ? '' : ' scene-hidden'}${inspectorVisible ? '' : ' inspector-hidden'}`}>
       <header className="topbar">
         <a className="back" href="../../" title="Back to hsgleeson.xyz">
           ←
@@ -101,11 +120,8 @@ export function App() {
             {Icon.redo}
           </button>
         </nav>
-        <div className={`status ${status?.kind ?? ''}`} role="status" aria-live="polite">
-          {status?.text}
-        </div>
         <button className="help-btn" onClick={() => setHelp(!help)} title="Keyboard shortcuts (?)">
-          ?
+          <span aria-hidden>?</span> Help
         </button>
         <input ref={importRef} type="file" multiple accept={ACCEPT} hidden onChange={(e) => { const f = Array.from(e.target.files ?? []); e.target.value = ''; importFiles(f); }} />
         <input ref={openRef} type="file" accept=".tracefield" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) openProjectFile(f); }} />
@@ -113,11 +129,22 @@ export function App() {
       <main className="main">
         <ScenePanel />
         <div className="stage">
+          <div className="workspace-heading">
+            <div className="workspace-title"><strong>Drawing workspace</strong><span>{output.width.toLocaleString()} × {output.height.toLocaleString()} px</span></div>
+            <div className="panel-switches" aria-label="Workspace panels">
+              <button aria-expanded={sceneVisible} aria-controls="scene-panel" className={sceneVisible ? 'on' : ''} onClick={() => { setSceneVisible(!sceneVisible); if (!sceneVisible && window.innerWidth < 760) setInspectorVisible(false); }}>{Icon.group}<span>Objects</span></button>
+              <button aria-expanded={inspectorVisible} aria-controls="inspector-panel" className={inspectorVisible ? 'on' : ''} onClick={() => { setInspectorVisible(!inspectorVisible); if (!inspectorVisible && window.innerWidth < 760) setSceneVisible(false); }}>{Icon.menu}<span>Inspector</span></button>
+            </div>
+          </div>
           <Viewport onImport={() => importRef.current?.click()} />
           <ViewStrip />
         </div>
         <Inspector />
       </main>
+      <footer className="workspace-footer">
+        <div className={`status ${status?.kind ?? ''}`} role="status" aria-live="polite">{status?.text ?? (hasContent ? 'Ready to draw' : 'Import a model or try the sample studio to begin.')}</div>
+        <span className="navigation-hint">Drag to orbit <span>·</span> Shift + drag to pan <span>·</span> Scroll to zoom <kbd>F</kbd> Fit drawing</span>
+      </footer>
       {help && (
         <div className="help-overlay" onClick={() => setHelp(false)}>
           <div className="help" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Keyboard shortcuts">

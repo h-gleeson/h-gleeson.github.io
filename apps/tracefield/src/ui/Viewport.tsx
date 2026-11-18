@@ -111,14 +111,15 @@ export function Viewport({ onImport }: { onImport: () => void }) {
               <path d="M8 19 32 6l24 13" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1>Turn a model into a drawing</h1>
-          <p>Drop a GLB, glTF, OBJ, STL or FBX here — or a .tracefield project. Images (PNG, JPEG, WebP) come in as planes you can move, rotate and scale. The file’s node hierarchy is kept intact.</p>
+          <span className="empty-eyebrow">MODEL → DRAWING</span>
+          <h1>A new perspective<br />on your model.</h1>
+          <p>Bring in a 3D model. Choose your view, shape the linework, and compose a drawing that’s yours.</p>
           <div className="btn-row center">
             <button className="btn primary" onClick={onImport}>
               Import model…
             </button>
             <button className="btn" onClick={loadSample}>
-              Load sample studio
+              Try the sample studio
             </button>
             {restore && (
               <button className="btn accent-outline" onClick={restoreAutosave}>
@@ -126,6 +127,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
               </button>
             )}
           </div>
+          <p className="empty-formats">Drop a GLB, glTF, OBJ, STL or FBX to begin.<br />You can also add images or open a .tracefield project.</p>
         </div>
       )}
 

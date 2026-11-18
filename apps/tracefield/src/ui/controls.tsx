@@ -1,27 +1,31 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { store } from '../state/store';
 
 export function Section(p: { title: string; right?: ReactNode; children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(p.defaultOpen ?? true);
+  const id = useId();
   return (
     <section className={`section ${open ? 'open' : ''}`}>
-      <header className="section-head" onClick={() => setOpen(!open)}>
-        <span className="caret">{open ? '−' : '+'}</span>
-        <span className="section-title">{p.title}</span>
-        <span className="section-right" onClick={(e) => e.stopPropagation()}>
-          {p.right}
-        </span>
+      <header className="section-head">
+        <button className="section-toggle" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={id}>
+          <span className="caret" aria-hidden>{open ? '−' : '+'}</span>
+          <span className="section-title">{p.title}</span>
+        </button>
+        {p.right && <span className="section-right">{p.right}</span>}
       </header>
-      {open && <div className="section-body">{p.children}</div>}
+      <div id={id} className="section-body" hidden={!open}>{p.children}</div>
     </section>
   );
 }
 
 /** A labelled row. `overridden` shows a reset mark; `inherited` names where the value comes from. */
+const FieldLabel = createContext<string | undefined>(undefined);
+
 export function Row(p: { label: string; title?: string; overridden?: boolean; inherited?: string; onReset?: () => void; stacked?: boolean; children: ReactNode }) {
+  const id = useId();
   return (
-    <div className={`row ${p.stacked ? "stacked" : ""}`} title={p.title}>
-      <label className={p.overridden ? 'ovr' : p.inherited ? 'inh' : ''}>
+    <div className={`row ${p.stacked ? "stacked" : ""}`} title={p.title} role="group" aria-labelledby={id}>
+      <label id={id} className={p.overridden ? 'ovr' : p.inherited ? 'inh' : ''}>
         {p.overridden && (
           <button className="reset-mark" title="Remove this override (use inherited value)" onClick={p.onReset}>
             ●
@@ -30,7 +34,7 @@ export function Row(p: { label: string; title?: string; overridden?: boolean; in
         {p.inherited && !p.overridden && <span className="inh-mark" title={`Inherited from ${p.inherited}`}>↳</span>}
         <span>{p.label}</span>
       </label>
-      <div className="row-ctl">{p.children}</div>
+      <div className="row-ctl"><FieldLabel.Provider value={p.label}>{p.children}</FieldLabel.Provider></div>
     </div>
   );
 }
@@ -38,6 +42,7 @@ export function Row(p: { label: string; title?: string; overridden?: boolean; in
 const fmt = (v: number, precision: number) => (isFinite(v) ? Number(v.toFixed(precision)).toString() : '');
 
 export function NumberField(p: { value: number; onChange: (v: number) => void; step?: number; min?: number; max?: number; precision?: number; unit?: string }) {
+  const label = useContext(FieldLabel);
   const precision = p.precision ?? 2;
   const step = p.step ?? 0.1;
   const [text, setText] = useState(fmt(p.value, precision));
@@ -74,6 +79,7 @@ export function NumberField(p: { value: number; onChange: (v: number) => void; s
       />
       <input
         value={text}
+        aria-label={label ? `${label}${p.unit ? ` (${p.unit})` : ''}` : undefined}
         inputMode="decimal"
         onFocus={(e) => {
           setEditing(true);
@@ -103,11 +109,13 @@ export function NumberField(p: { value: number; onChange: (v: number) => void; s
 }
 
 export function Slider(p: { value: number; min: number; max: number; step?: number; precision?: number; unit?: string; onChange: (v: number) => void }) {
+  const label = useContext(FieldLabel);
   const step = p.step ?? (p.max - p.min) / 200;
   return (
     <div className="slider">
       <input
         type="range"
+        aria-label={label}
         min={p.min}
         max={p.max}
         step={step}
@@ -121,13 +129,15 @@ export function Slider(p: { value: number; min: number; max: number; step?: numb
 }
 
 export function ColorField(p: { value: string; onChange: (v: string) => void }) {
+  const label = useContext(FieldLabel) ?? 'Colour';
   const [text, setText] = useState(p.value);
   useEffect(() => setText(p.value), [p.value]);
   return (
     <div className="color-field">
-      <input type="color" value={/^#[0-9a-f]{6}$/i.test(p.value) ? p.value : '#000000'} onChange={(e) => p.onChange(e.target.value)} />
+      <input type="color" aria-label={label} value={/^#[0-9a-f]{6}$/i.test(p.value) ? p.value : '#000000'} onChange={(e) => p.onChange(e.target.value)} />
       <input
         className="hex"
+        aria-label={`${label} hex value`}
         value={text}
         spellCheck={false}
         onChange={(e) => setText(e.target.value)}
@@ -147,8 +157,9 @@ export function ColorField(p: { value: string; onChange: (v: string) => void }) 
 }
 
 export function Toggle(p: { value: boolean; onChange: (v: boolean) => void; label?: string; title?: string }) {
+  const label = useContext(FieldLabel);
   return (
-    <button className={`toggle ${p.value ? 'on' : ''}`} title={p.title} onClick={() => p.onChange(!p.value)} role="switch" aria-checked={p.value}>
+    <button className={`toggle ${p.value ? 'on' : ''}`} aria-label={p.label ?? label ?? p.title} title={p.title} onClick={() => p.onChange(!p.value)} role="switch" aria-checked={p.value}>
       <span className="toggle-track" />
       {p.label && <span>{p.label}</span>}
     </button>
@@ -156,8 +167,9 @@ export function Toggle(p: { value: boolean; onChange: (v: boolean) => void; labe
 }
 
 export function Segmented<T extends string>(p: { value: T; onChange: (v: T) => void; options: { value: T; label: string; title?: string }[] }) {
+  const label = useContext(FieldLabel);
   return (
-    <div className="segmented" role="radiogroup">
+    <div className="segmented" role="radiogroup" aria-label={label}>
       {p.options.map((o) => (
         <button key={o.value} title={o.title} className={o.value === p.value ? 'on' : ''} onClick={() => p.onChange(o.value)} role="radio" aria-checked={o.value === p.value}>
           {o.label}
@@ -170,6 +182,7 @@ export function Segmented<T extends string>(p: { value: T; onChange: (v: T) => v
 const st = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.25, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
 export const Icon = {
+  menu: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden><path d="M2 4h12M2 8h12M2 12h12" /><path d="M5 2v4m6 0v4m-4 0v4" /></svg>,
   eye: (on: boolean) => (
     <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden>
       <path {...st} d="M1.5 8s2.4-4.3 6.5-4.3S14.5 8 14.5 8s-2.4 4.3-6.5 4.3S1.5 8 1.5 8z" opacity={on ? 1 : 0.35} />

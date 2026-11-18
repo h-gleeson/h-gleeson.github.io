@@ -215,7 +215,7 @@ export function EffectsTab() {
             <Row label="Spot ink">
               <ColorField value={e.spotColor} onChange={(v) => set('spotColor', v)} />
             </Row>
-            {num('spotThreshold', 'From saturation', 0, 1, 0.01, undefined, 'How colourful a part must be to print in the spot ink. Give accent objects a strong colour in the Style tab.')}
+            {num('spotThreshold', 'From saturation', 0, 1, 0.01, undefined, 'How colourful a part must be to print in the spot ink. Give accent objects a strong colour in the Style & linework section.')}
           </>
         )}
         {e.colorMode === 'gradient' && (
@@ -390,7 +390,7 @@ function LayerLookPanel({ look, onGone }: { look: EffectLook; onGone: () => void
           onBlur={(ev) => fx.renameLook(look.id, ev.target.value)}
         />
       </Row>
-      {doc.defaults.fxLook === look.id && <p className="hint">Every object uses this look by default (Style tab with nothing selected).</p>}
+      {doc.defaults.fxLook === look.id && <p className="hint">Every object uses this look by default (Style & linework section with nothing selected).</p>}
       {chosen.length ? (
         <ul className="fx-layer-list">
           {chosen.map((n) => (

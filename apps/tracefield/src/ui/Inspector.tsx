@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Matrix4, Vector3, Quaternion, Euler, MathUtils } from 'three';
 import { actions } from '../app/actions';
 import { registry } from '../import/registry';
@@ -21,54 +21,73 @@ import { textTarget } from '../app/textActions';
 type Tab = 'style' | 'object' | 'drawing' | 'explode' | 'labels' | 'view' | 'effects' | 'output';
 
 export function Inspector() {
-  const [tab, setTab] = useState<Tab>('style');
+  const [expanded, setExpanded] = useState<Partial<Record<Tab, boolean>>>({});
+  const panel = useRef<HTMLElement>(null);
   const sel = useStore((s) => s.ui.selection);
   const request = useStore((s) => s.ui.inspectorTab);
   useEffect(() => {
-    if (request) setTab(request.tab as Tab);
+    if (!request) return;
+    setExpanded((v) => ({ ...v, [request.tab]: true }));
+    const frame = requestAnimationFrame(() => {
+      panel.current?.querySelector(`#inspector-${request.tab}`)?.scrollIntoView({ block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [request]);
-  const tabs: { id: Tab; label: string; hint: string }[] = [
-    { id: 'style', label: 'Style', hint: 'Fill and linework for the selection, or drawing defaults' },
-    { id: 'object', label: 'Object', hint: 'Name, source, visibility, position' },
-    { id: 'drawing', label: 'Drawing', hint: 'Style presets, shadows, ground, hidden lines, light' },
-    { id: 'explode', label: 'Explode', hint: 'Exploded drawing: auto-explode, move parts, connectors, saved states' },
-    { id: 'labels', label: 'Labels', hint: 'Annotations: labels with leaders, tag columns, numbered key' },
-    { id: 'view', label: 'View', hint: 'Projection, orientation, framing, plan / section cut' },
-    { id: 'effects', label: 'Effects', hint: 'Image effects: dither, halftone, ASCII, hatching, contours, grain and more' },
-    { id: 'output', label: 'Output', hint: 'Drawing frame, background, lineweight scale, PNG export' },
+  const groups: { id: Tab; label: string; hint: string; icon: ReactNode; content: ReactNode }[] = [
+    { id: 'style', label: 'Style & linework', hint: 'Colours, fills, hatches & lineweights', icon: <path d="m4 16 8-12 4 12M6 12h8M3 19h14" />, content: <><ContextHeader /><StyleTab key={sel.join()} /></> },
+    { id: 'object', label: 'Object properties', hint: 'Name, visibility, position & scale', icon: <path d="m10 2 7 4v8l-7 4-7-4V6zM3 6l7 4 7-4M10 10v8" />, content: <><ContextHeader object /><ObjectTab /></> },
+    { id: 'drawing', label: 'Drawing setup', hint: 'Style presets, shadows & lighting', icon: <><circle cx="10" cy="10" r="4" /><path d="M10 1v2m0 14v2M1 10h2m14 0h2M3.5 3.5 5 5m10 10 1.5 1.5m0-13L15 5M5 15l-1.5 1.5" /></>, content: <DrawingTab /> },
+    { id: 'view', label: 'Camera & sections', hint: 'Projection, framing & section cuts', icon: <><rect x="3" y="4" width="14" height="12" rx="1" /><path d="M1 10h18M10 4v12" strokeDasharray="2 2" /></>, content: <ViewTab /> },
+    { id: 'explode', label: 'Exploded views', hint: 'Separate parts & add connectors', icon: <path d="m3 6 7-4 7 4-7 4zM3 10l7 4 7-4M3 14l7 4 7-4" />, content: <ExplodeTab /> },
+    { id: 'labels', label: 'Labels & annotations', hint: 'Name parts, add leaders & a legend', icon: <><path d="M2 16h5l3-7M9 3h9v8H9zM12 6h3M12 8h2" /><circle cx="3" cy="16" r="1.5" /></>, content: <AnnotateTab /> },
+    { id: 'effects', label: 'Image effects', hint: 'Print textures, colour & graphic looks', icon: <><path d="M3 3h14v14H3zM3 10h14M10 3v14" /><path d="m3 7 4-4m3 4 4-4m-4 14 7-7" /></>, content: <EffectsTab /> },
+    { id: 'output', label: 'Page & export', hint: 'Paper size, background & PNG output', icon: <path d="M5 2h7l4 4v12H5zM12 2v5h4M8 12h5m-2-2 2 2-2 2" />, content: <OutputTab /> },
   ];
   return (
-    <aside className="panel right">
-      <nav className="tabs" role="tablist">
-        {tabs.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} title={t.hint} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
+    <aside className="panel right" ref={panel} id="inspector-panel" aria-label="Drawing inspector">
+      <div className="inspector-heading">
+        <div><h2>Inspector</h2><p>Open a section to adjust your drawing.</p></div>
+        <button className="link-btn" onClick={() => setExpanded({})} disabled={!Object.values(expanded).some(Boolean)}>Collapse all</button>
+      </div>
+      <div className="inspector-groups">
+        {groups.map((g) => (
+          <InspectorGroup key={g.id} id={g.id} label={g.label} hint={g.hint} icon={g.icon} open={!!expanded[g.id]} onToggle={() => setExpanded((v) => ({ ...v, [g.id]: !v[g.id] }))}>
+            {g.content}
+          </InspectorGroup>
         ))}
-      </nav>
-      {(tab === 'style' || tab === 'object') && <ContextHeader />}
-      <div className="tab-body">
-        {tab === 'style' && <StyleTab key={sel.join()} />}
-        {tab === 'object' && <ObjectTab />}
-        {tab === 'drawing' && <DrawingTab />}
-        {tab === 'explode' && <ExplodeTab />}
-        {tab === 'labels' && <AnnotateTab />}
-        {tab === 'view' && <ViewTab />}
-        {tab === 'effects' && <EffectsTab />}
-        {tab === 'output' && <OutputTab />}
       </div>
     </aside>
   );
 }
 
-function ContextHeader() {
+/** Mount on first use; collapsing a group preserves its controls and subsection state. */
+function InspectorGroup(p: { id: Tab; label: string; hint: string; icon: ReactNode; open: boolean; onToggle: () => void; children: ReactNode }) {
+  const [visited, setVisited] = useState(p.open);
+  useEffect(() => { if (p.open) setVisited(true); }, [p.open]);
+  return (
+    <section className={`inspector-group${p.open ? ' expanded' : ''}`} id={`inspector-${p.id}`}>
+      <h3>
+        <button className="inspector-trigger" id={`heading-${p.id}`} aria-expanded={p.open} aria-controls={`body-${p.id}`} onClick={p.onToggle}>
+          <span className="inspector-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{p.icon}</svg></span>
+          <span className="inspector-label"><strong>{p.label}</strong><span>{p.hint}</span></span>
+          <svg className="disclosure" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="m5 3 5 5-5 5" /></svg>
+        </button>
+      </h3>
+      <div id={`body-${p.id}`} hidden={!p.open} role="region" aria-labelledby={`heading-${p.id}`}>
+        {(p.open || visited) && p.children}
+      </div>
+    </section>
+  );
+}
+
+function ContextHeader({ object = false }: { object?: boolean }) {
   const doc = useStore((s) => s.doc);
   const sel = useStore((s) => s.ui.selection).filter((id) => doc.nodes[id]);
   if (!sel.length)
     return (
       <div className="context">
-        <div className="ctx-name">Drawing defaults</div>
-        <div className="ctx-path">Nothing selected — edits apply to every object without its own override.</div>
+        <div className="ctx-name">{object ? 'No object selected' : 'Drawing defaults'}</div>
+        <div className="ctx-path">{object ? 'Select a part in the drawing or Objects panel to edit its properties.' : 'Applies to all objects unless they have their own style. Select an object to style it separately.'}</div>
       </div>
     );
   const n = doc.nodes[sel[0]];
@@ -111,20 +130,16 @@ function StyleTab() {
   const overrideCount = sel.reduce((a, id) => a + Object.keys(doc.nodes[id].style).length, 0);
   return (
     <>
-      <div className={`scope ${sel.length ? 'sel' : ''}`}>
-        {sel.length ? (
+      {sel.length > 0 && <div className="scope sel">
           <>
             Overrides on {sel.length} selected · groups pass their style to children
             {overrideCount > 0 && (
               <button className="link-btn" onClick={actions.clearAllOverrides}>
-                clear {overrideCount}
+                Reset {overrideCount} {overrideCount === 1 ? 'override' : 'overrides'}
               </button>
             )}
           </>
-        ) : (
-          'Editing drawing defaults'
-        )}
-      </div>
+      </div>}
       <Section title="Fill">
         {field(
           'fillMode',
@@ -152,7 +167,7 @@ function StyleTab() {
         )}
       </Section>
       {eff.fillMode !== 'none' && (
-        <Section title="Hatch">
+        <Section title="Hatch" defaultOpen={false}>
           {field(
             'hatch',
             'Pattern',
@@ -179,7 +194,7 @@ function StyleTab() {
           )}
         </Section>
       )}
-      <Section title="Linework">
+      <Section title="Linework" defaultOpen={false}>
         {field('showLines', 'Draw lines', <Toggle value={eff.showLines} onChange={(v) => set('showLines', v)} />)}
         {eff.showLines && (
           <>
@@ -224,12 +239,12 @@ function StyleTab() {
           </>
         )}
       </Section>
-      <Section title="Shadows">
+      <Section title="Shadows" defaultOpen={false}>
         {field('castShadow', 'Casts shadow', <Toggle value={eff.castShadow} onChange={(v) => set('castShadow', v)} />)}
         {field('receiveShadow', 'Receives shadow', <Toggle value={eff.receiveShadow} onChange={(v) => set('receiveShadow', v)} />, 'Shows shadows cast on it, and shade on faces away from the sun')}
-        {doc.drawing.shadows === 'off' && <p className="hint">Shadows are off for the drawing. Turn them on in the Drawing tab.</p>}
+        {doc.drawing.shadows === 'off' && <p className="hint">Shadows are off for the drawing. Turn them on in the Drawing setup section.</p>}
       </Section>
-      <Section title="Image effects">
+      <Section title="Image effects" defaultOpen={false}>
         {field(
           'fxLook',
           'Look',
@@ -241,12 +256,12 @@ function StyleTab() {
               </option>
             ))}
           </select>,
-          'Which image-effect look this object gets. Groups pass it to everything inside. Layer looks are made in the Effects tab.',
+          'Which image-effect look this object gets. Groups pass it to everything inside. Layer looks are made in the Image effects section.',
         )}
-        {!doc.effects.enabled && <p className="hint">Image effects are off (Effects tab, Shift+X).</p>}
-        {doc.effects.enabled && !doc.effects.looks.length && <p className="hint">No layer looks yet. Add one in the Effects tab to give this object its own look.</p>}
+        {!doc.effects.enabled && <p className="hint">Image effects are off (Image effects section, Shift+X).</p>}
+        {doc.effects.enabled && !doc.effects.looks.length && <p className="hint">No layer looks yet. Add one in the Image effects section to give this object its own look.</p>}
       </Section>
-      <Section title="Section cut">
+      <Section title="Section cut" defaultOpen={false}>
         {field('cutSolid', 'Cut as one solid', <Toggle value={eff.cutSolid} onChange={(v) => set('cutSolid', v)} />, 'Fill everything inside this group as a single solid, for objects modelled as separate surfaces (outer wall, inner wall, rim, base). Open surfaces in the same group are already combined automatically.')}
         {field('cutFill', 'Fill cut', <Toggle value={eff.cutFill} onChange={(v) => set('cutFill', v)} />, 'Poché where the section plane cuts through this object')}
         {eff.cutFill && (
@@ -280,7 +295,7 @@ function StyleTab() {
         )}
         {field('cutLineWidth', 'Cut line', <Slider value={eff.cutLineWidth} min={0} max={10} step={0.05} unit="px" onChange={(v) => set('cutLineWidth', v)} />, 'Weight of the line where the plane meets this object, px at reference width. 0 = none')}
         {eff.cutLineWidth > 0 && field('cutLineColor', 'Cut line colour', <ColorField value={eff.cutLineColor} onChange={(v) => set('cutLineColor', v)} />)}
-        {!doc.section.enabled && <p className="hint">The section cut is off. Turn it on in the View tab (X) to see these.</p>}
+        {!doc.section.enabled && <p className="hint">The section cut is off. Turn it on in the Camera & sections panel (X) to see these.</p>}
       </Section>
       {sel.length > 0 && (
         <div className="pad">
@@ -423,7 +438,7 @@ function ObjectTab() {
               <NumberField value={pos.getComponent(i)} step={step} precision={3} onChange={(v) => nudge(i, v)} />
             </Row>
           ))}
-          {moved && <p className="hint">Moved from its imported position. “Reset to imported” in the Style tab restores it.</p>}
+          {moved && <p className="hint">Moved from its imported position. “Reset to imported” in the Style & linework section restores it.</p>}
         </Section>
       )}
       {sel.length === 1 && (
@@ -480,7 +495,7 @@ function DrawingTab() {
       <Section title="Style presets">
         <StylePresets />
       </Section>
-      <Section title="Shadows">
+      <Section title="Shadows" defaultOpen={false}>
         <Segmented<ShadowMode>
           value={dr.shadows}
           onChange={(v) => set('shadows', v)}
@@ -506,11 +521,11 @@ function DrawingTab() {
             <Row label="Shade faces" title="Faces turned away from the sun take the shadow colour too (shade and shadow)">
               <Toggle value={dr.shadeFaces} onChange={(v) => set('shadeFaces', v)} />
             </Row>
-            <p className="hint">The sun is set under Light below. Objects cast and receive by default; change that per object in the Style tab.</p>
+            <p className="hint">The sun is set under Light below. Objects cast and receive by default; change that per object in the Style & linework section.</p>
           </>
         )}
       </Section>
-      <Section title="Ground">
+      <Section title="Ground" defaultOpen={false}>
         <Segmented<GroundMode>
           value={dr.ground}
           onChange={(v) => set('ground', v)}
@@ -527,12 +542,12 @@ function DrawingTab() {
         )}
         {dr.ground === 'shadow' && dr.shadows === 'off' && <p className="hint">Turn shadows on to see anything on a shadow-only ground.</p>}
       </Section>
-      <Section title="Viewport">
+      <Section title="Viewport" defaultOpen={false}>
         <Row label="Grid" title="Ground grid at the base of the model (G)">
           <Toggle value={dr.showGrid} onChange={(v) => set('showGrid', v)} />
         </Row>
       </Section>
-      <Section title="Hidden lines">
+      <Section title="Hidden lines" defaultOpen={false}>
         <Row label="Show hidden">
           <Toggle value={dr.hiddenLines} onChange={(v) => set('hiddenLines', v)} />
         </Row>
@@ -547,7 +562,7 @@ function DrawingTab() {
           </>
         )}
       </Section>
-      <Section title="Light · toning and shadows">
+      <Section title="Light · toning and shadows" defaultOpen={false}>
         <Row label="Sun azimuth">
           <Slider value={dr.sunAzimuth} min={0} max={360} step={1} precision={0} unit="°" onChange={(v) => set('sunAzimuth', v)} />
         </Row>

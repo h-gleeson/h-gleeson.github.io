@@ -183,7 +183,7 @@ function TextEditor({ target }: { target: TextTarget }) {
           <ColorField value={draft.sideColor} onChange={(v) => change({ sideColor: v }, 0)} />
         </Row>
       )}
-      {fill !== 'material' && <p className="hint">Face and side colours show while the fill is Original (Style tab). Linework, hatches, shadows and effects work as on any object.</p>}
+      {fill !== 'material' && <p className="hint">Face and side colours show while the fill is Original (Style & linework section). Linework, hatches, shadows and effects work as on any object.</p>}
       <p className="hint">Size, position and turn are below; one em is the font size before scaling.</p>
     </Section>
   );
