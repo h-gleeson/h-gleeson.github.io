@@ -91,7 +91,8 @@
         #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); letter-spacing: .12em; color: var(--text-dim); pointer-events: none; }
         #progs { max-height: 40vh; overflow-y: auto; }
         #model-status { margin: 0; word-break: break-word; }
-        #model-status.err { color: var(--orange); }
+        #model-status.err, #site-status.err { color: var(--orange); }
+        #site-status { margin: 0 0 6px; word-break: break-word; }
         #stage.drop::after {
             content: 'DROP .GLB TO LOAD';
             position: absolute; inset: 12px;
@@ -127,18 +128,29 @@
             </div>
 
             <div class="info-block">
-                <span class="info-label">Model</span>
+                <span class="info-label">Site (terrain)</span>
+                <div class="btn-row">
+                    <button class="btn" id="site-btn">UPLOAD SITE</button>
+                    <button class="btn" id="site-clear" disabled>FLAT PLOT</button>
+                </div>
+                <input type="file" id="site-upload" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" hidden>
+                <p class="hint" id="site-status"></p>
+                <p class="hint">A landscape <b>.glb</b> becomes the ground. The simulation covers exactly its footprint, so the wind enters at the edge of your site, and canyons channel the air below the ridges. Export the terrain on its own, in metres.</p>
+            </div>
+
+            <div class="info-block">
+                <span class="info-label">Masses</span>
                 <div class="btn-row">
                     <button class="btn" id="upload-btn">UPLOAD GLB</button>
-                    <button class="btn" id="default-model">DEFAULT</button>
+                    <button class="btn" id="clear-masses">CLEAR MASSES</button>
                 </div>
                 <input type="file" id="upload" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" multiple hidden>
                 <label class="ctl">
                     <span class="row"><span>Model scale</span><span id="ms-val">100%</span></span>
                     <input type="range" id="ms" min="25" max="150" step="5" value="100">
                 </label>
-                <p class="hint" id="model-status">Loading the default massing…</p>
-                <p class="hint">Upload or drop one or more <b>.glb</b> files. Each object becomes a mass you can move. Uploads are scaled to fit the site and sit on the ground.</p>
+                <p class="hint" id="model-status">No masses yet.</p>
+                <p class="hint">Upload or drop one or more <b>.glb</b> files. Each object becomes a mass you can move. On the flat plot uploads are scaled to fit; on a site they keep their real size and position (export them from the same model as the terrain), and every mass sits on the ground.</p>
             </div>
 
             <div class="info-block">
@@ -188,6 +200,15 @@
                 </label>
                 <label class="chk"><input type="checkbox" id="show-wind" checked> Show wind</label>
                 <label class="chk"><input type="checkbox" id="show-labels" checked> Show labels</label>
+                <span class="info-label">Speed map</span>
+                <select id="slice" class="btn" style="width:100%;text-align:left;margin-bottom:6px" aria-label="Speed map slice"></select>
+                <p class="hint">Colours one flow slice by speed compared with the open wind at that height: <b>dark blue</b> is still, <b>grey</b> is the same as the open wind, <b>orange to red</b> is faster (up to 2×). Where the terrain rises above the slice it is hidden.</p>
+                <span class="info-label">Detail</span>
+                <div class="seg" id="seg-detail">
+                    <button data-detail="standard" class="on">STANDARD</button>
+                    <button data-detail="fine">FINE</button>
+                </div>
+                <p class="hint">Fine uses about twice the grid resolution and more slices over a site. It is more accurate in narrow canyons but runs slower.</p>
             </div>
 
             <div class="info-block">
@@ -214,7 +235,7 @@
                 <span class="info-label">Description</span>
                 <div class="info-value">
                     <strong>Overview</strong>
-                    Draw walls over a massing model (the default one, or your own .glb) and watch the wind move through it. The wind is a stack of five 2D lattice Boltzmann flow slices, from ground level up to 34 units. Each slice only sees the masses and walls tall enough to reach it, so air higher up passes straight over lower volumes, and particles that meet a low roof or wall rise over it. It is an approximation rather than full 3D CFD, but it shows where wind funnels, stalls and slips over.
+                    Draw walls over the project site (or your own terrain), add massing models as .glb files, and watch the wind move through it. The wind is a stack of 2D lattice Boltzmann flow slices at fixed elevations. Each slice only sees the terrain, masses and walls tall enough to reach it, so low in a canyon the walls of the canyon steer the air, while higher slices pass over the ridges. Neighbouring slices mix, so air drops into canyons and wakes, and it slows just above the ground. Particles that meet a low roof, wall or ridge rise over it. It is an approximation rather than full 3D CFD, but it shows where wind funnels, stalls and slips over.
                 </div>
             </div>
 
@@ -222,7 +243,7 @@
 
         <section class="gallery-content">
             <div id="stage">
-                <div id="loading">LOADING MASSING…</div>
+                <div id="loading">LOADING SITE…</div>
                 <div id="compass"><div>N</div><div id="windArrow">↑</div></div>
                 <div id="hud"></div>
             </div>
@@ -236,33 +257,28 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
     import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+    import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
-    /* ── Program names, in the same order as the objects in BuildingMassing.glb.
-          Fill these in; anything left out shows as "Program NN". Names can also
-          be edited live in the sidebar (saved in this browser). ─────────────── */
-    const PROGRAMS = [
-        'Living Room',
-        'Hobby / Tool Room',
-        'Hobby / Tool Room',
-        'Kitchen',
-        'Greenhouse',
-        'Rain Collection',
-        'Garage',
-        'Livestock Area',
-        'Restroom',
-        'Restroom',
-        'Bedroom',
-        'Bedroom',
-        'Bedroom'
-    ];
-
-    /* ── Simulation domain (plan, in model units) ─────────────────────────── */
-    const DOM_W = 520, DOM_D = 340;
-    const NX = 260, NY = 170, N = NX * NY;
-    const CELL = DOM_W / NX;            // 2 units per cell
-    const LAYERS = [3, 10, 18, 26, 34]; // heights of the stacked 2D flow slices
+    /* ── Simulation domain (plan, in model units) ─────────────────────────
+          Without a site the domain is a flat 520 × 340 plot. A site GLB replaces
+          it: the domain becomes the terrain's footprint (so the wind enters at
+          the edge of the site), and the flow slices sit at real elevations from
+          the lowest canyon floor to above the highest ridge. setDomain() sets
+          all of these. ─────────────────────────────────────────────────────── */
+    const FLAT_W = 520, FLAT_D = 340, FLAT_LEVELS = [3, 10, 18, 26, 34];
+    const DETAIL = {                      // cells per slice, and slices over terrain
+        standard: { cells: 44200, slices: 7 },
+        fine: { cells: 100000, slices: 10 }
+    };
+    let detail = 'standard';
+    let DOM_W = FLAT_W, DOM_D = FLAT_D, NX = 260, NY = 170, N = NX * NY;
+    let CELL = DOM_W / NX;              // model units per cell
+    let LAYERS = FLAT_LEVELS.slice();   // elevations of the stacked 2D flow slices
+    let TOPH = LAYERS[LAYERS.length - 1];
+    let CLIMB = 18;                     // how tall an obstacle the most energetic particles climb
     const PSCALE = 16;                  // particle speed multiplier (cosmetic)
     const LS = 0.012;                   // slider speed -> lattice velocity
+    const REF_H = 26;                   // height above ground where the wind reaches the slider speed
 
     const $ = (s) => document.querySelector(s);
     const stage = $('#stage');
@@ -307,10 +323,26 @@
         renderer.setSize(w, h);
         camPersp.aspect = w / h;
         camPersp.updateProjectionMatrix();
-        const hh = 185;
+        const hh = Math.max(DOM_D / 2, DOM_W / 2 * h / w) * 1.09;   // fit the whole domain
         camPlan.left = -hh * w / h; camPlan.right = hh * w / h;
         camPlan.top = hh; camPlan.bottom = -hh;
         camPlan.updateProjectionMatrix();
+    }
+    // frame both cameras on the current domain
+    function fitCameras() {
+        const span = Math.max(DOM_W, DOM_D), top = site ? site.relief : 40;
+        camPlan.position.set(0, top + 1000, 0);
+        camPlan.far = top + 4000;
+        camPlan.zoom = 1;
+        ctlPlan.target.set(0, 0, 0);
+        camPlan.lookAt(0, 0, 0);
+        const ty = site ? site.relief * 0.3 : 0;
+        camPersp.position.set(span * 0.48, ty + span * 0.44, span * 0.63);
+        camPersp.near = Math.max(0.5, span / 2000);
+        camPersp.far = span * 12;
+        ctlPersp.target.set(0, ty, 0);
+        camPersp.updateProjectionMatrix();
+        resize();
     }
     new ResizeObserver(resize).observe(stage);
 
@@ -334,6 +366,10 @@
     const gridMat = new THREE.LineBasicMaterial();
     const domainMat = new THREE.LineBasicMaterial();
     const previewMat = new THREE.LineBasicMaterial();
+    const terrainMat = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    const contourMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.5 });
+    const contourMajorMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.85 });
     function readTheme() {
         theme.bg = new THREE.Color(getComputedStyle(document.body).backgroundColor);
         theme.accent = cssColor('var(--accent)');
@@ -344,20 +380,36 @@
         gridMat.color.copy(theme.bg).lerp(theme.text, 0.1);
         domainMat.color.copy(theme.bg).lerp(theme.text, 0.35);
         previewMat.color.copy(theme.accent);
+        terrainMat.color.copy(theme.bg).lerp(theme.text, 0.16);
+        contourMat.color.copy(theme.bg).lerp(theme.text, 0.45);
+        contourMajorMat.color.copy(theme.bg).lerp(theme.text, 0.7);
     }
 
-    /* ── Ground grid + domain outline ─────────────────────────────────────── */
-    {
-        const pts = [];
-        for (let x = -DOM_W / 2; x <= DOM_W / 2; x += 20) pts.push(x, -0.1, -DOM_D / 2, x, -0.1, DOM_D / 2);
-        for (let z = -DOM_D / 2; z <= DOM_D / 2; z += 20) pts.push(-DOM_W / 2, -0.1, z, DOM_W / 2, -0.1, z);
-        const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-        scene.add(new THREE.LineSegments(g, gridMat));
+    /* ── Ground grid (flat plot) or domain outline following the terrain edge ── */
+    let groundGrid = null, domainLine = null;
+    function buildGround() {
+        for (const o of [groundGrid, domainLine]) if (o) { scene.remove(o); o.geometry.dispose(); }
+        groundGrid = null;
         const hw = DOM_W / 2, hd = DOM_D / 2;
+        if (!site) {
+            const pts = [];
+            for (let x = -hw; x <= hw + 1e-6; x += 20) pts.push(x, -0.1, -hd, x, -0.1, hd);
+            for (let z = -hd; z <= hd + 1e-6; z += 20) pts.push(-hw, -0.1, z, hw, -0.1, z);
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+            groundGrid = new THREE.LineSegments(g, gridMat);
+            scene.add(groundGrid);
+        }
+        const loop = [], n = 120;
+        const edge = (x, z) => loop.push(x, terrainAt(x, z) + 0.3, z);
+        for (let i = 0; i < n; i++) edge(-hw + DOM_W * i / n, -hd);
+        for (let i = 0; i < n; i++) edge(hw, -hd + DOM_D * i / n);
+        for (let i = 0; i < n; i++) edge(hw - DOM_W * i / n, hd);
+        for (let i = 0; i < n; i++) edge(-hw, hd - DOM_D * i / n);
         const o = new THREE.BufferGeometry();
-        o.setAttribute('position', new THREE.Float32BufferAttribute([-hw, 0, -hd, hw, 0, -hd, hw, 0, hd, -hw, 0, hd], 3));
-        scene.add(new THREE.LineLoop(o, domainMat));
+        o.setAttribute('position', new THREE.Float32BufferAttribute(loop, 3));
+        domainLine = new THREE.LineLoop(o, domainMat);
+        scene.add(domainLine);
     }
 
     /* ── State ────────────────────────────────────────────────────────────── */
@@ -370,24 +422,37 @@
     let ready = false;
     const wind = { dirx: 1, dirz: 0, vx: 0, vy: 0, U: 0 };
     let omega = 1.78;
+    let mixK = 0.03;                    // vertical mixing between neighbouring slices
+    let site = null;                    // the loaded terrain (see loadSite), or null for the flat plot
 
     /* ── Lattice Boltzmann (D2Q9) ─────────────────────────────────────────── */
     const ex = [0, 1, 0, -1, 0, 1, -1, -1, 1];
     const ey = [0, 0, 1, 0, -1, 1, 1, -1, -1];
     const wt = [4 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 36, 1 / 36, 1 / 36, 1 / 36];
     const opp = [0, 3, 4, 1, 2, 7, 8, 5, 6];
-    // One 2D flow slice per height. The solver functions below work on whichever
-    // slice useLayer() selected last.
-    const layers = LAYERS.map(H => ({
-        H, sc: Math.pow(H / 26, 0.25),   // wind is slower closer to the ground
-        f: new Float32Array(9 * N), g: new Float32Array(9 * N),
-        ux: new Float32Array(N), uy: new Float32Array(N),
-        solid: new Uint8Array(N), prev: new Uint8Array(N)
-    }));
-    const hmap = new Float32Array(N);   // obstacle height per cell (masses + walls)
-    let f, g, ux, uy, solid, prevSolid, sc = 1, curH = 0;
-    function useLayer(L) { f = L.f; g = L.g; ux = L.ux; uy = L.uy; solid = L.solid; prevSolid = L.prev; sc = L.sc; curH = L.H; }
+    // wind speed relative to the slider speed at a height above the ground (power-law profile)
+    const profile = (agl) => Math.pow(Math.min(Math.max(agl, 3), Math.max(TOPH, REF_H)) / REF_H, 0.25);
+    // One 2D flow slice per elevation. The solver functions below work on whichever
+    // slice useLayer() selected last. Each slice is coupled to the one above it
+    // (the top one to the undisturbed wind), so air can drop into canyons and wakes.
+    let layers = [];
+    let hmap = new Float32Array(N);     // top of whatever stands in each cell: terrain, masses, walls
+    let terr = new Float32Array(N);     // terrain alone
+    let f, g, ux, uy, solid, prevSolid, prof, fric, above = null, curH = 0;
+    function useLayer(L) {
+        f = L.f; g = L.g; ux = L.ux; uy = L.uy; solid = L.solid; prevSolid = L.prev;
+        prof = L.prof; fric = L.fric; above = L.above; curH = L.H;
+    }
     function stepLayer(L) { useLayer(L); lbmStep(); L.f = f; L.g = g; }
+    function makeLayers() {
+        layers = LAYERS.map(H => ({
+            H, f: new Float32Array(9 * N), g: new Float32Array(9 * N),
+            ux: new Float32Array(N), uy: new Float32Array(N),
+            solid: new Uint8Array(N), prev: new Uint8Array(N),
+            prof: new Float32Array(N), fric: new Float32Array(N), above: null
+        }));
+        layers.forEach((L, i) => { L.above = layers[i + 1] || null; });
+    }
 
     function setEq(idx, rho, vx, vy) {
         const usq = 1.5 * (vx * vx + vy * vy);
@@ -397,7 +462,7 @@
         }
     }
     function resetField() {
-        for (let i = 0; i < N; i++) setEq(i, 1, solid[i] ? 0 : wind.vx * sc, solid[i] ? 0 : wind.vy * sc);
+        for (let i = 0; i < N; i++) setEq(i, 1, solid[i] ? 0 : wind.vx * prof[i], solid[i] ? 0 : wind.vy * prof[i]);
         g.set(f);
     }
     function resetAll() { layers.forEach(L => { useLayer(L); resetField(); }); }
@@ -412,6 +477,7 @@
         wind.vx = wind.dirx * wind.U;
         wind.vy = wind.dirz * wind.U;
         omega = 1.55 + 0.38 * parseFloat($('#wv').value);
+        mixK = 0.015 + 0.035 * parseFloat($('#wv').value);   // gustier air mixes more between heights
         $('#ws-val').textContent = speed.toFixed(1);
         const names = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
         $('#wd-val').textContent = bearing + '° ' + names[Math.round(bearing / 45) % 8];
@@ -430,6 +496,13 @@
             if (!(rho > 0.2 && rho < 5)) { bad = true; break; }
             let vx = (f1 + f5 + f8 - f3 - f6 - f7) / rho;
             let vy = (f2 + f5 + f6 - f4 - f7 - f8) / rho;
+            // vertical mixing: nudge toward the slice above (the top slice toward the free wind)
+            const tx = above ? above.ux[idx] : wind.vx * prof[idx];
+            const ty = above ? above.uy[idx] : wind.vy * prof[idx];
+            vx += mixK * (tx - vx); vy += mixK * (ty - vy);
+            // friction where the ground (or a roof) sits just below this slice
+            const d = 1 - fric[idx];
+            vx *= d; vy *= d;
             const sp = vx * vx + vy * vy;
             if (sp > 0.0625) { const s = 0.25 / Math.sqrt(sp); vx *= s; vy *= s; }
             ux[idx] = vx; uy[idx] = vy;
@@ -458,10 +531,13 @@
         }
         const t = f; f = g; g = t;
 
-        // open boundaries: equilibrium on inflow edges, zero-gradient elsewhere
-        const e = 1e-6, vx = wind.vx * sc, vy = wind.vy * sc;
+        // open boundaries: equilibrium on inflow edges (with the height profile of
+        // the ground at that edge), zero-gradient elsewhere. Edge cells inside the
+        // terrain stay solid, so wind only enters where the site is open at this height.
+        const e = 1e-6, vx = wind.vx, vy = wind.vy;
         const inL = vx > e, inR = vx < -e, inT = vy > e, inB = vy < -e;
-        const copy = (d, s) => { for (let k = 0; k < 9; k++) f[k * N + d] = f[k * N + s]; };
+        const copy = (d, s) => { if (solid[d]) return; for (let k = 0; k < 9; k++) f[k * N + d] = f[k * N + s]; };
+        const inflow = (d) => { if (!solid[d]) setEq(d, 1, vx * prof[d], vy * prof[d]); };
         for (let j = 0; j < NY; j++) {
             if (!inL) copy(j * NX, j * NX + 1);
             if (!inR) copy(j * NX + NX - 1, j * NX + NX - 2);
@@ -471,20 +547,23 @@
             if (!inB) copy((NY - 1) * NX + i, (NY - 2) * NX + i);
         }
         for (let j = 0; j < NY; j++) {
-            if (inL) setEq(j * NX, 1, vx, vy);
-            if (inR) setEq(j * NX + NX - 1, 1, vx, vy);
+            if (inL) inflow(j * NX);
+            if (inR) inflow(j * NX + NX - 1);
         }
         for (let i = 0; i < NX; i++) {
-            if (inT) setEq(i, 1, vx, vy);
-            if (inB) setEq((NY - 1) * NX + i, 1, vx, vy);
+            if (inT) inflow(i);
+            if (inB) inflow((NY - 1) * NX + i);
         }
     }
 
     /* ── Rasterise masses + walls into the solid mask ─────────────────────── */
-    let putMode = 0, putVal = 0;        // 0: mark solid in the current layer, 1: raise the height map
+    // putMode 0: mark solid in the current layer if the top reaches it; 1: raise the height map.
+    // putVal is the top elevation, or a height above the terrain when putOnTerrain (walls).
+    let putMode = 0, putVal = 0, putOnTerrain = false;
     function put(i) {
-        if (putMode === 0) solid[i] = 1;
-        else if (hmap[i] < putVal) hmap[i] = putVal;
+        const top = putOnTerrain ? terr[i] + putVal : putVal;
+        if (putMode === 0) { if (top > curH) solid[i] = 1; }
+        else if (hmap[i] < top) hmap[i] = top;
     }
     function fillTri(x0, z0, x1, z1, x2, z2) {
         x0 = (x0 + DOM_W / 2) / CELL; x1 = (x1 + DOM_W / 2) / CELL; x2 = (x2 + DOM_W / 2) / CELL;
@@ -506,13 +585,13 @@
         }
     }
     function stampMass(m, mode, H) {
-        putMode = mode;
+        putMode = mode; putOnTerrain = false;
         const th = m.pivot.rotation.y, c = Math.cos(th), s = Math.sin(th);
-        const px = m.pivot.position.x, pz = m.pivot.position.z, t = m.tri, ty = m.triY;
+        const px = m.pivot.position.x, pz = m.pivot.position.z, base = m.pivot.position.y, t = m.tri, ty = m.triY;
         for (let q = 0; q < t.length; q += 6) {
             // a layer only sees surfaces at or above its height (roofs of lower volumes drop out)
-            if (mode === 0) { if (ty[q / 3] < H) continue; }
-            else { putVal = ty[q / 3 + 1]; if (putVal <= 0) continue; }
+            if (mode === 0) { if (base + ty[q / 3] < H) continue; putVal = Infinity; }
+            else { if (ty[q / 3 + 1] <= 0) continue; putVal = base + ty[q / 3 + 1]; }
             fillTri(
                 px + t[q] * c + t[q + 1] * s,     pz - t[q] * s + t[q + 1] * c,
                 px + t[q + 2] * c + t[q + 3] * s, pz - t[q + 2] * s + t[q + 3] * c,
@@ -520,8 +599,8 @@
         }
     }
     function stampWall(w, mode) {
-        putMode = mode;
-        if (mode === 0 && w.height <= curH) return;
+        putMode = mode; putOnTerrain = true;      // walls stand on the terrain
+        if (mode === 0 && w.height + w.maxGround <= curH) return;
         putVal = w.height;
         const r = Math.max(w.thick / 2, CELL * 0.8) / CELL;
         const p = w.pts;
@@ -541,25 +620,40 @@
             }
         }
     }
-    function rebuildLayer(L) {
+    function rebuildLayer(L, li) {
         useLayer(L);
         prevSolid.set(solid);
         solid.fill(0);
+        // the terrain is solid wherever its surface is above this slice
+        for (let i = 0; i < N; i++) if (terr[i] > curH) solid[i] = 1;
         for (const m of masses) stampMass(m, 0, curH);
         for (const w of walls) stampWall(w, 0);
-        for (let i = 0; i < NX; i++) { solid[i] = 0; solid[(NY - 1) * NX + i] = 0; }
-        for (let j = 0; j < NY; j++) { solid[j * NX] = 0; solid[j * NX + NX - 1] = 0; }
+        // the flat plot keeps its edges open; on a site the edges follow the terrain
+        if (!site) {
+            for (let i = 0; i < NX; i++) { solid[i] = 0; solid[(NY - 1) * NX + i] = 0; }
+            for (let j = 0; j < NY; j++) { solid[j * NX] = 0; solid[j * NX + NX - 1] = 0; }
+        }
+        // wind profile and ground friction per cell. Friction fades out over one
+        // slice spacing above whatever stands below (terrain, a roof, a wall top).
+        const gap = li > 0 ? LAYERS[li] - LAYERS[li - 1] : (LAYERS[1] - LAYERS[0]);
+        const reach = Math.max(4, gap);
+        for (let i = 0; i < N; i++) {
+            const below = hmap[i] < curH ? hmap[i] : terr[i];
+            prof[i] = profile(curH - terr[i]);
+            fric[i] = hmap[i] > 0.5 && hmap[i] < curH ? 0.035 * Math.max(0, 1 - (curH - below) / reach) : 0;
+        }
         for (let i = 0; i < N; i++) {
             if (solid[i] && !prevSolid[i]) setEq(i, 1, 0, 0);
-            else if (!solid[i] && prevSolid[i]) setEq(i, 1, wind.vx * sc, wind.vy * sc);
+            else if (!solid[i] && prevSolid[i]) setEq(i, 1, wind.vx * prof[i], wind.vy * prof[i]);
         }
     }
     function rebuildMask() {
         maskDirty = false;
-        layers.forEach(rebuildLayer);
-        hmap.fill(0);
+        if (site) for (const m of masses) m.pivot.position.y = terrainAt(m.pivot.position.x, m.pivot.position.z);
+        hmap.set(terr);
         for (const m of masses) stampMass(m, 1, 0);
         for (const w of walls) stampWall(w, 1);
+        layers.forEach(rebuildLayer);
     }
 
     /* ── Wind particles (advected through the layered velocity fields) ───── */
@@ -579,34 +673,38 @@
     scene.add(trails);
     const slowCol = new THREE.Color(0x5aa9ff);
     const hc = new THREE.Color();
-    const TOPH = LAYERS[LAYERS.length - 1];
-    const profile = (y) => Math.pow(Math.min(Math.max(y, 3), TOPH) / 26, 0.25);   // wind is slower near the ground
 
     const hmapAt = (x, z) => {
         const i = Math.floor((x + DOM_W / 2) / CELL), j = Math.floor((z + DOM_D / 2) / CELL);
         return (i < 0 || j < 0 || i >= NX || j >= NY) ? 1e9 : hmap[j * NX + i];
     };
+    const terrAt = (x, z) => {
+        const i = Math.floor((x + DOM_W / 2) / CELL), j = Math.floor((z + DOM_D / 2) / CELL);
+        return (i < 0 || j < 0 || i >= NX || j >= NY) ? 0 : terr[j * NX + i];
+    };
 
     function spawn(p, anywhere) {
         const base = p * (T + 1) * 3;
-        let x = 0, z = 0;
-        for (let tries = 0; tries < 6; tries++) {
+        let x = 0, z = 0, g0 = 0;
+        const band = Math.min(60, Math.max(DOM_W, DOM_D) * 0.12);   // spawn band inside the windward edges
+        for (let tries = 0; tries < 8; tries++) {
             const sum = Math.abs(wind.dirx) + Math.abs(wind.dirz);
             if (anywhere || wind.U < 1e-4 || Math.random() < 0.2) {
                 x = (Math.random() - 0.5) * DOM_W; z = (Math.random() - 0.5) * DOM_D;
             } else if (Math.random() < Math.abs(wind.dirx) / sum) {
-                x = (wind.dirx > 0 ? -1 : 1) * (DOM_W / 2 - 2 - Math.random() * 60); z = (Math.random() - 0.5) * DOM_D;
+                x = (wind.dirx > 0 ? -1 : 1) * (DOM_W / 2 - CELL - Math.random() * band); z = (Math.random() - 0.5) * DOM_D;
             } else {
-                z = (wind.dirz > 0 ? -1 : 1) * (DOM_D / 2 - 2 - Math.random() * 60); x = (Math.random() - 0.5) * DOM_W;
+                z = (wind.dirz > 0 ? -1 : 1) * (DOM_D / 2 - CELL - Math.random() * band); x = (Math.random() - 0.5) * DOM_W;
             }
-            if (hmapAt(x, z) <= 0) break;
+            g0 = terrAt(x, z);
+            if (hmapAt(x, z) <= g0 + 0.01) break;      // not inside a mass or wall
         }
-        const y = ph0[p] = 0.8 + Math.pow(Math.random(), 1.4) * 32;
-        pclimb[p] = Math.random() * 18;
+        // a height above the local ground, denser near the ground, up to the top slice
+        const y = ph0[p] = g0 + 0.8 + Math.pow(Math.random(), 1.4) * Math.max(4, TOPH - g0);
+        pclimb[p] = Math.random() * CLIMB;
         for (let t = 0; t <= T; t++) { hist[base + t * 3] = x; hist[base + t * 3 + 1] = y; hist[base + t * 3 + 2] = z; }
         page[p] = anywhere ? Math.random() * 300 : 0;
     }
-    for (let p = 0; p < PMAX; p++) spawn(p, true);
 
     // bilinear sample of the layer fields at the current cell neighbourhood
     let ia = 0, ib = 0, ja = 0, jb = 0, w00 = 0, w10 = 0, w01 = 0, w11 = 0;
@@ -624,13 +722,20 @@
             l1 = 1; while (LAYERS[l1] < y) l1++;
             l0 = l1 - 1; t = (y - LAYERS[l0]) / (LAYERS[l1] - LAYERS[l0]);
         }
+        // a slice that is solid here (inside the terrain or a mass) has no air to sample:
+        // use the open slice on the other side instead of blending in its zero velocity
+        if (l1 !== l0) {
+            const c = Math.max(0, Math.min(NY - 1, Math.round(gz))) * NX + Math.max(0, Math.min(NX - 1, Math.round(gx)));
+            if (layers[l0].solid[c] && !layers[l1].solid[c]) l0 = l1;
+            else if (layers[l1].solid[c] && !layers[l0].solid[c]) l1 = l0;
+        }
         const A = layers[l0];
         let vx = bil(A.ux), vz = bil(A.uy);
         if (l1 !== l0) {
             const B = layers[l1];
             vx += (bil(B.ux) - vx) * t; vz += (bil(B.uy) - vz) * t;
         } else if (y > TOPH) {
-            const tt = Math.min(1, (y - TOPH) / 8), pr = profile(y);   // fade into the undisturbed wind above the layers
+            const tt = Math.min(1, (y - TOPH) / 8), pr = profile(y - terrAt(x, z));   // fade into the undisturbed wind above the layers
             vx += (wind.vx * pr - vx) * tt; vz += (wind.vy * pr - vz) * tt;
         }
         svx = vx; svz = vz;
@@ -647,16 +752,16 @@
             const nx = x + vx * k, nz = z + vz * k;
             const sp = Math.sqrt(vx * vx + vz * vz);
 
-            // rise over obstacles it is able to climb, settle back to its home height afterwards
+            // rise over obstacles (and terrain) it is able to climb, settle back to its home height afterwards
             let want = ph0[p];
             if (sp > 1e-5) {
-                const dx = vx / sp, dz = vz / sp;
-                const ahead = Math.max(hmapAt(x + dx * 6, z + dz * 6), hmapAt(x + dx * 14, z + dz * 14), hmapAt(x + dx * 24, z + dz * 24));
-                if (ahead > 0 && ahead - want < pclimb[p]) want = Math.max(want, ahead + 1.5);
+                const dx = vx / sp * CELL, dz = vz / sp * CELL;
+                const ahead = Math.max(hmapAt(x + dx * 3, z + dz * 3), hmapAt(x + dx * 7, z + dz * 7), hmapAt(x + dx * 12, z + dz * 12));
+                if (ahead > 0 && ahead < 1e8 && ahead - want < pclimb[p]) want = Math.max(want, ahead + 1.5);
             }
             const here = hmapAt(nx, nz);
             if (here > 0 && here < 1e8 && here - ph0[p] < pclimb[p]) want = Math.max(want, here + 1.5);
-            const ny = want > y ? Math.min(want, y + 2.2) : Math.max(want, y - 0.6);
+            const ny = want > y ? Math.min(want, y + 1.1 * CELL) : Math.max(want, y - 0.3 * CELL);
 
             page[p]++;
             if (nx < -DOM_W / 2 || nx > DOM_W / 2 || nz < -DOM_D / 2 || nz > DOM_D / 2 || page[p] > 400 || here > ny + 0.05) {
@@ -666,7 +771,7 @@
                 hist[base] = nx; hist[base + 1] = ny; hist[base + 2] = nz;
             }
             // colour by speed relative to the undisturbed wind at that height
-            const s = sp / ((wind.U || 1) * profile(y));
+            const s = sp / ((wind.U || 1) * profile(y - terrAt(x, z)));
             hc.copy(slowCol).lerp(theme.accent, Math.max(0, Math.min(1, (s - 0.3) / 1.2)));
             for (let q = 0; q < T; q++) {
                 const o = (p * T + q) * 6, a = base + q * 3, b = a + 3;
@@ -707,16 +812,20 @@
             R.push([p[i].x - ox, p[i].z - oz]);
         }
         const out = [];
-        const v = (a, y) => [a[0], y, a[1]];
+        // walls stand on the terrain: the base follows the ground (sunk a little so it
+        // never floats), the top runs at the wall height above the centre line's ground
+        const gc = p.map(q => terrainAt(q.x, q.z));
+        const sink = site ? Math.max(1, CELL) : 0;
+        const v = (a, i, top) => [a[0], top ? gc[i] + h : Math.min(gc[i], terrainAt(a[0], a[1])) - sink, a[1]];
         const quad = (a, b, c, d) => out.push(...a, ...b, ...c, ...a, ...c, ...d);
         for (let i = 0; i < n - 1; i++) {
             const j = i + 1;
-            quad(v(L[i], h), v(L[j], h), v(R[j], h), v(R[i], h));
-            quad(v(L[i], 0), v(L[j], 0), v(L[j], h), v(L[i], h));
-            quad(v(R[j], 0), v(R[i], 0), v(R[i], h), v(R[j], h));
+            quad(v(L[i], i, 1), v(L[j], j, 1), v(R[j], j, 1), v(R[i], i, 1));
+            quad(v(L[i], i, 0), v(L[j], j, 0), v(L[j], j, 1), v(L[i], i, 1));
+            quad(v(R[j], j, 0), v(R[i], i, 0), v(R[i], i, 1), v(R[j], j, 1));
         }
-        quad(v(R[0], 0), v(L[0], 0), v(L[0], h), v(R[0], h));
-        quad(v(L[n - 1], 0), v(R[n - 1], 0), v(R[n - 1], h), v(L[n - 1], h));
+        quad(v(R[0], 0, 0), v(L[0], 0, 0), v(L[0], 0, 1), v(R[0], 0, 1));
+        quad(v(L[n - 1], n - 1, 0), v(R[n - 1], n - 1, 0), v(R[n - 1], n - 1, 1), v(L[n - 1], n - 1, 1));
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
         geo.computeVertexNormals();
@@ -724,13 +833,24 @@
     }
     function addWall(pts, height, thick, record = true) {
         const mesh = new THREE.Mesh(wallGeometry(pts, thick, height), wallMat);
-        const w = { pts, height, thick, mesh };
+        const w = { pts, height, thick, mesh, maxGround: wallGround() };
         mesh.userData.wall = w;
         scene.add(mesh);
         walls.push(w);
         maskDirty = true;
         if (record) undoStack.push({ t: 'add', w });
         return w;
+    }
+    // ground under a wall, so a slice can skip walls too low to reach it. On a site the
+    // ground varies under the wall, so every slice checks it cell by cell instead.
+    function wallGround() { return site ? Infinity : 0; }
+    // after the site changes, rebuild every wall so it sits on the new ground
+    function refitWalls() {
+        for (const w of walls) {
+            w.mesh.geometry.dispose();
+            w.mesh.geometry = wallGeometry(w.pts, w.thick, w.height);
+            w.maxGround = wallGround();
+        }
     }
     function removeWall(w, record = true) {
         const i = walls.indexOf(w);
@@ -797,7 +917,7 @@
         if (drawing.cursor) pts.push(drawing.cursor);
         if (style === 'spline') pts = spline(pts);
         const n = Math.min(pts.length, PREV_MAX), a = prevGeo.attributes.position.array;
-        for (let i = 0; i < n; i++) { a[i * 3] = pts[i].x; a[i * 3 + 1] = 0.6; a[i * 3 + 2] = pts[i].z; }
+        for (let i = 0; i < n; i++) { a[i * 3] = pts[i].x; a[i * 3 + 1] = terrainAt(pts[i].x, pts[i].z) + 0.6; a[i * 3 + 2] = pts[i].z; }
         prevGeo.setDrawRange(0, n);
         prevGeo.attributes.position.needsUpdate = true;
     }
@@ -823,8 +943,14 @@
         ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
         ray.setFromCamera(ndc, cam());
     }
+    // the point on the ground under the pointer: the terrain surface when a site is
+    // loaded (it matters in 3D; in plan the ray is vertical), otherwise the y = 0 plane
     function ground(e) {
         setRay(e);
+        if (site && site.mesh) {
+            const hit = ray.intersectObject(site.mesh, false)[0];
+            if (hit) return new THREE.Vector3(hit.point.x, 0, hit.point.z);
+        }
         const v = new THREE.Vector3();
         return ray.ray.intersectPlane(plane, v) ? v : null;
     }
@@ -840,8 +966,9 @@
     }
 
     let drag = null;
-    const clampX = (x) => Math.max(-DOM_W / 2 + 25, Math.min(DOM_W / 2 - 25, x));
-    const clampZ = (z) => Math.max(-DOM_D / 2 + 25, Math.min(DOM_D / 2 - 25, z));
+    const edgeGap = () => Math.min(25, Math.min(DOM_W, DOM_D) * 0.05);
+    const clampX = (x) => Math.max(-DOM_W / 2 + edgeGap(), Math.min(DOM_W / 2 - edgeGap(), x));
+    const clampZ = (z) => Math.max(-DOM_D / 2 + edgeGap(), Math.min(DOM_D / 2 - edgeGap(), z));
     const minSpacing = () => (view === 'plan' ? 2.2 / camPlan.zoom : 2.2);
 
     stage.addEventListener('pointerdown', (e) => {
@@ -1131,17 +1258,23 @@
                 if (a[k + 2] < z0) z0 = a[k + 2]; if (a[k + 2] > z1) z1 = a[k + 2];
             }
         }
-        // the default model keeps its own units and ground level; uploads are fitted to the site and set on the ground
-        const fit = source.fit ? Math.min(FIT * DOM_W / Math.max(x1 - x0, 1e-6), FIT * DOM_D / Math.max(z1 - z0, 1e-6)) : 1;
+        // Without a site: uploads are fitted to the plot and set on the ground. With a site: uploads keep their
+        // real size and are placed by the site's own coordinates (so a building exported
+        // from the same model lands where it belongs), and every mass sits on the terrain.
+        const aligned = site && source.fit;
+        const fit = source.fit && !site ? Math.min(FIT * DOM_W / Math.max(x1 - x0, 1e-6), FIT * DOM_D / Math.max(z1 - z0, 1e-6)) : 1;
         const s = fit * parseInt($('#ms').value, 10) / 100;
-        const ox = (x0 + x1) / 2, oz = (z0 + z1) / 2, oy = source.fit ? y0 : 0;
+        const ox = aligned ? site.cx : (x0 + x1) / 2, oz = aligned ? site.cz : (z0 + z1) / 2, oy = source.fit ? y0 : 0;
         const showLabels = $('#show-labels').checked;
 
         parts.forEach((part, i) => {
             const src = part.pos, p = new Float32Array(src.length);
+            let py0 = Infinity;
+            if (site) for (let k = 1; k < src.length; k += 3) if (src[k] < py0) py0 = src[k];
+            const oyp = site ? py0 : oy;              // on a site each mass is measured from its own base
             let bx0 = Infinity, bx1 = -Infinity, bz0 = Infinity, bz1 = -Infinity, top = -Infinity;
             for (let k = 0; k < src.length; k += 3) {
-                const x = p[k] = (src[k] - ox) * s, y = p[k + 1] = (src[k + 1] - oy) * s, z = p[k + 2] = (src[k + 2] - oz) * s;
+                const x = p[k] = (src[k] - ox) * s, y = p[k + 1] = (src[k + 1] - oyp) * s, z = p[k + 2] = (src[k + 2] - oz) * s;
                 if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
                 if (z < bz0) bz0 = z; if (z > bz1) bz1 = z;
                 if (y > top) top = y;
@@ -1168,7 +1301,7 @@
             const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat);
             mesh.add(edges);
             const pivot = new THREE.Group();
-            pivot.position.set(cx, 0, cz);
+            pivot.position.set(clampX(cx), terrainAt(cx, cz), clampZ(cz));
             pivot.add(mesh);
             scene.add(pivot);
 
@@ -1218,17 +1351,6 @@
         setStatus(src.label + ' · ' + masses.length + (masses.length === 1 ? ' mass · ' : ' masses · ') + Math.round(tris).toLocaleString() + ' triangles');
     }
 
-    function loadDefault() {
-        setLoading('LOADING MASSING…');
-        loader.load('BuildingMassing.glb', (gltf) => {
-            const parts = extractParts(gltf).map((p, i) => ({ ...p, name: PROGRAMS[i] || p.name }));
-            setSource({ label: 'Default massing', key: 'wind_programs', fit: false, parts });
-        }, undefined, () => {
-            setLoading('');
-            setStatus('Could not load BuildingMassing.glb', true);
-        });
-    }
-
     async function loadFiles(list) {
         const files = [...list].filter(f => /\.(glb|gltf)$/i.test(f.name));
         if (!files.length) { setStatus('Only .glb or .gltf files can be loaded.', true); return; }
@@ -1250,12 +1372,313 @@
         }
     }
 
+    /* ── Site terrain ─────────────────────────────────────────────────────
+          A landscape GLB becomes the ground itself. Its top surface is
+          rasterised into a height grid; the simulation domain becomes its plan
+          footprint, so the wind enters at the edge of the site. Elevations are
+          measured from the lowest point of the terrain. glTF is in metres. ── */
+    // ground height (terrain only) at a plan point, bilinear on the fine grid
+    function terrainAt(x, z) {
+        if (!site) return 0;
+        const F = site.grid;
+        const gx = Math.max(0, Math.min(F.nx - 1.001, (x - F.x0) / F.cell - 0.5));
+        const gz = Math.max(0, Math.min(F.ny - 1.001, (z - F.z0) / F.cell - 0.5));
+        const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, h = F.h, o = j * F.nx + i;
+        return (h[o] * (1 - fx) + h[o + 1] * fx) * (1 - fz) + (h[o + F.nx] * (1 - fx) + h[o + F.nx + 1] * fx) * fz;
+    }
+
+    // highest surface at each sample centre (row 0 = north edge, z = z0). -Infinity where empty.
+    function rasterTop(pos, x0, z0, cell, nx, ny) {
+        const H = new Float32Array(nx * ny).fill(-Infinity);
+        for (let q = 0; q < pos.length; q += 9) {
+            const ax = (pos[q] - x0) / cell - 0.5, ay = pos[q + 1], az = (pos[q + 2] - z0) / cell - 0.5;
+            const bx = (pos[q + 3] - x0) / cell - 0.5, by = pos[q + 4], bz = (pos[q + 5] - z0) / cell - 0.5;
+            const cx = (pos[q + 6] - x0) / cell - 0.5, cy = pos[q + 7], cz = (pos[q + 8] - z0) / cell - 0.5;
+            const den = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+            if (Math.abs(den) < 1e-12) continue;       // vertical faces have no top surface
+            const i0 = Math.max(0, Math.ceil(Math.min(ax, bx, cx))), i1 = Math.min(nx - 1, Math.floor(Math.max(ax, bx, cx)));
+            const j0 = Math.max(0, Math.ceil(Math.min(az, bz, cz))), j1 = Math.min(ny - 1, Math.floor(Math.max(az, bz, cz)));
+            for (let j = j0; j <= j1; j++) {
+                for (let i = i0; i <= i1; i++) {
+                    const w1 = ((bz - cz) * (i - cx) + (cx - bx) * (j - cz)) / den;
+                    const w2 = ((cz - az) * (i - cx) + (ax - cx) * (j - cz)) / den;
+                    const w3 = 1 - w1 - w2;
+                    if (w1 < -1e-6 || w2 < -1e-6 || w3 < -1e-6) continue;
+                    const y = w1 * ay + w2 * by + w3 * cy, o = j * nx + i;
+                    if (y > H[o]) H[o] = y;
+                }
+            }
+        }
+        // triangles smaller than a sample still count, through their corners
+        for (let k = 0; k < pos.length; k += 3) {
+            const i = Math.floor((pos[k] - x0) / cell), j = Math.floor((pos[k + 2] - z0) / cell);
+            if (i >= 0 && j >= 0 && i < nx && j < ny && pos[k + 1] > H[j * nx + i]) H[j * nx + i] = pos[k + 1];
+        }
+        return H;
+    }
+    // fill empty samples (holes, or outside an irregular footprint) from the nearest filled one
+    function fillGaps(H, nx, ny) {
+        const q = new Int32Array(nx * ny);
+        let head = 0, tail = 0;
+        for (let o = 0; o < H.length; o++) if (H[o] > -Infinity) q[tail++] = o;
+        if (!tail) throw new Error('no surface found in the model');
+        while (head < tail) {
+            const o = q[head++], i = o % nx, j = (o / nx) | 0;
+            if (i > 0 && H[o - 1] === -Infinity) { H[o - 1] = H[o]; q[tail++] = o - 1; }
+            if (i < nx - 1 && H[o + 1] === -Infinity) { H[o + 1] = H[o]; q[tail++] = o + 1; }
+            if (j > 0 && H[o - nx] === -Infinity) { H[o - nx] = H[o]; q[tail++] = o - nx; }
+            if (j < ny - 1 && H[o + nx] === -Infinity) { H[o + nx] = H[o]; q[tail++] = o + nx; }
+        }
+    }
+    // contour lines every `step`, heavier every 5th, from marching squares on the fine grid
+    function terrainContours(F, step) {
+        const minor = [], major = [];
+        const lift = 0.15 + site.relief * 0.002;
+        const X = (i) => F.x0 + (i + 0.5) * F.cell, Z = (j) => F.z0 + (j + 0.5) * F.cell;
+        for (let lv = step; lv < site.relief; lv += step) {
+            const out = Math.round(lv / step) % 5 === 0 ? major : minor, y = lv + lift;
+            for (let j = 0; j < F.ny - 1; j++) {
+                for (let i = 0; i < F.nx - 1; i++) {
+                    const o = j * F.nx + i, a = F.h[o], b = F.h[o + 1], c = F.h[o + F.nx + 1], d = F.h[o + F.nx];
+                    const k = (a >= lv ? 8 : 0) | (b >= lv ? 4 : 0) | (c >= lv ? 2 : 0) | (d >= lv ? 1 : 0);
+                    if (k === 0 || k === 15) continue;
+                    const t = (p, r) => (lv - p) / (r - p);
+                    const T = [X(i + t(a, b)), Z(j)], R = [X(i + 1), Z(j + t(b, c))];
+                    const B = [X(i + t(d, c)), Z(j + 1)], L = [X(i), Z(j + t(a, d))];
+                    const P = (p, r) => out.push(p[0], y, p[1], r[0], y, r[1]);
+                    switch (k) {
+                        case 1: case 14: P(L, B); break; case 2: case 13: P(B, R); break;
+                        case 3: case 12: P(L, R); break; case 4: case 11: P(T, R); break;
+                        case 5: P(L, T); P(B, R); break; case 6: case 9: P(T, B); break;
+                        case 7: case 8: P(L, T); break; case 10: P(T, R); P(L, B); break;
+                    }
+                }
+            }
+        }
+        const g = new THREE.Group();
+        for (const [arr, mat] of [[minor, contourMat], [major, contourMajorMat]]) {
+            if (!arr.length) continue;
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+            g.add(new THREE.LineSegments(geo, mat));
+        }
+        return g;
+    }
+    const niceStep = (r) => [0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500].find(s => r / s <= 30) || 1000;
+
+    function disposeSite() {
+        if (!site) return;
+        scene.remove(site.mesh, site.contours);
+        site.mesh.geometry.dispose();
+        site.contours.children.forEach(c => c.geometry.dispose());
+        site = null;
+    }
+
+    async function loadSite(file) {
+        setLoading('LOADING SITE ' + file.name.toUpperCase() + '…');
+        setSiteStatus('Reading ' + file.name + '…');
+        await new Promise(r => setTimeout(r, 30));     // let the loading message paint
+        try {
+            const gltf = await loader.parseAsync(await file.arrayBuffer(), '');
+            const root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
+            if (!root) throw new Error('no scene in the file');
+            root.updateMatrixWorld(true);
+            const meshes = [];
+            root.traverse(o => { if (o.isMesh && o.geometry && o.geometry.attributes.position) meshes.push(o); });
+            const pos = worldPositions(meshes);
+            if (pos.length < 9) throw new Error('no meshes found in the file');
+            let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+            for (let k = 0; k < pos.length; k += 3) {
+                if (pos[k] < x0) x0 = pos[k]; if (pos[k] > x1) x1 = pos[k];
+                if (pos[k + 2] < z0) z0 = pos[k + 2]; if (pos[k + 2] > z1) z1 = pos[k + 2];
+            }
+            const w = x1 - x0, d = z1 - z0;
+            if (!(w > 0 && d > 0)) throw new Error('the model has no extent in plan');
+
+            // fine height grid (about 360,000 samples) for drawing, picking and the slices
+            const fnx = Math.max(8, Math.round(Math.sqrt(360000 * w / d)));
+            const cell = w / fnx, fny = Math.max(8, Math.ceil(d / cell));
+            const H = rasterTop(pos, x0, z0, cell, fnx, fny);
+            fillGaps(H, fnx, fny);
+            let ymin = Infinity, ymax = -Infinity;
+            for (let o = 0; o < H.length; o++) { if (H[o] < ymin) ymin = H[o]; if (H[o] > ymax) ymax = H[o]; }
+            for (let o = 0; o < H.length; o++) H[o] -= ymin;
+
+            // the drawn terrain: the file's own surface, centred, lowest point at 0
+            const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+            const p = new Float32Array(pos.length);
+            for (let k = 0; k < pos.length; k += 3) { p[k] = pos[k] - cx; p[k + 1] = pos[k + 1] - ymin; p[k + 2] = pos[k + 2] - cz; }
+            let geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+            if (p.length / 9 < 1500000) geo = mergeVertices(geo, Math.max(w, d) * 1e-6);
+            geo.computeVertexNormals();
+
+            disposeSite();
+            site = {
+                name: file.name, w, d, cx, cz, ymin, relief: Math.max(ymax - ymin, 1e-3), tris: p.length / 9,
+                grid: { h: H, nx: fnx, ny: fny, cell, x0: -w / 2, z0: -d / 2 },
+                mesh: new THREE.Mesh(geo, terrainMat), contours: null
+            };
+            site.step = niceStep(site.relief);
+            site.contours = terrainContours(site.grid, site.step);
+            scene.add(site.mesh, site.contours);
+            applyDomain();
+        } catch (err) {
+            setLoading('');
+            const why = /fetch|URL/i.test(String(err && err.message)) ? 'it refers to external files; export a single .glb instead' : (err && err.message) || err;
+            setSiteStatus('Could not load ' + file.name + ': ' + why, true);
+        }
+    }
+    function clearSite() {
+        if (!site) return;
+        disposeSite();
+        applyDomain();
+    }
+
+    // size the grid and slices for the current site (or the flat plot) and detail level
+    function setDomain() {
+        const W = site ? site.w : FLAT_W, D = site ? site.d : FLAT_D;
+        NX = Math.max(40, Math.round(Math.sqrt(DETAIL[detail].cells * W / D)));
+        CELL = W / NX;
+        NY = Math.max(30, Math.round(D / CELL));
+        N = NX * NY;
+        DOM_W = W; DOM_D = NY * CELL;
+        if (site) {
+            // evenly spaced slices from just above the canyon floors (where at least 3% of
+            // the site is open, so the lowest slice is never empty) to above the highest ridge
+            const n = DETAIL[detail].slices, R = site.relief;
+            const sorted = Float32Array.from(site.grid.h).sort();
+            const floor = sorted[Math.floor(sorted.length * 0.03)];
+            const e0 = floor + Math.max(1, 0.02 * R), eTop = R + Math.max(8, 0.12 * R);
+            LAYERS = Array.from({ length: n }, (_, i) => e0 + (eTop - e0) * i / (n - 1));
+            CLIMB = Math.max(18, 0.35 * R);
+        } else {
+            LAYERS = FLAT_LEVELS.slice();
+            CLIMB = 18;
+        }
+        TOPH = LAYERS[LAYERS.length - 1];
+        hmap = new Float32Array(N);
+        terr = new Float32Array(N);
+        if (site) {
+            for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+                terr[j * NX + i] = terrainAt(-DOM_W / 2 + (i + 0.5) * CELL, -DOM_D / 2 + (j + 0.5) * CELL);
+            }
+        }
+        makeLayers();
+        buildGround();
+        buildSpeedMap();
+        fillSliceOptions();
+        refitWalls();
+        fitCameras();
+    }
+    // after the site or detail changes: new domain, masses re-seated, flow restarted
+    function applyDomain() {
+        setDomain();
+        if (source) buildMasses();
+        else restartSim();
+        setLoading('');
+        setSiteStatus(site
+            ? site.name + ' · ' + fmt(site.w) + ' × ' + fmt(site.d) + ' m · ' + fmt(site.relief) + ' m from lowest to highest point · '
+              + LAYERS.length + ' slices every ' + fmt(LAYERS[1] - LAYERS[0]) + ' m · grid ' + NX + ' × ' + NY + ' (' + fmt(CELL) + ' m cells) · contours every ' + site.step + ' m'
+            : 'No site loaded: a flat ' + FLAT_W + ' × ' + FLAT_D + ' plot. Grid ' + NX + ' × ' + NY + '.');
+        $('#site-clear').disabled = !site;
+    }
+    function restartSim() {
+        rebuildMask();
+        resetAll();
+        for (let p = 0; p < PMAX; p++) spawn(p, true);
+        ready = true;
+    }
+    const fmt = (v) => v >= 100 ? Math.round(v).toLocaleString() : v >= 10 ? v.toFixed(0) : v.toFixed(1);
+    function setSiteStatus(text, err) {
+        const el = $('#site-status');
+        el.textContent = text;
+        el.classList.toggle('err', !!err);
+    }
+
+    /* ── Speed map: one slice's wind speed as a coloured plane at its elevation ── */
+    let speedTex = null, speedMesh = null, speedData = null, speedSlice = -1;
+    const speedMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    function buildSpeedMap() {
+        if (speedMesh) { scene.remove(speedMesh); speedMesh.geometry.dispose(); speedTex.dispose(); }
+        if (speedSlice >= LAYERS.length) speedSlice = -1;
+        speedData = new Uint8Array(N * 4);
+        speedTex = new THREE.DataTexture(speedData, NX, NY, THREE.RGBAFormat);
+        speedTex.colorSpace = THREE.SRGBColorSpace;
+        speedTex.magFilter = THREE.LinearFilter;
+        speedTex.needsUpdate = true;
+        speedMat.map = speedTex;
+        speedMat.needsUpdate = true;
+        const geo = new THREE.PlaneGeometry(DOM_W, DOM_D);
+        geo.rotateX(-Math.PI / 2);
+        speedMesh = new THREE.Mesh(geo, speedMat);
+        speedMesh.renderOrder = 2;
+        speedMesh.visible = speedSlice >= 0;
+        scene.add(speedMesh);
+    }
+    function fillSliceOptions() {
+        const sel = $('#slice');
+        sel.innerHTML = '<option value="-1">Off</option>' + LAYERS.map((H, i) =>
+            '<option value="' + i + '">Slice ' + (i + 1) + ' · ' + fmt(H) + (site ? ' m above the lowest point' : ' above the ground') + '</option>').join('');
+        sel.value = String(speedSlice);
+    }
+    // diverging ramp against the open wind at that height: still → slower → as open → faster
+    const RAMP = [[0, [33, 64, 154]], [0.5, [92, 140, 214]], [1, [214, 214, 210]], [1.5, [240, 150, 60]], [2, [200, 60, 30]]];
+    function rampAt(s, out) {
+        s = Math.max(0, Math.min(2, s));
+        let k = 1;
+        while (k < RAMP.length - 1 && RAMP[k][0] < s) k++;
+        const [s0, a] = RAMP[k - 1], [s1, b] = RAMP[k], t = (s - s0) / (s1 - s0);
+        out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t;
+    }
+    const rgb = [0, 0, 0];
+    function updateSpeedMap() {
+        if (speedSlice < 0 || !speedMesh) return;
+        const L = layers[speedSlice];
+        speedMesh.position.y = L.H;
+        const U = wind.U || 1e-9;
+        for (let j = 0; j < NY; j++) {
+            const r = NY - 1 - j;                       // texture row 0 is the south edge
+            for (let i = 0; i < NX; i++) {
+                const idx = j * NX + i, o = (r * NX + i) * 4;
+                if (L.solid[idx]) { speedData[o + 3] = 0; continue; }
+                rampAt(Math.hypot(L.ux[idx], L.uy[idx]) / (U * L.prof[idx]), rgb);
+                speedData[o] = rgb[0]; speedData[o + 1] = rgb[1]; speedData[o + 2] = rgb[2];
+                speedData[o + 3] = 215;
+            }
+        }
+        speedTex.needsUpdate = true;
+    }
+
+    $('#site-btn').addEventListener('click', () => $('#site-upload').click());
+    $('#site-upload').addEventListener('change', (e) => {
+        if (e.target.files.length) loadSite(e.target.files[0]);
+        e.target.value = '';
+    });
+    $('#site-clear').addEventListener('click', clearSite);
+    $('#clear-masses').addEventListener('click', () => {
+        clearMasses();
+        source = null;
+        restartSim();
+        setStatus('No masses yet.');
+    });
+    document.querySelectorAll('#seg-detail button').forEach(b => b.addEventListener('click', () => {
+        if (b.dataset.detail === detail) return;
+        detail = b.dataset.detail;
+        document.querySelectorAll('#seg-detail button').forEach(x => x.classList.toggle('on', x === b));
+        applyDomain();
+    }));
+    $('#slice').addEventListener('change', (e) => {
+        speedSlice = parseInt(e.target.value, 10);
+        speedMesh.visible = speedSlice >= 0;
+        updateSpeedMap();
+    });
+
     $('#upload-btn').addEventListener('click', () => $('#upload').click());
     $('#upload').addEventListener('change', (e) => {
         if (e.target.files.length) loadFiles(e.target.files);
         e.target.value = '';
     });
-    $('#default-model').addEventListener('click', loadDefault);
     $('#ms').addEventListener('input', () => { $('#ms-val').textContent = $('#ms').value + '%'; });
     $('#ms').addEventListener('change', () => { if (source) buildMasses(); });
 
@@ -1272,23 +1695,38 @@
 
     readTheme();
     updateWind();
+    setDomain();
+    setSiteStatus('No site loaded: a flat ' + FLAT_W + ' × ' + FLAT_D + ' plot. Grid ' + NX + ' × ' + NY + '.');
     if (location.hash === '#3d') setView('persp');
     resize();
     setHud();
     stage.style.cursor = 'default';
-    loadDefault();
+    restartSim();                       // wind runs on the flat plot until the site arrives
+    // The project site (ProjectSite.glb, next to this page) loads by default.
+    // ?site=other.glb loads another site saved here; ?site=none starts on the flat plot.
+    const DEFAULT_SITE = 'ProjectSite.glb';
+    {
+        const q = new URLSearchParams(location.search).get('site') || DEFAULT_SITE;
+        if (q !== 'none' && /^[\w./-]+\.(glb|gltf)$/i.test(q) && !q.includes('..')) {
+            fetch(q).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+                .then(b => loadSite(new File([b], q.split('/').pop())))
+                .catch(() => { setLoading(''); setSiteStatus('Could not load ' + q + ' from next to this page.', true); });
+        } else {
+            setLoading('');
+        }
+    }
 
     new MutationObserver(() => { readTheme(); select(selected); })
         .observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
 
     /* ── Frame loop ───────────────────────────────────────────────────────── */
-    let simSteps = 2, simMs = 10;
+    let simSteps = 2, simMs = 10, frame = 0;
     const lv = new THREE.Vector3();
     function updateLabels() {
         const w = stage.clientWidth, h = stage.clientHeight, c = cam();
         for (const m of masses) {
             if (m.label.style.display === 'none') continue;
-            lv.set(m.pivot.position.x, Math.max(m.top, 0), m.pivot.position.z).project(c);
+            lv.set(m.pivot.position.x, m.pivot.position.y + Math.max(m.top, 0), m.pivot.position.z).project(c);
             if (lv.z > 1) { m.label.style.visibility = 'hidden'; continue; }
             m.label.style.visibility = '';
             m.label.style.transform = 'translate(' + Math.round((lv.x * 0.5 + 0.5) * w) + 'px,' + Math.round((-lv.y * 0.5 + 0.5) * h) + 'px) translate(-50%,-130%)';
@@ -1305,6 +1743,7 @@
             if (simMs > 14 && simSteps > 1) { simSteps--; simMs = 10; }
             else if (simMs < 6 && simSteps < 3) { simSteps++; simMs = 10; }
             if (trails.visible) updateParticles();
+            if (++frame % 4 === 0) updateSpeedMap();
             updateLabels();
         }
         renderer.render(scene, cam());
